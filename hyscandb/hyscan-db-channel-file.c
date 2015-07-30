@@ -1195,7 +1195,7 @@ gboolean hyscan_db_channel_file_get_channel_data( HyScanDBChannelFile *channel, 
   if( time != NULL ) *time = db_index->time;
 
   // Размер данных.
-  if( buffer_size != NULL ) *buffer_size = iosize;
+  *buffer_size = iosize;
 
   g_mutex_unlock( &priv->mutex );
 

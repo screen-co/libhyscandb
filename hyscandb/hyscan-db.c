@@ -15,6 +15,17 @@ G_DEFINE_INTERFACE( HyScanDB, hyscan_db, G_TYPE_OBJECT );
 static void hyscan_db_default_init( HyScanDBInterface *iface ){ ; }
 
 
+gchar **hyscan_db_get_project_type_list( HyScanDB *db )
+{
+
+  if( HYSCAN_DB_GET_CLASS( db )->get_project_type_list !=  NULL )
+    return HYSCAN_DB_GET_CLASS( db )->get_project_type_list( db );
+
+  return NULL;
+
+}
+
+
 gchar **hyscan_db_get_project_list( HyScanDB *db )
 {
 
@@ -37,11 +48,11 @@ gint32 hyscan_db_open_project( HyScanDB *db, const gchar *project_name )
 }
 
 
-gint32 hyscan_db_create_project( HyScanDB *db, const gchar *project_name )
+gint32 hyscan_db_create_project( HyScanDB *db, const gchar *project_name, const gchar *project_type )
 {
 
   if( HYSCAN_DB_GET_CLASS( db )->create_project !=  NULL )
-    return HYSCAN_DB_GET_CLASS( db )->create_project( db, project_name );
+    return HYSCAN_DB_GET_CLASS( db )->create_project( db, project_name, project_type );
 
   return -1;
 

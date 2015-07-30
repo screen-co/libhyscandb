@@ -64,7 +64,6 @@ link_directories( ${GLIB2_LIBRARY_DIRS} )
 
 #
 # Include directories.
-include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/hyscandb )
 
 #

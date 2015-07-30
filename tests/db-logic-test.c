@@ -141,7 +141,7 @@ int main( int argc, char **argv )
   for( i = 0; i < projects_num; i++ )
     {
     gchar *project_name = g_strdup_printf( "Project %d", i + 1 );
-    project_id[i] = hyscan_db_create_project( db, project_name );
+    project_id[i] = hyscan_db_create_project( db, project_name, NULL );
     if( project_id[i] < 0 ) g_error( "can't create '%s'", project_name );
     g_free( project_name );
     }
@@ -171,7 +171,7 @@ int main( int argc, char **argv )
   for( i = 0; i < projects_num; i++ )
     {
     gchar *project_name = g_strdup_printf( "Project %d", i + 1 );
-    if( hyscan_db_create_project( db, project_name ) > 0 ) g_error( "'%s' duplicated", project_name );
+    if( hyscan_db_create_project( db, project_name, NULL ) > 0 ) g_error( "'%s' duplicated", project_name );
     g_free( project_name );
     }
 

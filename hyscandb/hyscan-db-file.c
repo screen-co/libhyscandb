@@ -15,6 +15,8 @@
 #include <string.h>
 
 
+#define DB_FILE_PROJECT_TYPE "HyScan5"
+
 #define HYSCAN_DB_FILE_API   20150700            // Версия API файловой базы данных.
 
 #define MAX_CHANNEL_PARTS    999999              // Максимальное число частей данных канала,
@@ -715,7 +717,7 @@ gint32 hyscan_db_file_open_project( HyScanDB *db, const gchar *project_name )
 
 
 // Функция создаёт новый проект и открывает его для работы.
-gint32 hyscan_db_file_create_project( HyScanDB *db, const gchar *project_name )
+gint32 hyscan_db_file_create_project( HyScanDB *db, const gchar *project_name, const gchar *project_type )
 {
 
   HyScanDBFilePriv *priv = HYSCAN_DB_FILE_GET_PRIVATE( db );
@@ -726,6 +728,13 @@ gint32 hyscan_db_file_create_project( HyScanDB *db, const gchar *project_name )
   gchar *project_path = NULL;
   gchar *project_param_file = NULL;
   gchar *param_data = NULL;
+
+  // Проверяем запрошенный формат храненияю
+  if( project_type != NULL && g_strcmp0( project_type, DB_FILE_PROJECT_TYPE ) != 0 )
+    {
+    g_critical( "hyscan_db_file_create_project: wrong project type %s", project_type );
+    return FALSE;
+    }
 
   g_rw_lock_writer_lock( &priv->projects_lock );
 
@@ -2145,6 +2154,7 @@ void hyscan_db_file_close_param( HyScanDB *db, gint32 param_id )
 static void hyscan_db_file_interface_init( HyScanDBInterface *iface )
 {
 
+  iface->get_project_type_list = NULL;
   iface->get_project_list = hyscan_db_file_get_project_list;
   iface->open_project = hyscan_db_file_open_project;
   iface->create_project = hyscan_db_file_create_project;
@@ -2196,3 +2206,4 @@ static void hyscan_db_file_interface_init( HyScanDBInterface *iface )
 
 #warning "Check for next_id"
 #warning "replace g_file_set_contents with gio"
+#warning "lock main directory on use"
