@@ -4,6 +4,7 @@
  * \brief Исходный файл интерфейса базы данных HyScan
  * \author Andrei Fadeev (andrei@webcontrol.ru)
  * \date 2015
+ * \license Проприетарная лицензия ООО "Экран".
  *
 */
 
@@ -59,6 +60,17 @@ gint32 hyscan_db_create_project( HyScanDB *db, const gchar *project_name, const 
 }
 
 
+gboolean hyscan_db_remove_project( HyScanDB *db, const gchar *project_name )
+{
+
+  if( HYSCAN_DB_GET_CLASS( db )->remove_project !=  NULL )
+    return HYSCAN_DB_GET_CLASS( db )->remove_project( db, project_name );
+
+  return FALSE;
+
+}
+
+
 void hyscan_db_close_project( HyScanDB *db, gint32 project_id )
 {
 
@@ -68,13 +80,13 @@ void hyscan_db_close_project( HyScanDB *db, gint32 project_id )
 }
 
 
-gboolean hyscan_db_remove_project( HyScanDB *db, const gchar *project_name )
+GDateTime *hyscan_db_get_project_ctime( HyScanDB *db, gint32 project_id )
 {
 
-  if( HYSCAN_DB_GET_CLASS( db )->remove_project !=  NULL )
-    return HYSCAN_DB_GET_CLASS( db )->remove_project( db, project_name );
+  if( HYSCAN_DB_GET_CLASS( db )->get_project_ctime !=  NULL )
+    return HYSCAN_DB_GET_CLASS( db )->get_project_ctime( db, project_id );
 
-  return FALSE;
+  return NULL;
 
 }
 
@@ -112,6 +124,17 @@ gint32 hyscan_db_create_track( HyScanDB *db, gint32 project_id, const gchar *tra
 }
 
 
+gboolean hyscan_db_remove_track( HyScanDB *db, gint32 project_id, const gchar *track_name )
+{
+
+  if( HYSCAN_DB_GET_CLASS( db )->remove_track !=  NULL )
+    return HYSCAN_DB_GET_CLASS( db )->remove_track( db, project_id, track_name );
+
+  return FALSE;
+
+}
+
+
 void hyscan_db_close_track( HyScanDB *db, gint32 track_id )
 {
 
@@ -121,13 +144,13 @@ void hyscan_db_close_track( HyScanDB *db, gint32 track_id )
 }
 
 
-gboolean hyscan_db_remove_track( HyScanDB *db, gint32 project_id, const gchar *track_name )
+GDateTime *hyscan_db_get_track_ctime( HyScanDB *db, gint32 track_id )
 {
 
-  if( HYSCAN_DB_GET_CLASS( db )->remove_track !=  NULL )
-    return HYSCAN_DB_GET_CLASS( db )->remove_track( db, project_id, track_name );
+  if( HYSCAN_DB_GET_CLASS( db )->get_track_ctime !=  NULL )
+    return HYSCAN_DB_GET_CLASS( db )->get_track_ctime( db, track_id );
 
-  return FALSE;
+  return NULL;
 
 }
 
@@ -165,15 +188,6 @@ gint32 hyscan_db_create_channel( HyScanDB *db, gint32 track_id, const gchar *cha
 }
 
 
-void hyscan_db_close_channel( HyScanDB *db, gint32 channel_id )
-{
-
-  if( HYSCAN_DB_GET_CLASS( db )->close_channel !=  NULL )
-    HYSCAN_DB_GET_CLASS( db )->close_channel( db, channel_id );
-
-}
-
-
 gboolean hyscan_db_remove_channel( HyScanDB *db, gint32 track_id, const gchar *channel_name )
 {
 
@@ -181,6 +195,15 @@ gboolean hyscan_db_remove_channel( HyScanDB *db, gint32 track_id, const gchar *c
     return HYSCAN_DB_GET_CLASS( db )->remove_channel( db, track_id, channel_name );
 
   return FALSE;
+
+}
+
+
+void hyscan_db_close_channel( HyScanDB *db, gint32 channel_id )
+{
+
+  if( HYSCAN_DB_GET_CLASS( db )->close_channel !=  NULL )
+    HYSCAN_DB_GET_CLASS( db )->close_channel( db, channel_id );
 
 }
 
@@ -348,6 +371,59 @@ gboolean hyscan_db_remove_track_param( HyScanDB *db, gint32 track_id, const gcha
 }
 
 
+gchar **hyscan_db_get_param_list( HyScanDB *db, gint32 param_id )
+{
+
+  if( HYSCAN_DB_GET_CLASS( db )->get_param_list !=  NULL )
+    return HYSCAN_DB_GET_CLASS( db )->get_param_list( db, param_id );
+
+  return NULL;
+
+}
+
+
+gboolean hyscan_db_copy_param( HyScanDB *db, gint32 src_param_id, gint32 dst_param_id, const gchar *mask )
+{
+
+  if( HYSCAN_DB_GET_CLASS( db )->copy_param !=  NULL )
+    return HYSCAN_DB_GET_CLASS( db )->copy_param( db, src_param_id, dst_param_id, mask );
+
+  return FALSE;
+
+}
+
+
+gboolean hyscan_db_remove_param( HyScanDB *db, gint32 param_id, const gchar *mask )
+{
+
+  if( HYSCAN_DB_GET_CLASS( db )->remove_param !=  NULL )
+    return HYSCAN_DB_GET_CLASS( db )->remove_param( db, param_id, mask );
+
+  return FALSE;
+
+}
+
+
+void hyscan_db_close_param( HyScanDB *db, gint32 param_id )
+{
+
+  if( HYSCAN_DB_GET_CLASS( db )->close_param !=  NULL )
+    HYSCAN_DB_GET_CLASS( db )->close_param( db, param_id );
+
+}
+
+
+gint64 hyscan_db_inc_integer_param( HyScanDB *db, gint32 param_id, const gchar *name )
+{
+
+  if( HYSCAN_DB_GET_CLASS( db )->inc_integer_param !=  NULL )
+    return HYSCAN_DB_GET_CLASS( db )->inc_integer_param( db, param_id, name );
+
+  return 0;
+
+}
+
+
 gboolean hyscan_db_set_integer_param( HyScanDB *db, gint32 param_id, const gchar *name, gint64 value )
 {
 
@@ -432,14 +508,5 @@ gchar *hyscan_db_get_string_param( HyScanDB *db, gint32 param_id, const gchar *n
     return HYSCAN_DB_GET_CLASS( db )->get_string_param( db, param_id, name );
 
   return NULL;
-
-}
-
-
-void hyscan_db_close_param( HyScanDB *db, gint32 param_id )
-{
-
-  if( HYSCAN_DB_GET_CLASS( db )->close_param !=  NULL )
-    HYSCAN_DB_GET_CLASS( db )->close_param( db, param_id );
 
 }

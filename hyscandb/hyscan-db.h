@@ -6,7 +6,7 @@
  * \date 2015
  * \license Проприетарная лицензия ООО "Экран".
  *
- * \defgroup HyScanDB HyScanDB - интерфейс работы с системой хранения данных.
+ * \defgroup HyScanDB HyScanDB - интерфейс работы с системой хранения данных
  *
  * Интерфейс \link HyScanDB \endlink определяет модель взаимодействия с системой хранения данных.
  * Система реализует иерархическую структуру модели данных. Корневыми элементами являются проекты,
@@ -32,10 +32,12 @@
  * - выбор используемого проекта и его параметров - #hyscan_db_get_project_list, #hyscan_db_get_project_param_list
  *   -# открытие существующего проекта - #hyscan_db_open_project
  *   -# создание нового проекта - #hyscan_db_create_project
+ *   -# получение даты и времени создания проекта - #hyscan_db_get_project_ctime
  *   -# открытие (создание) группы параметров - #hyscan_db_open_project_param
  * - выбор используемого галса и его параметров - #hyscan_db_get_track_list, #hyscan_db_get_track_param_list
  *   -# открытие существующего галса - #hyscan_db_open_track
  *   -# создание нового галса - #hyscan_db_create_track
+ *   -# получение даты и времени создания галса - #hyscan_db_get_track_ctime
  *   -# открытие (создание) группы параметров - #hyscan_db_open_track_param
  * - выбор используемого канала данных - #hyscan_db_get_channel_list
  *   -# открытие существующего канала данных - #hyscan_db_open_channel
@@ -47,6 +49,10 @@
  *   -# поиск данных по времени - #hyscan_db_find_channel_data
  *   -# получение диапазона доступных данных - #hyscan_db_get_channel_data_range
  * - работа с параметрами
+ *   -# получение списка названий параметров в группе - #hyscan_db_get_param_list
+ *   -# копирование параметров из одной группы в другую - #hyscan_db_copy_param
+ *   -# удаление параметров в группе - #hyscan_db_remove_param
+ *   -# увеличение значения параметра типа integer на единицу - #hyscan_db_inc_integer_param
  *   -# установка значения параметра типа integer - #hyscan_db_set_integer_param
  *   -# установка значения параметра типа double - #hyscan_db_set_double_param
  *   -# установка значения параметра типа boolean - #hyscan_db_set_boolean_param
@@ -69,6 +75,17 @@
  * - отключение от системы хранения данных осуществляется при удалении объекта функцией g_object_unref
  *
  * Все названия проектов, галсов, каналов данных и групп параметров должны быть в кодировке UTF-8.
+ *
+ * Необходимо иметь в виду, что параметры могут изменяться несколькими клиентами одновременно. Таким образом,
+ * при одновременном изменении нескольких параметров может возникнуть ситуация, когда будет нарушена совокупная
+ * целостность изменяемых параметров (другой клиент изменит часть параметров на свои значения). Чтобы избежать
+ * этой проблемы, при необходимости атомарно изменить или считать несколько параметров, рекомендуется создать
+ * отдельную группу парамтров и скопировать данные из неё или в неё функцией #hyscan_db_copy_param. Эта операция
+ * будет произведена атомарно.
+ *
+ * Чтобы сигнализировать другим клиентам, что параметры изменились, можно использовать счётчик, изменившееся
+ * значение которого укажет на это событие. Для атомарного увеличения значения параметра типа integer можно
+ * использовать функцию #hyscan_db_inc_integer_param.
  *
  * Названия параметров должны иметь вид "подгруппа.имя" или "имя". Во втором случае автоматически используется
  * подгруппа "default". Названия параметров могут содержать цифры, буквы латинского алфавита, символы '-' и '_'.
@@ -147,23 +164,19 @@ typedef struct HyScanDBInterface {
   gint32            (*create_project)( HyScanDB *db, const gchar *project_name, const gchar *project_type );
   gboolean          (*remove_project)( HyScanDB *db, const gchar *project_name );
   void               (*close_project)( HyScanDB *db, gint32 project_id );
-  gchar*   (*get_project_description)( HyScanDB *db, const gchar *project_name );
-  gboolean (*set_project_description)( HyScanDB *db, const gchar *project_name, const gchar *description );
-  gint64         (*get_project_ctime)( HyScanDB *db, const gchar *project_name );
+  GDateTime*     (*get_project_ctime)( HyScanDB *db, gint32 project_id );
 
   gchar**           (*get_track_list)( HyScanDB *db, gint32 project_id );
   gint32                (*open_track)( HyScanDB *db, gint32 project_id, const gchar *track_name );
   gint32              (*create_track)( HyScanDB *db, gint32 project_id, const gchar *track_name );
   gboolean            (*remove_track)( HyScanDB *db, gint32 project_id, const gchar *track_name );
   void                 (*close_track)( HyScanDB *db, gint32 track_id );
-  gchar*     (*get_track_description)( HyScanDB *db, gint32 project_id, const gchar *track_name );
-  gboolean   (*set_track_description)( HyScanDB *db, gint32 project_id, const gchar *track_name, const gchar *description );
-  gint64           (*get_track_ctime)( HyScanDB *db, gint32 project_id, const gchar *track_name );
+  GDateTime*       (*get_track_ctime)( HyScanDB *db, gint32 track_id );
 
   gchar**         (*get_channel_list)( HyScanDB *db, gint32 track_id );
+  gint32              (*open_channel)( HyScanDB *db, gint32 track_id, const gchar *channel_name );
   gboolean          (*create_channel)( HyScanDB *db, gint32 track_id, const gchar *channel_name );
   gboolean          (*remove_channel)( HyScanDB *db, gint32 track_id, const gchar *channel_name );
-  gint32              (*open_channel)( HyScanDB *db, gint32 track_id, const gchar *channel_name );
   void               (*close_channel)( HyScanDB *db, gint32 channel_id );
   gint32        (*open_channel_param)( HyScanDB *db, gint32 channel_id );
 
@@ -185,6 +198,12 @@ typedef struct HyScanDBInterface {
   gint32          (*open_track_param)( HyScanDB *db, gint32 track_id, const gchar *group_name );
   gboolean      (*remove_track_param)( HyScanDB *db, gint32 track_id, const gchar *group_name );
 
+  gchar**           (*get_param_list)( HyScanDB *db, gint32 param_id );
+  gboolean              (*copy_param)( HyScanDB *db, gint32 src_param_id, gint32 dst_param_id, const gchar *mask );
+  gboolean            (*remove_param)( HyScanDB *db, gint32 param_id, const gchar *mask );
+  void                 (*close_param)( HyScanDB *db, gint32 param_id );
+
+  gint64         (*inc_integer_param)( HyScanDB *db, gint32 param_id, const gchar *name );
   gboolean       (*set_integer_param)( HyScanDB *db, gint32 param_id, const gchar *name, gint64 value );
   gboolean        (*set_double_param)( HyScanDB *db, gint32 param_id, const gchar *name, gdouble value );
   gboolean       (*set_boolean_param)( HyScanDB *db, gint32 param_id, const gchar *name, gboolean value );
@@ -193,7 +212,6 @@ typedef struct HyScanDBInterface {
   gdouble         (*get_double_param)( HyScanDB *db, gint32 param_id, const gchar *name );
   gboolean       (*get_boolean_param)( HyScanDB *db, gint32 param_id, const gchar *name );
   gchar*          (*get_string_param)( HyScanDB *db, gint32 param_id, const gchar *name );
-  void                 (*close_param)( HyScanDB *db, gint32 param_id );
 
 } HyScanDBInterface;
 
@@ -230,7 +248,7 @@ HyScanDB *hyscan_db_new( const gchar *uri );
  *
  * Функция возвращает список доступных форматов хранения.
  *
- * Память выделення под список должна быть освобождена после использования (см. g_strfreev).
+ * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
  * \param db указатель на объект HyScanDB.
  *
@@ -244,7 +262,7 @@ gchar **hyscan_db_get_project_type_list( HyScanDB *db );
  *
  * Функция возвращает список проектов существующих в системе хранения.
  *
- * Память выделення под список должна быть освобождена после использования (см. g_strfreev).
+ * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
  * \param db указатель на объект HyScanDB.
  *
@@ -294,6 +312,22 @@ gint32 hyscan_db_create_project( HyScanDB *db, const gchar *project_name, const 
 
 /*!
  *
+ * Функция удаляет существующий проект.
+ *
+ * Удаление возможно даже в случае использования проекта или его объектов другими клиентами. В этом
+ * случае функции работы с этим проектом и его объектами будут возвращать ошибки.
+ *
+ * \param db указатель на объект HyScanDB;
+ * \param project_name название проекта.
+ *
+ * \return TRUE - если проект был удалён, FALSE - в случае ошибки.
+ *
+*/
+gboolean hyscan_db_remove_project( HyScanDB *db, const gchar *project_name );
+
+
+/*!
+ *
  * Функция закрывает открытый ранее проект.
  *
  * Закрытие проекта не влияет на открытые в этом проекте объекты. Их использование может быть продолжено.
@@ -309,18 +343,17 @@ void hyscan_db_close_project( HyScanDB *db, gint32 project_id );
 
 /*!
  *
- * Функция удаляет существующий проект.
+ * Функция возвращает информацию о дате и времени создания проекта.
  *
- * Удаление возможно даже в случае использования проекта или его объектов другими клиентами. В этом
- * случае функции работы с этим проектом и его объектами будут возвращать ошибки.
+ * Память выделенная под объект GDateTime должна быть освобождена после использования (см. g_date_time_unref).
  *
  * \param db указатель на объект HyScanDB;
- * \param project_name название проекта.
+ * \param project_id идентификатор открытого проекта.
  *
- * \return TRUE - если проект был удалён, FALSE - в случае ошибки.
+ * \return Указатель на объект GDateTime или NULL в случае ошибки.
  *
 */
-gboolean hyscan_db_remove_project( HyScanDB *db, const gchar *project_name );
+GDateTime *hyscan_db_get_project_ctime( HyScanDB *db, gint32 project_id );
 
 
 //
@@ -331,7 +364,7 @@ gboolean hyscan_db_remove_project( HyScanDB *db, const gchar *project_name );
  *
  * Функция возвращает список галсов существующих в открытом проекте.
  *
- * Память выделення под список должна быть освобождена после использования (см. g_strfreev).
+ * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
  * \param db указатель на объект HyScanDB;
  * \param project_id идентификатор открытого проекта.
@@ -380,21 +413,6 @@ gint32 hyscan_db_create_track( HyScanDB *db, gint32 project_id, const gchar *tra
 
 /*!
  *
- * Функция закрывает открытый ранее галс.
- *
- * Закрытие галса не влияет на открытые в этом галсе объекты. Их использование может быть продолжено.
- *
- * \param db указатель на объект HyScanDB;
- * \param track_id идентификатор открытого галса.
- *
- * \return Функция не возвращает значений.
- *
-*/
-void hyscan_db_close_track( HyScanDB *db, gint32 track_id );
-
-
-/*!
- *
  * Функция удаляет существующий галс.
  *
  * Удаление возможно даже в случае использования галса или его объектов другими клиентами. В этом
@@ -410,6 +428,36 @@ void hyscan_db_close_track( HyScanDB *db, gint32 track_id );
 gboolean hyscan_db_remove_track( HyScanDB *db, gint32 project_id, const gchar *track_name );
 
 
+/*!
+ *
+ * Функция закрывает открытый ранее галс.
+ *
+ * Закрытие галса не влияет на открытые в этом галсе объекты. Их использование может быть продолжено.
+ *
+ * \param db указатель на объект HyScanDB;
+ * \param track_id идентификатор открытого галса.
+ *
+ * \return Функция не возвращает значений.
+ *
+*/
+void hyscan_db_close_track( HyScanDB *db, gint32 track_id );
+
+
+/*!
+ *
+ * Функция возвращает информацию о дате и времени создания галса.
+ *
+ * Память выделенная под объект GDateTime должна быть освобождена после использования (см. g_date_time_unref).
+ *
+ * \param db указатель на объект HyScanDB;
+ * \param track_id идентификатор открытого галса.
+ *
+ * \return Указатель на объект GDateTime или NULL в случае ошибки.
+ *
+*/
+GDateTime *hyscan_db_get_track_ctime( HyScanDB *db, gint32 track_id );
+
+
 //
 // Функции работы с каналами данных.
 
@@ -418,7 +466,7 @@ gboolean hyscan_db_remove_track( HyScanDB *db, gint32 project_id, const gchar *t
  *
  * Функция возвращает список каналов данных существующих в открытом галсе.
  *
- * Память выделення под список должна быть освобождена после использования (см. g_strfreev).
+ * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
  * \param db указатель на объект HyScanDB;
  * \param track_id идентификатор открытого галса.
@@ -469,21 +517,6 @@ gint32 hyscan_db_create_channel( HyScanDB *db, gint32 track_id, const gchar *cha
 
 /*!
  *
- * Функция закрывает открытый ранее канал данных.
- *
- * Закрытие канала данных не влияет на открытые параметры этого канала данных. Их использование может быть продолжено.
- *
- * \param db указатель на объект HyScanDB;
- * \param channel_id идентификатор открытого канала данных.
- *
- * \return Функция не возвращает значений.
- *
-*/
-void hyscan_db_close_channel( HyScanDB *db, gint32 channel_id );
-
-
-/*!
- *
  * Функция удаляет существующий канал данных.
  *
  * Удаление возможно даже в случае использования канала данных или его параметров другими клиентами. В этом
@@ -497,6 +530,21 @@ void hyscan_db_close_channel( HyScanDB *db, gint32 channel_id );
  *
 */
 gboolean hyscan_db_remove_channel( HyScanDB *db, gint32 track_id, const gchar *channel_name );
+
+
+/*!
+ *
+ * Функция закрывает открытый ранее канал данных.
+ *
+ * Закрытие канала данных не влияет на открытые параметры этого канала данных. Их использование может быть продолжено.
+ *
+ * \param db указатель на объект HyScanDB;
+ * \param channel_id идентификатор открытого канала данных.
+ *
+ * \return Функция не возвращает значений.
+ *
+*/
+void hyscan_db_close_channel( HyScanDB *db, gint32 channel_id );
 
 
 /*!
@@ -669,7 +717,7 @@ gboolean hyscan_db_find_channel_data( HyScanDB *db, gint32 channel_id, gint64 ti
  *
  * Функция возвращает список групп параметров открытого проекта.
  *
- * Память выделення под список должна быть освобождена после использования (см. g_strfreev).
+ * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
  * \param db указатель на объект HyScanDB;
  * \param project_id идентификатор открытого проекта.
@@ -720,7 +768,7 @@ gboolean hyscan_db_remove_project_param( HyScanDB *db, gint32 project_id, const 
  *
  * Функция возвращает список групп параметров открытого галса.
  *
- * Память выделення под список должна быть освобождена после использования (см. g_strfreev).
+ * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
  * \param db указатель на объект HyScanDB;
  * \param track_id идентификатор открытого галса.
@@ -765,6 +813,83 @@ gint32 hyscan_db_open_track_param( HyScanDB *db, gint32 track_id, const gchar *g
  *
 */
 gboolean hyscan_db_remove_track_param( HyScanDB *db, gint32 track_id, const gchar *group_name );
+
+
+/*!
+ *
+ * Функция возвращает список названий параметров в открытой группе.
+ *
+ * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
+ *
+ * \param db указатель на объект HyScanDB;
+ * \param param_id идентификатор открытой группы параметров.
+ *
+ * \return NULL терминированный список названий параметров или NULL - если параметров нет.
+ *
+*/
+gchar **hyscan_db_get_param_list( HyScanDB *db, gint32 param_id );
+
+
+/*!
+ *
+ * Функция копирует параметры из одной открытой группы в другую.
+ *
+ * Копирование возможно только в пределах одного проекта.
+ *
+ * При копировании можно задать маску имён, которая будет учтена при копировании параметров (см. GPatternSpec).
+ *
+ * \param db указатель на объект HyScanDB;
+ * \param src_param_id идентификатор открытой группы параметров источника;
+ * \param dst_param_id идентификатор открытой группы параметров приёмника;
+ * \param mask маска имён.
+ *
+ * \return TRUE - если копирование успешно выполнено, FALSE - в случае ошибки.
+ *
+*/
+gboolean hyscan_db_copy_param( HyScanDB *db, gint32 src_param_id, gint32 dst_param_id, const gchar *mask );
+
+
+/*!
+ *
+ * Функция удалаяет параметры в открытой группе.
+ *
+ * При удалении можно задать маску имён, которая будет учтена при удалении параметров (см. GPatternSpec).
+ *
+ * \param db указатель на объект HyScanDB;
+ * \param param_id идентификатор открытой группы параметров;
+ * \param mask маска имён.
+ *
+ * \return TRUE - если удаление успешно выполнено, FALSE - в случае ошибки.
+ *
+*/
+gboolean hyscan_db_remove_param( HyScanDB *db, gint32 param_id, const gchar *mask );
+
+
+/*!
+ *
+ * Функция закрывает открытую ранее группу параметров.
+ *
+ * \param db указатель на объект HyScanDB;
+ * \param param_id идентификатор открытой группы параметров.
+ *
+ * \return Функция не возвращает значений.
+ *
+*/
+void hyscan_db_close_param( HyScanDB *db, gint32 param_id );
+
+
+/*!
+ *
+ * Функция атомарно увеличивает значение параметра на единицу.
+ *
+ * \param db указатель на объект HyScanDB;
+ * \param param_id идентификатор открытой группы параметров;
+ * \param name название параметра.
+ *
+ * \return Новое значение параметра.
+ *
+*/
+gint64 hyscan_db_inc_integer_param( HyScanDB *db, gint32 param_id, const gchar *name );
 
 
 /*!
@@ -883,19 +1008,6 @@ gboolean hyscan_db_get_boolean_param( HyScanDB *db, gint32 param_id, const gchar
  *
 */
 gchar *hyscan_db_get_string_param( HyScanDB *db, gint32 param_id, const gchar *name );
-
-
-/*!
- *
- * Функция закрывает открытую ранее группу параметров.
- *
- * \param db указатель на объект HyScanDB;
- * \param param_id идентификатор открытой группы параметров.
- *
- * \return Функция не возвращает значений.
- *
-*/
-void hyscan_db_close_param( HyScanDB *db, gint32 param_id );
 
 
 G_END_DECLS

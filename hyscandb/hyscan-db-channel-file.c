@@ -1,9 +1,10 @@
 /*!
- * \file hyscan-db-channel-file.h
+ * \file hyscan-db-channel-file.c
  *
  * \brief Исходный файл класса хранения данных канала в файловой системе
  * \author Andrei Fadeev (andrei@webcontrol.ru)
  * \date 2015
+ * \license Проприетарная лицензия ООО "Экран".
  *
 */
 
@@ -13,9 +14,9 @@
 #include <string.h>
 
 
-#define FILE_VERSION             0x37303531        // 1507 в виде строки.
 #define INDEX_FILE_MAGIC         0x58495348        // HSIX в виде строки.
 #define DATA_FILE_MAGIC          0x54445348        // HSDT в виде строки.
+#define FILE_VERSION             0x37303531        // 1507 в виде строки.
 
 #define MAX_PARTS                999999            // Максимальное число частей данных.
 #define CACHED_INDEXES           2048              // Число кэшированных индексов.
