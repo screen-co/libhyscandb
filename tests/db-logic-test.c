@@ -1377,7 +1377,7 @@ int main( int argc, char **argv )
   for( i = 0; i < n_projects; i++ )
     for( j = 0; j < n_gparams; j++ )
       if( hyscan_db_get_string_param( db, project_param_id[i][j], "common.string" ) != NULL )
-        g_error( "'%s.%s' is still alive", projects[i], gparams[k] );
+        g_error( "'%s.%s' is still alive", projects[i], gparams[j] );
 
 
   // Удаляем объект базы данных.
