@@ -4,7 +4,7 @@
  * \brief Заголовочный файл класса файловой базы данных HyScan
  * \author Andrei Fadeev (andrei@webcontrol.ru)
  * \date 2015
- * \license Проприетарная лицензия ООО "Экран".
+ * \license Проприетарная лицензия ООО "Экран"
  *
  * \defgroup HyScanDBFile HyScanDBFile класс хранения данных в формате HyScan 5
  *

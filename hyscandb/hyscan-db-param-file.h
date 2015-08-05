@@ -4,7 +4,7 @@
  * \brief Заголовочный файл класса хранения параметров в файловой системе
  * \author Andrei Fadeev (andrei@webcontrol.ru)
  * \date 2015
- * \license Проприетарная лицензия ООО "Экран".
+ * \license Проприетарная лицензия ООО "Экран"
  *
  * \defgroup HyScanDBParamFile HyScanDBParamFile класс для работы с группой параметров в INI фалах
  *

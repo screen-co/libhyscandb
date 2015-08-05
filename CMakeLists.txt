@@ -11,8 +11,8 @@ endif()
 #
 # Compilers options.
 if( ${CMAKE_C_COMPILER_ID} STREQUAL GNU  )
-  set( CMAKE_C_FLAGS_RELEASE "-O2 -Wall" )
-  set( CMAKE_C_FLAGS_DEBUG "-g -Wall" )
+  set( CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2 -Wall" )
+  set( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall" )
   add_definitions( -D_GCC_COMPILER )
 elseif( ${CMAKE_C_COMPILER_ID} STREQUAL MSVC )
   add_definitions( -D_MSVC_COMPILER )

@@ -4,7 +4,7 @@
  * \brief Заголовочный файл класса хранения данных канала в файловой системе
  * \author Andrei Fadeev (andrei@webcontrol.ru)
  * \date 2015
- * \license Проприетарная лицензия ООО "Экран".
+ * \license Проприетарная лицензия ООО "Экран"
  *
  * \defgroup HyScanDBChannelFile HyScanDBChannelFile - класс работы с данными канала в формате HyScan версии 5
  *
