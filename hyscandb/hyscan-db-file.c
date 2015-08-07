@@ -2135,6 +2135,29 @@ void hyscan_db_file_close_param( HyScanDB *db, gint32 param_id )
 }
 
 
+// Функция проверяет существование указанного параметра.
+gboolean hyscan_db_file_has_param( HyScanDB *db, gint32 param_id, const gchar *name )
+{
+
+  HyScanDBFilePriv *priv = HYSCAN_DB_FILE_GET_PRIVATE( db );
+
+  HyScanDBFileParamInfo *param_info;
+  gboolean value = FALSE;
+
+  g_rw_lock_reader_lock( &priv->params_lock );
+
+  // Ищем группу параметров в списке открытых.
+  param_info = g_hash_table_lookup( priv->params, GINT_TO_POINTER( param_id ) );
+  if( param_info != NULL )
+    value = hyscan_db_param_file_has_param( param_info->param, name );
+
+  g_rw_lock_reader_unlock( &priv->params_lock );
+
+  return value;
+
+}
+
+
 // Функция увеличивает значение параметра типа integer на единицу.
 gint64 hyscan_db_file_inc_integer_param( HyScanDB *db, gint32 param_id, const gchar *name )
 {
@@ -2390,6 +2413,7 @@ static void hyscan_db_file_interface_init( HyScanDBInterface *iface )
   iface->copy_param = hyscan_db_file_copy_param;
   iface->remove_param = hyscan_db_file_remove_param;
   iface->close_param = hyscan_db_file_close_param;
+  iface->has_param = hyscan_db_file_has_param;
 
   iface->inc_integer_param = hyscan_db_file_inc_integer_param;
   iface->set_integer_param = hyscan_db_file_set_integer_param;

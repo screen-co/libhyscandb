@@ -184,6 +184,14 @@ void check_parameters( HyScanDB *db, gchar *error_prefix, gint value, guint32 pa
   gboolean bvalue = hyscan_db_get_boolean_param( db, param_id, "common.boolean" );
   gchar *svalue = hyscan_db_get_string_param( db, param_id, "common.string" );
 
+  if( !hyscan_db_has_param( db, param_id, "integer" ) ) g_error( "%s: integer parameter doesn't exists", error_prefix );
+  if( !hyscan_db_has_param( db, param_id, "double" ) ) g_error( "%s: double parameter doesn't exists", error_prefix );
+  if( !hyscan_db_has_param( db, param_id, "common.boolean" ) ) g_error( "%s: boolean parameter doesn't exists", error_prefix );
+  if( !hyscan_db_has_param( db, param_id, "common.string" ) ) g_error( "%s: string parameter doesn't exists", error_prefix );
+
+  if( hyscan_db_has_param( db, param_id, "test1" ) ) g_error( "%s: test1 parameter exists", error_prefix );
+  if( hyscan_db_has_param( db, param_id, "test2" ) ) g_error( "%s: test2 parameter exists", error_prefix );
+
   if( ivalue != orig_ivalue ) g_error( "%s: error in integer parameter", error_prefix );
   if( ABS( dvalue - orig_dvalue ) > 0.1 ) g_error( "%s: error in double parameter", error_prefix );
   if( bvalue != orig_bvalue ) g_error( "%s: error in boolean parameter", error_prefix );
@@ -225,6 +233,18 @@ void add_temporary_parameters( HyScanDB *db, gchar *error_prefix, gint value, gu
 // Функция проверяет значения дополнительных параметров.
 void check_temporary_parameters( HyScanDB *db, gchar *error_prefix, gint value, guint32 param_id )
 {
+
+  if( !hyscan_db_has_param( db, param_id, "test1.param1" ) )
+    g_error( "%s: test1.param1 parameter doesn't exists", error_prefix );
+  if( !hyscan_db_has_param( db, param_id, "test1.param2" ) )
+    g_error( "%s: test1.param2 parameter doesn't exists", error_prefix );
+  if( !hyscan_db_has_param( db, param_id, "test2.param1" ) )
+    g_error( "%s: test2.param1 parameter doesn't exists", error_prefix );
+  if( !hyscan_db_has_param( db, param_id, "test2.param2" ) )
+    g_error( "%s: test2.param2 parameter doesn't exists", error_prefix );
+
+  if( hyscan_db_has_param( db, param_id, "test1" ) ) g_error( "%s: test1 parameter exists", error_prefix );
+  if( hyscan_db_has_param( db, param_id, "test2" ) ) g_error( "%s: test2 parameter exists", error_prefix );
 
   if( hyscan_db_get_integer_param( db, param_id, "test1.param1" ) != value )
     g_error( "%s: error in temporary parameter test1.param1", error_prefix );

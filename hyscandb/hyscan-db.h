@@ -202,6 +202,7 @@ typedef struct HyScanDBInterface {
   gboolean              (*copy_param)( HyScanDB *db, gint32 src_param_id, gint32 dst_param_id, const gchar *mask );
   gboolean            (*remove_param)( HyScanDB *db, gint32 param_id, const gchar *mask );
   void                 (*close_param)( HyScanDB *db, gint32 param_id );
+  gboolean               (*has_param)( HyScanDB *db, gint32 param_id, const gchar *name );
 
   gint64         (*inc_integer_param)( HyScanDB *db, gint32 param_id, const gchar *name );
   gboolean       (*set_integer_param)( HyScanDB *db, gint32 param_id, const gchar *name, gint64 value );
@@ -876,6 +877,20 @@ gboolean hyscan_db_remove_param( HyScanDB *db, gint32 param_id, const gchar *mas
  *
 */
 void hyscan_db_close_param( HyScanDB *db, gint32 param_id );
+
+
+/*!
+ *
+ * Функция проверяет существование указанного параметра.
+ *
+ * \param db указатель на объект HyScanDB;
+ * \param param_id идентификатор открытой группы параметров;
+ * \param name название параметра.
+ *
+ * \return TRUE - если параметр существует, FALSE - если нет.
+ *
+*/
+gboolean hyscan_db_has_param( HyScanDB *db, gint32 param_id, const gchar *name );
 
 
 /*!

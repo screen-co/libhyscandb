@@ -48,6 +48,10 @@ gchar **hyscan_db_param_file_get_param_list( HyScanDBParamFile *param );
 gboolean hyscan_db_param_file_remove_param( HyScanDBParamFile *param, const gchar *mask );
 
 
+// Функция проверяет существование указанного параметра.
+gboolean hyscan_db_param_file_has_param( HyScanDBParamFile *param, const gchar *name );
+
+
 // Функция увеличивает значение параметра типа integer на единицу.
 gint64 hyscan_db_param_file_inc_integer( HyScanDBParamFile *param, const gchar *name );
 

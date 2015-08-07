@@ -356,6 +356,32 @@ gboolean hyscan_db_param_file_remove_param( HyScanDBParamFile *param, const gcha
 }
 
 
+// Функция проверяет существование указанного параметра.
+gboolean hyscan_db_param_file_has_param( HyScanDBParamFile *param, const gchar *name )
+{
+
+  HyScanDBParamFilePriv *priv = HYSCAN_DB_PARAM_FILE_GET_PRIVATE( param );
+
+  gchar *group, *key;
+  gboolean status = FALSE;
+
+  if( priv->fail ) return status;
+  if( !hyscan_db_param_file_parse_name( name, &group, &key) ) return status;
+
+  g_rw_lock_reader_lock( &priv->mutex );
+
+  status = g_key_file_has_key( priv->params, group, key, NULL );
+
+  g_rw_lock_reader_unlock( &priv->mutex );
+
+  g_free( group );
+  g_free( key );
+
+  return status;
+
+}
+
+
 // Функция увеличивает значение параметра типа integer на единицу.
 gint64 hyscan_db_param_file_inc_integer( HyScanDBParamFile *param, const gchar *name )
 {

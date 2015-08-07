@@ -413,6 +413,17 @@ void hyscan_db_close_param( HyScanDB *db, gint32 param_id )
 }
 
 
+gboolean hyscan_db_has_param( HyScanDB *db, gint32 param_id, const gchar *name )
+{
+
+  if( HYSCAN_DB_GET_CLASS( db )->has_param !=  NULL )
+    return HYSCAN_DB_GET_CLASS( db )->has_param( db, param_id, name );
+
+  return 0;
+
+}
+
+
 gint64 hyscan_db_inc_integer_param( HyScanDB *db, gint32 param_id, const gchar *name )
 {
 
