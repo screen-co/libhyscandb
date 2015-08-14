@@ -1,8 +1,8 @@
 
 ifeq ($(basename $(notdir $(MAKE))), mingw32-make)
   CMAKE_GENERATOR = "MinGW Makefiles"
-  MAKE_DIR = mkdir
-  REMOVE_DIR = rmdir /s /q
+  MAKE_DIR = md
+  REMOVE_DIR = rd /s /q
 else
   CMAKE_GENERATOR = "Unix Makefiles"
   MAKE_DIR = install -d

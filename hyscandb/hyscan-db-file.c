@@ -1357,7 +1357,7 @@ gint32 hyscan_db_file_open_channel_int( HyScanDB *db, gint32 track_id, const gch
   if( hyscan_db_channel_test( track_info->path, channel_name ) != readonly )
     {
     if( readonly ) g_critical( "hyscan_db_file_open_channel: '%s.%s.%s' - no such channel", track_info->project_name, track_info->track_name, channel_name );
-    else g_critical( "hyscan_db_file_create_channel: project '%s.%s.%s' already created", track_info->project_name, track_info->track_name, channel_name );
+    else g_critical( "hyscan_db_file_create_channel: channel '%s.%s.%s' already created", track_info->project_name, track_info->track_name, channel_name );
     goto exit;
     }
 
