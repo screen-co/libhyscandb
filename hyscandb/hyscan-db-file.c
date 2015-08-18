@@ -221,6 +221,8 @@ static void hyscan_db_file_object_finalize( HyScanDBFile *db )
 
   g_free( priv->path );
 
+  G_OBJECT_CLASS( hyscan_db_file_parent_class )->finalize( G_OBJECT( db ) );
+
 }
 
 

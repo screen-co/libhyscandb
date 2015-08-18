@@ -169,6 +169,8 @@ static void hyscan_db_param_file_object_finalize( HyScanDBParamFile *param )
 
   g_rw_lock_clear( &priv->mutex );
 
+  G_OBJECT_CLASS( hyscan_db_param_file_parent_class )->finalize( G_OBJECT( param ) );
+
 }
 
 

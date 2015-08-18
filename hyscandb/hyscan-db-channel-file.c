@@ -577,6 +577,8 @@ static void hyscan_db_channel_file_object_finalize( HyScanDBChannelFile *channel
   g_free( priv->name );
   g_free( priv->path );
 
+  G_OBJECT_CLASS( hyscan_db_channel_file_parent_class )->finalize( G_OBJECT( channel ) );
+
 }
 
 
