@@ -426,7 +426,7 @@ int main( int argc, char **argv )
 
   // Создаём объект базы данных.
   g_message( "creating db" );
-  db = g_object_new( G_TYPE_HYSCAN_DB_FILE, "path", db_path, NULL );
+  db = g_object_new( HYSCAN_TYPE_DB_FILE, "path", db_path, NULL );
 
 
 
@@ -978,7 +978,7 @@ int main( int argc, char **argv )
   g_message( "re-opening db" );
 
   // Пересоздаём объект базы данных с уже существующими проектами.
-  db = g_object_new( G_TYPE_HYSCAN_DB_FILE, "path", db_path, NULL );
+  db = g_object_new( HYSCAN_TYPE_DB_FILE, "path", db_path, NULL );
 
 
 

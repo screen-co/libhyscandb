@@ -143,19 +143,17 @@
 G_BEGIN_DECLS
 
 
-#define G_TYPE_HYSCAN_DB                   hyscan_db_get_type()
-#define HYSCAN_DB( obj )                   ( G_TYPE_CHECK_INSTANCE_CAST ( ( obj ), G_TYPE_HYSCAN_DB, HyScanDB ) )
-#define HYSCAN_DB_CLASS( vtable )          ( G_TYPE_CHECK_CLASS_CAST ( ( vtable ), G_TYPE_HYSCAN_DB, HyScanDBInterface ) )
-#define HYSCAN_DB_GET_CLASS( inst )        ( G_TYPE_INSTANCE_GET_INTERFACE ( ( inst ), G_TYPE_HYSCAN_DB, HyScanDBInterface ) )
-
-GType hyscan_db_get_type( void );
+#define HYSCAN_TYPE_DB                           ( hyscan_db_get_type() )
+#define HYSCAN_DB( obj )                         ( G_TYPE_CHECK_INSTANCE_CAST( ( obj ), HYSCAN_TYPE_DB, HyScanDB ) )
+#define HYSCAN_IS_DB( obj )                      ( G_TYPE_CHECK_INSTANCE_TYPE( ( obj ), HYSCAN_TYPE_DB ) )
+#define HYSCAN_DB_GET_IFACE( obj )               ( G_TYPE_INSTANCE_GET_INTERFACE( ( obj ), HYSCAN_TYPE_DB, HyScanDBInterface ) )
 
 
 typedef struct HyScanDB HyScanDB;
 
 typedef struct HyScanDBInterface {
 
-  GTypeInterface parent;
+  GTypeInterface g_iface;
 
   gchar**    (*get_project_type_list)( HyScanDB *db );
 
@@ -215,6 +213,9 @@ typedef struct HyScanDBInterface {
   gchar*          (*get_string_param)( HyScanDB *db, gint32 param_id, const gchar *name );
 
 } HyScanDBInterface;
+
+
+GType hyscan_db_get_type( void );
 
 
 /*!

@@ -64,16 +64,19 @@
 G_BEGIN_DECLS
 
 
-#define G_TYPE_HYSCAN_DB_CHANNEL_FILE            hyscan_db_channel_file_get_type()
-#define HYSCAN_DB_CHANNEL_FILE( obj )            ( G_TYPE_CHECK_INSTANCE_CAST ( ( obj ), G_TYPE_HYSCAN_DB_CHANNEL_FILE, HyScanDBChannelFile ) )
-#define HYSCAN_DB_CHANNEL_FILE_CLASS( vtable )   ( G_TYPE_CHECK_CLASS_CAST ( ( vtable ), G_TYPE_HYSCAN_DB_CHANNEL_FILE, HyScanDBChannelFileClass ) )
-#define HYSCAN_DB_CHANNEL_FILE_GET_CLASS( inst ) ( G_TYPE_INSTANCE_GET_INTERFACE ( ( inst ), G_TYPE_HYSCAN_DB_CHANNEL_FILE, HyScanDBChannelFileClass ) )
-
-GType hyscan_db_channel_file_get_type( void );
+#define HYSCAN_TYPE_DB_CHANNEL_FILE              hyscan_db_channel_file_get_type()
+#define HYSCAN_DB_CHANNEL_FILE( obj )            ( G_TYPE_CHECK_INSTANCE_CAST( ( obj ), HYSCAN_TYPE_DB_CHANNEL_FILE, HyScanDBChannelFile ) )
+#define HYSCAN_IS_DB_CHANNEL_FILE( obj )         ( G_TYPE_CHECK_INSTANCE_TYPE( ( obj ), HYSCAN_TYPE_DB_CHANNEL_FILE ) )
+#define HYSCAN_DB_CHANNEL_FILE_CLASS( klass )    ( G_TYPE_CHECK_CLASS_CAST( ( klass ), HYSCAN_TYPE_DB_CHANNEL_FILE, HyScanDBChannelFileClass ) )
+#define HYSCAN_IS_DB_CHANNEL_FILE_CLASS( klass ) ( G_TYPE_CHECK_CLASS_TYPE( ( klass ), HYSCAN_TYPE_DB_CHANNEL_FILE ) )
+#define HYSCAN_DB_CHANNEL_FILE_GET_CLASS( obj )  ( G_TYPE_INSTANCE_GET_CLASS( ( obj ), HYSCAN_TYPE_DB_CHANNEL_FILE, HyScanDBChannelFileClass ) )
 
 
 typedef GObject HyScanDBChannelFile;
 typedef GObjectClass HyScanDBChannelFileClass;
+
+
+GType hyscan_db_channel_file_get_type( void );
 
 
 // Функция возвращает диапазон текущих значений индексов данных.

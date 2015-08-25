@@ -67,7 +67,7 @@ int main( int argc, char **argv )
   all_timer = g_timer_new();
 
   // Хранение данных.
-  HyScanDBChannelFile *channel = g_object_new( G_TYPE_HYSCAN_DB_CHANNEL_FILE, "path", ".", "name", channel_name, NULL );
+  HyScanDBChannelFile *channel = g_object_new( HYSCAN_TYPE_DB_CHANNEL_FILE, "path", ".", "name", channel_name, NULL );
 
   // Максимальный размер файла с данными.
   hyscan_db_channel_file_set_channel_chunk_size( channel, max_file_size );
@@ -127,7 +127,7 @@ int main( int argc, char **argv )
     }
 
   g_object_unref( channel );
-  channel = g_object_new( G_TYPE_HYSCAN_DB_CHANNEL_FILE, "path", ".", "name", channel_name, NULL );
+  channel = g_object_new( HYSCAN_TYPE_DB_CHANNEL_FILE, "path", ".", "name", channel_name, NULL );
 
   if( !hyscan_db_channel_file_get_channel_data_range( channel, &first_index, &last_index ) )
     g_error( "First index = unknown, last index = unknown" );

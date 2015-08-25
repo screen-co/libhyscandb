@@ -35,7 +35,7 @@ typedef struct HyScanDBParamFilePriv {           // Внутренние дан�
 } HyScanDBParamFilePriv;
 
 
-#define HYSCAN_DB_PARAM_FILE_GET_PRIVATE( obj ) ( G_TYPE_INSTANCE_GET_PRIVATE( ( obj ), G_TYPE_HYSCAN_DB_PARAM_FILE, HyScanDBParamFilePriv ) )
+#define HYSCAN_DB_PARAM_FILE_GET_PRIVATE( obj ) ( G_TYPE_INSTANCE_GET_PRIVATE( ( obj ), HYSCAN_TYPE_DB_PARAM_FILE, HyScanDBParamFilePriv ) )
 
 
 static void hyscan_db_param_file_set_property( HyScanDBParamFile *param, guint prop_id, const GValue *value, GParamSpec *pspec );

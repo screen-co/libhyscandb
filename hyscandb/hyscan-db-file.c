@@ -116,7 +116,7 @@ typedef struct HyScanDBFilePriv {                // Внутренние дан�
 } HyScanDBFilePriv;
 
 
-#define HYSCAN_DB_FILE_GET_PRIVATE( obj ) ( G_TYPE_INSTANCE_GET_PRIVATE( ( obj ), G_TYPE_HYSCAN_DB_FILE, HyScanDBFilePriv ) )
+#define HYSCAN_DB_FILE_GET_PRIVATE( obj ) ( G_TYPE_INSTANCE_GET_PRIVATE( ( obj ), HYSCAN_TYPE_DB_FILE, HyScanDBFilePriv ) )
 
 
 static void hyscan_db_file_interface_init( HyScanDBInterface *iface );
@@ -131,7 +131,7 @@ static void hyscan_db_remove_param_info( gpointer value );
 
 
 G_DEFINE_TYPE_WITH_CODE( HyScanDBFile, hyscan_db_file, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE( G_TYPE_HYSCAN_DB, hyscan_db_file_interface_init ) );
+                         G_IMPLEMENT_INTERFACE( HYSCAN_TYPE_DB, hyscan_db_file_interface_init ) );
 
 
 static void hyscan_db_file_init( HyScanDBFile *db ){ ; }
@@ -1372,7 +1372,7 @@ gint32 hyscan_db_file_open_channel_int( HyScanDB *db, gint32 track_id, const gch
   channel_info->id = priv->next_id++;
   channel_info->ref_counts = 1;
   channel_info->readonly = readonly;
-  channel_info->channel = g_object_new( G_TYPE_HYSCAN_DB_CHANNEL_FILE, "path", track_info->path, "name", channel_name, "readonly", readonly, NULL );
+  channel_info->channel = g_object_new( HYSCAN_TYPE_DB_CHANNEL_FILE, "path", track_info->path, "name", channel_name, "readonly", readonly, NULL );
 
   id = channel_info->id;
   g_hash_table_insert( priv->channels, GINT_TO_POINTER( id ), channel_info );
@@ -1520,7 +1520,7 @@ gint32 hyscan_db_file_open_channel_param( HyScanDB *db, gint32 channel_id )
   param_info->path = g_strdup( channel_info->path );
   param_info->id = priv->next_id++;
   param_info->ref_counts = 1;
-  param_info->param = g_object_new( G_TYPE_HYSCAN_DB_PARAM_FILE, "path", channel_info->path, "name", channel_info->channel_name, "readonly", channel_info->readonly, NULL );
+  param_info->param = g_object_new( HYSCAN_TYPE_DB_PARAM_FILE, "path", channel_info->path, "name", channel_info->channel_name, "readonly", channel_info->readonly, NULL );
 
   id = param_info->id;
   g_hash_table_insert( priv->params, GINT_TO_POINTER( id ), param_info );
@@ -1790,7 +1790,7 @@ gint32 hyscan_db_file_open_project_param( HyScanDB *db, gint32 project_id, const
   param_info->path = g_strdup( project_info->path );
   param_info->id = priv->next_id++;
   param_info->ref_counts = 1;
-  param_info->param = g_object_new( G_TYPE_HYSCAN_DB_PARAM_FILE, "path", project_info->path, "name", group_name, "readonly", FALSE, NULL );
+  param_info->param = g_object_new( HYSCAN_TYPE_DB_PARAM_FILE, "path", project_info->path, "name", group_name, "readonly", FALSE, NULL );
 
   id = param_info->id;
   g_hash_table_insert( priv->params, GINT_TO_POINTER( id ), param_info );
@@ -1936,7 +1936,7 @@ gint32 hyscan_db_file_open_track_param( HyScanDB *db, gint32 track_id, const gch
   param_info->path = g_strdup( track_info->path );
   param_info->id = priv->next_id++;
   param_info->ref_counts = 1;
-  param_info->param = g_object_new( G_TYPE_HYSCAN_DB_PARAM_FILE, "path", track_info->path, "name", group_name, "readonly", FALSE, NULL );
+  param_info->param = g_object_new( HYSCAN_TYPE_DB_PARAM_FILE, "path", track_info->path, "name", group_name, "readonly", FALSE, NULL );
 
   id = param_info->id;
   g_hash_table_insert( priv->params, GINT_TO_POINTER( id ), param_info );

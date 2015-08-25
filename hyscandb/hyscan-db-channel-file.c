@@ -116,7 +116,7 @@ typedef struct HyScanDBChannelFilePriv {         // Внутренние дан�
 } HyScanDBChannelFilePriv;
 
 
-#define HYSCAN_DB_CHANNEL_FILE_GET_PRIVATE( obj ) ( G_TYPE_INSTANCE_GET_PRIVATE( ( obj ), G_TYPE_HYSCAN_DB_CHANNEL_FILE, HyScanDBChannelFilePriv ) )
+#define HYSCAN_DB_CHANNEL_FILE_GET_PRIVATE( obj ) ( G_TYPE_INSTANCE_GET_PRIVATE( ( obj ), HYSCAN_TYPE_DB_CHANNEL_FILE, HyScanDBChannelFilePriv ) )
 
 
 static void hyscan_db_channel_file_set_property( HyScanDBChannelFile *channel, guint prop_id, const GValue *value, GParamSpec *pspec );

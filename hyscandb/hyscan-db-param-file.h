@@ -28,16 +28,19 @@
 G_BEGIN_DECLS
 
 
-#define G_TYPE_HYSCAN_DB_PARAM_FILE              hyscan_db_param_file_get_type()
-#define HYSCAN_DB_PARAM_FILE( obj )              ( G_TYPE_CHECK_INSTANCE_CAST ( ( obj ), G_TYPE_HYSCAN_DB_PARAM_FILE, HyScanDBParamFile ) )
-#define HYSCAN_DB_PARAM_FILE_CLASS( vtable )     ( G_TYPE_CHECK_CLASS_CAST ( ( vtable ), G_TYPE_HYSCAN_DB_PARAM_FILE, HyScanDBParamFileClass ) )
-#define HYSCAN_DB_PARAM_FILE_GET_CLASS( inst )   ( G_TYPE_INSTANCE_GET_INTERFACE ( ( inst ), G_TYPE_HYSCAN_DB_PARAM_FILE, HyScanDBParamFileClass ) )
-
-GType hyscan_db_param_file_get_type( void );
+#define HYSCAN_TYPE_DB_PARAM_FILE                hyscan_db_param_file_get_type()
+#define HYSCAN_DB_PARAM_FILE( obj )              ( G_TYPE_CHECK_INSTANCE_CAST( ( obj ), HYSCAN_TYPE_DB_PARAM_FILE, HyScanDBParamFile ) )
+#define HYSCAN_IS_DB_PARAM_FILE( obj )           ( G_TYPE_CHECK_INSTANCE_TYPE( ( obj ), HYSCAN_TYPE_DB_PARAM_FILE ) )
+#define HYSCAN_DB_PARAM_FILE_CLASS( klass )      ( G_TYPE_CHECK_CLASS_CAST( ( klass ), HYSCAN_TYPE_DB_PARAM_FILE, HyScanDBParamFileClass ) )
+#define HYSCAN_IS_DB_PARAM_FILE_CLASS( klass )   ( G_TYPE_CHECK_CLASS_TYPE( ( klass ), HYSCAN_TYPE_DB_PARAM_FILE ) )
+#define HYSCAN_DB_PARAM_FILE_GET_CLASS( obj )    ( G_TYPE_INSTANCE_GET_CLASS( ( obj ), HYSCAN_TYPE_DB_PARAM_FILE, HyScanDBParamFileClass ) )
 
 
 typedef GObject HyScanDBParamFile;
 typedef GObjectClass HyScanDBParamFileClass;
+
+
+GType hyscan_db_param_file_get_type( void );
 
 
 // Функция возвращает список параметров.
