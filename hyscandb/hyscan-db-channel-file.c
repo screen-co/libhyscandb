@@ -96,7 +96,7 @@ typedef struct HyScanDBChannelFilePriv {         // Внутренние дан�
   gboolean                  readonly;            // Создавать или нет файлы при открытии канала.
   gboolean                  fail;                // Признак ошибки в объекте.
 
-  GMutex                    mutex;               // Блокировка доступа к объекту.
+  GMutex                    lock;                // Блокировка многопоточного доступа.
 
   gint64                    data_size;           // Текущий объём хранимых данных.
 
@@ -212,7 +212,7 @@ static GObject* hyscan_db_channel_file_object_constructor( GType g_type, guint n
   priv->parts = NULL;
   priv->n_parts = 0;
 
-  g_mutex_init( &priv->mutex );
+  g_mutex_init( &priv->lock );
 
   // Кэш индексов.
   // Кэш организован в виде hash таблицы, где номер индекса используется как ключ поиска.
@@ -572,7 +572,7 @@ static void hyscan_db_channel_file_object_finalize( HyScanDBChannelFile *channel
     }
   g_free( priv->parts );
 
-  g_mutex_clear( &priv->mutex );
+  g_mutex_clear( &priv->lock );
 
   g_free( priv->name );
   g_free( priv->path );
@@ -936,19 +936,19 @@ gboolean hyscan_db_channel_file_get_channel_data_range( HyScanDBChannelFile *cha
 
   HyScanDBChannelFilePriv *priv = HYSCAN_DB_CHANNEL_FILE_GET_PRIVATE( channel );
 
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
 
   // Нет данных.
   if( priv->n_parts == 0 )
     {
-    g_mutex_unlock( &priv->mutex );
+    g_mutex_unlock( &priv->lock );
     return FALSE;
     }
 
   if( first_index != NULL ) *first_index = priv->parts[0]->begin_index;
   if( last_index != NULL ) *last_index = priv->parts[ priv->n_parts - 1 ]->end_index;
 
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
   return TRUE;
 
@@ -982,13 +982,13 @@ gboolean hyscan_db_channel_file_add_channel_data( HyScanDBChannelFile *channel, 
   // Проверяем, что записываемые данные меньше, чем максимальный размер файла.
   if( size > priv->max_data_file_size - DATA_FILE_HEADER_SIZE ) return FALSE;
 
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
 
   // Удаляем при необходимости старые части данных.
   if( !hyscan_db_channel_file_remove_old_part( priv ) )
     {
     priv->fail = TRUE;
-    g_mutex_unlock( &priv->mutex );
+    g_mutex_unlock( &priv->lock );
     return FALSE;
     }
 
@@ -1003,7 +1003,7 @@ gboolean hyscan_db_channel_file_add_channel_data( HyScanDBChannelFile *channel, 
       }
     else
       {
-      g_mutex_unlock( &priv->mutex );
+      g_mutex_unlock( &priv->lock );
       return FALSE;
       }
 
@@ -1020,7 +1020,7 @@ gboolean hyscan_db_channel_file_add_channel_data( HyScanDBChannelFile *channel, 
     if( fpart->end_index == G_MAXINT32 )
       {
       g_warning( "hyscan_db_channel_file_add: channel '%s': too many records", priv->name );
-      g_mutex_unlock( &priv->mutex );
+      g_mutex_unlock( &priv->lock );
       return FALSE;
       }
 
@@ -1028,7 +1028,7 @@ gboolean hyscan_db_channel_file_add_channel_data( HyScanDBChannelFile *channel, 
     if( fpart->end_time >= time )
       {
       g_warning( "hyscan_db_channel_file_add: channel '%s': current time %ld.%06ld is less than previously written", priv->name, time / 1000000, time % 1000000 );
-      g_mutex_unlock( &priv->mutex );
+      g_mutex_unlock( &priv->lock );
       return FALSE;
       }
 
@@ -1047,7 +1047,7 @@ gboolean hyscan_db_channel_file_add_channel_data( HyScanDBChannelFile *channel, 
         }
       else
         {
-        g_mutex_unlock( &priv->mutex );
+        g_mutex_unlock( &priv->lock );
         return FALSE;
         }
 
@@ -1075,7 +1075,7 @@ gboolean hyscan_db_channel_file_add_channel_data( HyScanDBChannelFile *channel, 
   if( g_output_stream_write( fpart->ofdi, &rec_index, iosize, NULL, &error ) != iosize )
     {
     g_critical( "hyscan_db_channel_file_add: channel '%s': %s", priv->name, error->message ); g_error_free( error );
-    g_mutex_unlock( &priv->mutex );
+    g_mutex_unlock( &priv->lock );
     priv->fail = TRUE;
     return FALSE;
     }
@@ -1083,7 +1083,7 @@ gboolean hyscan_db_channel_file_add_channel_data( HyScanDBChannelFile *channel, 
   if( !g_output_stream_flush( fpart->ofdi, NULL, &error ) )
     {
     g_critical( "hyscan_db_channel_file_add: channel '%s': %s", priv->name, error->message ); g_error_free( error );
-    g_mutex_unlock( &priv->mutex );
+    g_mutex_unlock( &priv->lock );
     priv->fail = TRUE;
     return FALSE;
     }
@@ -1094,7 +1094,7 @@ gboolean hyscan_db_channel_file_add_channel_data( HyScanDBChannelFile *channel, 
   if( g_output_stream_write( fpart->ofdd, data, iosize, NULL, &error ) != iosize )
     {
     g_critical( "hyscan_db_channel_file_add: channel '%s': %s", priv->name, error->message ); g_error_free( error );
-    g_mutex_unlock( &priv->mutex );
+    g_mutex_unlock( &priv->lock );
     priv->fail = TRUE;
     return FALSE;
     }
@@ -1102,7 +1102,7 @@ gboolean hyscan_db_channel_file_add_channel_data( HyScanDBChannelFile *channel, 
   if( !g_output_stream_flush( fpart->ofdd, NULL, &error ) )
     {
     g_critical( "hyscan_db_channel_file_add: channel '%s': %s", priv->name, error->message ); g_error_free( error );
-    g_mutex_unlock( &priv->mutex );
+    g_mutex_unlock( &priv->lock );
     priv->fail = TRUE;
     return FALSE;
     }
@@ -1133,7 +1133,7 @@ gboolean hyscan_db_channel_file_add_channel_data( HyScanDBChannelFile *channel, 
   db_index->next->prev = db_index;
   priv->first_cached_index = db_index;
 
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
   return TRUE;
 
@@ -1153,7 +1153,7 @@ gboolean hyscan_db_channel_file_get_channel_data( HyScanDBChannelFile *channel, 
 
   if( priv->fail ) return FALSE;
 
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
 
   // Ищем требуемую запись.
   db_index = hyscan_db_channel_file_read_index( priv, index );
@@ -1161,7 +1161,7 @@ gboolean hyscan_db_channel_file_get_channel_data( HyScanDBChannelFile *channel, 
   // Такого индекса нет.
   if( db_index == NULL )
     {
-    g_mutex_unlock( &priv->mutex );
+    g_mutex_unlock( &priv->lock );
     return FALSE;
     }
 
@@ -1174,7 +1174,7 @@ gboolean hyscan_db_channel_file_get_channel_data( HyScanDBChannelFile *channel, 
     if( !g_seekable_seek( G_SEEKABLE( db_index->part->ifdd ), db_index->offset, G_SEEK_SET, NULL, &error ) )
       {
       g_critical( "hyscan_db_channel_file_get: channel '%s': %s", priv->name, error->message ); g_error_free( error );
-      g_mutex_unlock( &priv->mutex );
+      g_mutex_unlock( &priv->lock );
       priv->fail = TRUE;
       return FALSE;
       }
@@ -1185,7 +1185,7 @@ gboolean hyscan_db_channel_file_get_channel_data( HyScanDBChannelFile *channel, 
     if( g_input_stream_read( db_index->part->ifdd, buffer, iosize, NULL, &error ) != iosize )
       {
       g_critical( "hyscan_db_channel_file_get: channel '%s': %s", priv->name, error->message ); g_error_free( error );
-      g_mutex_unlock( &priv->mutex );
+      g_mutex_unlock( &priv->lock );
       priv->fail = TRUE;
       return FALSE;
       }
@@ -1200,7 +1200,7 @@ gboolean hyscan_db_channel_file_get_channel_data( HyScanDBChannelFile *channel, 
   // Размер данных.
   *buffer_size = iosize;
 
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
   return TRUE;
 
@@ -1224,12 +1224,12 @@ gboolean hyscan_db_channel_file_find_channel_data( HyScanDBChannelFile *channel,
 
   if( priv->fail ) return FALSE;
 
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
 
   // Нет данных.
   if( priv->n_parts == 0 )
     {
-    g_mutex_unlock( &priv->mutex );
+    g_mutex_unlock( &priv->lock );
     return FALSE;
     }
 
@@ -1240,7 +1240,7 @@ gboolean hyscan_db_channel_file_find_channel_data( HyScanDBChannelFile *channel,
     if( rindex != NULL ) *rindex = priv->parts[0]->begin_index;
     if( ltime != NULL ) *ltime = G_MININT64;
     if( rtime != NULL ) *rtime = priv->parts[0]->begin_time;
-    g_mutex_unlock( &priv->mutex );
+    g_mutex_unlock( &priv->lock );
     return TRUE;
     }
 
@@ -1251,7 +1251,7 @@ gboolean hyscan_db_channel_file_find_channel_data( HyScanDBChannelFile *channel,
     if( rindex != NULL ) *rindex = G_MAXINT32;
     if( ltime != NULL ) *ltime = priv->parts[ priv->n_parts - 1 ]->end_time;
     if( rtime != NULL ) *rtime = G_MAXINT64;
-    g_mutex_unlock( &priv->mutex );
+    g_mutex_unlock( &priv->lock );
     return TRUE;
     }
 
@@ -1300,7 +1300,7 @@ gboolean hyscan_db_channel_file_find_channel_data( HyScanDBChannelFile *channel,
     db_index = hyscan_db_channel_file_read_index( priv, new_index );
     if( db_index == NULL )
       {
-      g_mutex_unlock( &priv->mutex );
+      g_mutex_unlock( &priv->lock );
       return FALSE;
       }
 
@@ -1313,7 +1313,7 @@ gboolean hyscan_db_channel_file_find_channel_data( HyScanDBChannelFile *channel,
 
     }
 
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
   return TRUE;
 
@@ -1330,9 +1330,9 @@ gboolean hyscan_db_channel_file_set_channel_chunk_size( HyScanDBChannelFile *cha
   if( chunk_size < MIN_DATA_FILE_SIZE || chunk_size > MAX_DATA_FILE_SIZE ) return FALSE;
 
   // Устанавливаем новый размер.
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
   priv->max_data_file_size = chunk_size;
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
   return TRUE;
 
@@ -1349,9 +1349,9 @@ gboolean hyscan_db_channel_file_set_channel_save_time( HyScanDBChannelFile *chan
   if( save_time < 5000000 ) return FALSE;
 
   // Устанавливаем новый интервал времени.
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
   priv->save_time = save_time;
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
   return TRUE;
 
@@ -1368,9 +1368,9 @@ gboolean hyscan_db_channel_file_set_channel_save_size( HyScanDBChannelFile *chan
   if( save_size < 1024 * 1024 ) return FALSE;
 
   // Устанавливаем новый интервал времени.
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
   priv->save_size = save_size;
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
   return TRUE;
 
@@ -1386,7 +1386,7 @@ void hyscan_db_channel_file_finalize_channel( HyScanDBChannelFile *channel )
   gint i;
 
   // Закрываем все потоки записи данных.
-  g_mutex_lock( &priv->mutex );
+  g_mutex_lock( &priv->lock );
 
   for( i = 0; i < priv->n_parts; i++ )
     {
@@ -1398,6 +1398,6 @@ void hyscan_db_channel_file_finalize_channel( HyScanDBChannelFile *channel )
 
   priv->readonly = TRUE;
 
-  g_mutex_unlock( &priv->mutex );
+  g_mutex_unlock( &priv->lock );
 
 }

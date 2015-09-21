@@ -236,7 +236,7 @@ GType hyscan_db_get_type( void );
  *
  * \param uri адрес подключения.
  *
- * \return Указатель на объект HyScanDB.
+ * \return Указатель на интерфейс \link HyScanDB \endlink.
  *
 */
 HyScanDB *hyscan_db_new( const gchar *uri );
@@ -252,7 +252,7 @@ HyScanDB *hyscan_db_new( const gchar *uri );
  *
  * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
- * \param db указатель на объект HyScanDB.
+ * \param db указатель на интерфейс \link HyScanDB \endlink.
  *
  * \return NULL терминированный список форматов хранения, NULL - если доступен только формат по умолчанию.
  *
@@ -266,7 +266,7 @@ gchar **hyscan_db_get_project_type_list( HyScanDB *db );
  *
  * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
- * \param db указатель на объект HyScanDB.
+ * \param db указатель на интерфейс \link HyScanDB \endlink.
  *
  * \return NULL терминированный список проектов или NULL - если проектов нет.
  *
@@ -282,7 +282,7 @@ gchar **hyscan_db_get_project_list( HyScanDB *db );
  *
  * По завершению работы с проектом его необходимо закрыть функцией #hyscan_db_close_project.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_name название проекта.
  *
  * \return Идентификатор открытого проекта или отрицательное число в случае ошибки.
@@ -302,7 +302,7 @@ gint32 hyscan_db_open_project( HyScanDB *db, const gchar *project_name );
  *
  * По завершению работы с проектом его необходимо закрыть функцией #hyscan_db_close_project.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_name название проекта;
  * \param project_type тип модуля системы хранения или NULL.
  *
@@ -319,7 +319,7 @@ gint32 hyscan_db_create_project( HyScanDB *db, const gchar *project_name, const 
  * Удаление возможно даже в случае использования проекта или его объектов другими клиентами. В этом
  * случае функции работы с этим проектом и его объектами будут возвращать ошибки.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_name название проекта.
  *
  * \return TRUE - если проект был удалён, FALSE - в случае ошибки.
@@ -334,7 +334,7 @@ gboolean hyscan_db_remove_project( HyScanDB *db, const gchar *project_name );
  *
  * Закрытие проекта не влияет на открытые в этом проекте объекты. Их использование может быть продолжено.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_id идентификатор открытого проекта.
  *
  * \return Функция не возвращает значений.
@@ -349,7 +349,7 @@ void hyscan_db_close_project( HyScanDB *db, gint32 project_id );
  *
  * Память выделенная под объект GDateTime должна быть освобождена после использования (см. g_date_time_unref).
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_id идентификатор открытого проекта.
  *
  * \return Указатель на объект GDateTime или NULL в случае ошибки.
@@ -368,7 +368,7 @@ GDateTime *hyscan_db_get_project_ctime( HyScanDB *db, gint32 project_id );
  *
  * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_id идентификатор открытого проекта.
  *
  * \return NULL терминированный список галсов или NULL - если галсов нет.
@@ -385,7 +385,7 @@ gchar **hyscan_db_get_track_list( HyScanDB *db, gint32 project_id );
  *
  * По завершению работы с галсом его необходимо закрыть функцией #hyscan_db_close_track.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_id идентификатор открытого проекта;
  * \param track_name название галса.
  *
@@ -403,7 +403,7 @@ gint32 hyscan_db_open_track( HyScanDB *db, gint32 project_id, const gchar *track
  *
  * По завершению работы с галсом его необходимо закрыть функцией #hyscan_db_close_track.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_id идентификатор открытого проекта;
  * \param track_name название галса.
  *
@@ -420,7 +420,7 @@ gint32 hyscan_db_create_track( HyScanDB *db, gint32 project_id, const gchar *tra
  * Удаление возможно даже в случае использования галса или его объектов другими клиентами. В этом
  * случае функции работы с этим галсом и его объектами будут возвращать ошибки.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_id идентификатор открытого проекта;
  * \param track_name название галса.
  *
@@ -436,7 +436,7 @@ gboolean hyscan_db_remove_track( HyScanDB *db, gint32 project_id, const gchar *t
  *
  * Закрытие галса не влияет на открытые в этом галсе объекты. Их использование может быть продолжено.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param track_id идентификатор открытого галса.
  *
  * \return Функция не возвращает значений.
@@ -451,7 +451,7 @@ void hyscan_db_close_track( HyScanDB *db, gint32 track_id );
  *
  * Память выделенная под объект GDateTime должна быть освобождена после использования (см. g_date_time_unref).
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param track_id идентификатор открытого галса.
  *
  * \return Указатель на объект GDateTime или NULL в случае ошибки.
@@ -470,7 +470,7 @@ GDateTime *hyscan_db_get_track_ctime( HyScanDB *db, gint32 track_id );
  *
  * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param track_id идентификатор открытого галса.
  *
  * \return NULL терминированный список каналов данных или NULL - если каналов данных нет.
@@ -489,7 +489,7 @@ gchar **hyscan_db_get_channel_list( HyScanDB *db, gint32 track_id );
  *
  * По завершению работы с каналом данных его необходимо закрыть функцией #hyscan_db_close_channel.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param track_id идентификатор открытого галса;
  * \param channel_name название канала данных.
  *
@@ -507,7 +507,7 @@ gint32 hyscan_db_open_channel( HyScanDB *db, gint32 track_id, const gchar *chann
  *
  * По завершению работы с каналом данных его необходимо закрыть функцией #hyscan_db_close_channel.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param track_id идентификатор открытого галса;
  * \param channel_name название канала данных.
  *
@@ -524,7 +524,7 @@ gint32 hyscan_db_create_channel( HyScanDB *db, gint32 track_id, const gchar *cha
  * Удаление возможно даже в случае использования канала данных или его параметров другими клиентами. В этом
  * случае функции работы с этим каналом данных и его параметрами будут возвращать ошибки.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param track_id идентификатор открытого галса;
  * \param channel_name название канала данных.
  *
@@ -540,7 +540,7 @@ gboolean hyscan_db_remove_channel( HyScanDB *db, gint32 track_id, const gchar *c
  *
  * Закрытие канала данных не влияет на открытые параметры этого канала данных. Их использование может быть продолжено.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор открытого канала данных.
  *
  * \return Функция не возвращает значений.
@@ -557,7 +557,7 @@ void hyscan_db_close_channel( HyScanDB *db, gint32 channel_id );
  *
  * По завершению работы с группой параметров её необходимо закрыть функцией #hyscan_db_close_param
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор открытого канала данных.
  *
  * \return Идентификатор открытой группы параметров или отрицательное число в случае ошибки.
@@ -570,7 +570,7 @@ gint32 hyscan_db_open_channel_param( HyScanDB *db, gint32 channel_id );
  *
  * Функция задаёт максимальный размер файлов, хранящих данные канала, которые может создавать система.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор открытого канала данных;
  * \param chunk_size максимальный размер файла в байтах.
  *
@@ -587,7 +587,7 @@ gboolean hyscan_db_set_channel_chunk_size( HyScanDB *db, gint32 channel_id, gint
  *
  * Подробнее об этом можно прочитать в описании интерфейса \link HyScanDB \endlink.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор открытого канала данных;
  * \param save_time время хранения данных в микросекундах.
  *
@@ -604,7 +604,7 @@ gboolean hyscan_db_set_channel_save_time( HyScanDB *db, gint32 channel_id, gint6
  *
  * Подробнее об этом можно прочитать в описании интерфейса \link HyScanDB \endlink.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор открытого канала данных;
  * \param save_size объём сохраняемых данных в байтах.
  *
@@ -619,7 +619,7 @@ gboolean hyscan_db_set_channel_save_size( HyScanDB *db, gint32 channel_id, gint6
  * Функция переводит канал данных в режим только чтения. После вызова этой функции
  * записывать новые данные в канал нельзя.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор открытого канала данных.
  *
  * \return Функция не возвращает значений.
@@ -633,7 +633,7 @@ void hyscan_db_finalize_channel( HyScanDB *db, gint32 channel_id );
  * Функция возвращает диапазон значений индексов записанных данных. Функция вернёт значения
  * начального и конечного индекса записей.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор открытого канала данных;
  * \param first_index указатель на переменную для начального индекса или NULL;
  * \param last_index указатель на переменную для конечного индекса или NULL.
@@ -648,7 +648,7 @@ gboolean hyscan_db_get_channel_data_range( HyScanDB *db, gint32 channel_id, gint
  *
  * Функция записывает новые данные в канал.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор открытого канала данных;
  * \param time метка времени в микросекундах;
  * \param data указатель на записываемые данные;
@@ -670,7 +670,7 @@ gboolean hyscan_db_add_channel_data( HyScanDB *db, gint32 channel_id, gint64 tim
  * Размер считанных данных может быть ограничен размером буфера. Для того чтобы определить размер данных без
  * их чтения необходимо вызвать функцию с переменной buffer = NULL.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор открытого канала данных;
  * \param index индекс считываемых данных;
  * \param buffer указатель на область памяти в которую считываются данные или NULL;
@@ -697,7 +697,7 @@ gboolean hyscan_db_get_channel_data( HyScanDB *db, gint32 channel_id, gint32 ind
  *
  * Если rindex == G_MAXINT32 или rtime == G_MAXINT64, то момент времени позже, чем последняя запись данных.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор открытого канала данных;
  * \param time искомый момент времени;
  * \param lindex указатель на переменную для сохранения "левого" индекса данных или NULL;
@@ -721,7 +721,7 @@ gboolean hyscan_db_find_channel_data( HyScanDB *db, gint32 channel_id, gint64 ti
  *
  * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_id идентификатор открытого проекта.
  *
  * \return NULL терминированный список групп параметров или NULL - если параметров нет.
@@ -738,7 +738,7 @@ gchar **hyscan_db_get_project_param_list( HyScanDB *db, gint32 project_id );
  *
  * По завершению работы с группой параметров её необходимо закрыть функцией #hyscan_db_close_param
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_id идентификатор открытого проекта;
  * \param group_name название группы параметров.
  *
@@ -755,7 +755,7 @@ gint32 hyscan_db_open_project_param( HyScanDB *db, gint32 project_id, const gcha
  * Удаление возможно даже в случае использования группы параметров другими клиентами. В этом
  * случае функции работы с этими параметрами будут возвращать ошибки.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param project_id идентификатор открытого проекта;
  * \param group_name название группы параметров.
  *
@@ -772,7 +772,7 @@ gboolean hyscan_db_remove_project_param( HyScanDB *db, gint32 project_id, const 
  *
  * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param track_id идентификатор открытого галса.
  *
  * \return NULL терминированный список групп параметров или NULL - если параметров нет.
@@ -789,7 +789,7 @@ gchar **hyscan_db_get_track_param_list( HyScanDB *db, gint32 track_id );
  *
  * По завершению работы с группой параметров её необходимо закрыть функцией #hyscan_db_close_param
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param track_id идентификатор открытого галса;
  * \param group_name название группы параметров.
  *
@@ -806,7 +806,7 @@ gint32 hyscan_db_open_track_param( HyScanDB *db, gint32 track_id, const gchar *g
  * Удаление возможно даже в случае использования группы параметров другими клиентами. В этом
  * случае функции работы с этими параметрами будут возвращать ошибки.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param track_id идентификатор открытого галса;
  * \param group_name название группы параметров.
  *
@@ -823,7 +823,7 @@ gboolean hyscan_db_remove_track_param( HyScanDB *db, gint32 track_id, const gcha
  *
  * Память выделенная под список должна быть освобождена после использования (см. g_strfreev).
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров.
  *
  * \return NULL терминированный список названий параметров или NULL - если параметров нет.
@@ -840,7 +840,7 @@ gchar **hyscan_db_get_param_list( HyScanDB *db, gint32 param_id );
  *
  * При копировании можно задать маску имён, которая будет учтена при копировании параметров (см. GPatternSpec).
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param src_param_id идентификатор открытой группы параметров источника;
  * \param dst_param_id идентификатор открытой группы параметров приёмника;
  * \param mask маска имён.
@@ -857,7 +857,7 @@ gboolean hyscan_db_copy_param( HyScanDB *db, gint32 src_param_id, gint32 dst_par
  *
  * При удалении можно задать маску имён, которая будет учтена при удалении параметров (см. GPatternSpec).
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров;
  * \param mask маска имён.
  *
@@ -871,7 +871,7 @@ gboolean hyscan_db_remove_param( HyScanDB *db, gint32 param_id, const gchar *mas
  *
  * Функция закрывает открытую ранее группу параметров.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров.
  *
  * \return Функция не возвращает значений.
@@ -884,7 +884,7 @@ void hyscan_db_close_param( HyScanDB *db, gint32 param_id );
  *
  * Функция проверяет существование указанного параметра.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров;
  * \param name название параметра.
  *
@@ -898,7 +898,7 @@ gboolean hyscan_db_has_param( HyScanDB *db, gint32 param_id, const gchar *name )
  *
  * Функция атомарно увеличивает значение параметра на единицу.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров;
  * \param name название параметра.
  *
@@ -912,7 +912,7 @@ gint64 hyscan_db_inc_integer_param( HyScanDB *db, gint32 param_id, const gchar *
  *
  * Функция устанавливает значение параметра типа integer.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров;
  * \param name название параметра;
  * \param value значение параметра.
@@ -927,7 +927,7 @@ gboolean hyscan_db_set_integer_param( HyScanDB *db, gint32 param_id, const gchar
  *
  * Функция устанавливает значение параметра типа double.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров;
  * \param name название параметра;
  * \param value значение параметра.
@@ -942,7 +942,7 @@ gboolean hyscan_db_set_double_param( HyScanDB *db, gint32 param_id, const gchar 
  *
  * Функция устанавливает значение параметра типа boolean.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров;
  * \param name название параметра;
  * \param value значение параметра.
@@ -957,7 +957,7 @@ gboolean hyscan_db_set_boolean_param( HyScanDB *db, gint32 param_id, const gchar
  *
  * Функция устанавливает значение параметра типа string.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров;
  * \param name название параметра;
  * \param value значение параметра - строка с нулём на конце.
@@ -972,7 +972,7 @@ gboolean hyscan_db_set_string_param( HyScanDB *db, gint32 param_id, const gchar 
  *
  * Функция считывает и возвращает значение параметра типа integer.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров;
  * \param name название параметра.
  *
@@ -986,7 +986,7 @@ gint64 hyscan_db_get_integer_param( HyScanDB *db, gint32 param_id, const gchar *
  *
  * Функция считывает и возвращает значение параметра типа double.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров;
  * \param name название параметра.
  *
@@ -1000,7 +1000,7 @@ gdouble hyscan_db_get_double_param( HyScanDB *db, gint32 param_id, const gchar *
  *
  * Функция считывает и возвращает значение параметра типа boolean.
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров;
  * \param name название параметра.
  *
@@ -1016,7 +1016,7 @@ gboolean hyscan_db_get_boolean_param( HyScanDB *db, gint32 param_id, const gchar
  *
  * Память выделенная под строку должна быть освобождена после использования (см. g_free).
  *
- * \param db указатель на объект HyScanDB;
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор открытой группы параметров;
  * \param name название параметра.
  *
