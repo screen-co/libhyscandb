@@ -26,6 +26,8 @@
  * форматах, например XTF, SEG-Y и пр. Список доступных форматов хранения можно получить функцией
  * #hyscan_db_get_project_type_list. При создании проекта можно указать используемый формат.
  *
+ * Функция #hyscan_db_get_uri возвращает строку с путём подключения к системе хранения.
+ *
  * Общая схема работы с системой хранения данных следующая:
  *
  * - подключение к системе хранения данных - #hyscan_db_new
@@ -156,6 +158,7 @@ typedef struct HyScanDBInterface {
   GTypeInterface g_iface;
 
   gchar**    (*get_project_type_list)( HyScanDB *db );
+  gchar*                   (*get_uri)( HyScanDB *db );
 
   gchar**         (*get_project_list)( HyScanDB *db );
   gint32              (*open_project)( HyScanDB *db, const gchar *project_name );
@@ -218,6 +221,10 @@ typedef struct HyScanDBInterface {
 GType hyscan_db_get_type( void );
 
 
+//
+// Общие функции..
+
+
 /*!
  *
  * Функция подключается к системе хранения данных.
@@ -242,10 +249,6 @@ GType hyscan_db_get_type( void );
 HyScanDB *hyscan_db_new( const gchar *uri );
 
 
-//
-// Функции работы с проектами.
-
-
 /*!
  *
  * Функция возвращает список доступных форматов хранения.
@@ -258,6 +261,24 @@ HyScanDB *hyscan_db_new( const gchar *uri );
  *
 */
 gchar **hyscan_db_get_project_type_list( HyScanDB *db );
+
+
+/*!
+ *
+ * Функция возвращает строку uri с путём подключения к системе хранения.
+ *
+ * Память выделенная под строку должна быть освобождена после использования (см. g_free).
+ *
+ * \param db указатель на интерфейс \link HyScanDB \endlink.
+ *
+ * \return Строка uri или NULL в случае ошибки.
+ *
+*/
+gchar *hyscan_db_get_uri( HyScanDB *db );
+
+
+//
+// Функции работы с проектами.
 
 
 /*!

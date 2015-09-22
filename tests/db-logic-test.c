@@ -270,6 +270,7 @@ int main( int argc, char **argv )
   gint n_gparams = 8;             // Число групп параметров в каждом проекте и галсе.
 
   HyScanDB *db;
+  gchar *uri;
 
   gchar **projects;               // Контрольный список проектов.
   gchar **tracks;                 // Контрольный список галсов.
@@ -427,6 +428,9 @@ int main( int argc, char **argv )
   // Создаём объект базы данных.
   g_message( "creating db" );
   db = g_object_new( HYSCAN_TYPE_DB_FILE, "path", db_path, NULL );
+  uri = hyscan_db_get_uri( db );
+  g_message( "db uri %s", uri );
+  g_free( uri );
 
 
 

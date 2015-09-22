@@ -27,6 +27,17 @@ gchar **hyscan_db_get_project_type_list( HyScanDB *db )
 }
 
 
+gchar *hyscan_db_get_uri( HyScanDB *db )
+{
+
+  if( HYSCAN_DB_GET_IFACE( db )->get_uri !=  NULL )
+    return HYSCAN_DB_GET_IFACE( db )->get_uri( db );
+
+  return NULL;
+
+}
+
+
 gchar **hyscan_db_get_project_list( HyScanDB *db )
 {
 

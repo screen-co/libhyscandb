@@ -13,6 +13,7 @@
 #include "hyscan-db-param-file.h"
 
 #include <glib/gstdio.h>
+#include <gio/gio.h>
 #include <string.h>
 
 
@@ -614,6 +615,20 @@ static gboolean hyscan_db_file_remove_channel_files( const gchar *path, const gc
     }
 
   return status;
+
+}
+
+// Функция возвращает путь к базе данных.
+gchar *hyscan_db_file_get_uri( HyScanDB *db )
+{
+
+  HyScanDBFilePriv *priv = HYSCAN_DB_FILE_GET_PRIVATE( db );
+  GFile *path = g_file_new_for_path( priv->path );
+  gchar *uri = g_file_get_uri( path );
+
+  g_object_unref( path );
+
+  return uri;
 
 }
 
@@ -2372,6 +2387,7 @@ static void hyscan_db_file_interface_init( HyScanDBInterface *iface )
 {
 
   iface->get_project_type_list = NULL;
+  iface->get_uri = hyscan_db_file_get_uri;
   iface->get_project_list = hyscan_db_file_get_project_list;
   iface->open_project = hyscan_db_file_open_project;
   iface->create_project = hyscan_db_file_create_project;
