@@ -164,8 +164,8 @@ static void hyscan_db_param_file_object_finalize( HyScanDBParamFile *param )
 
   g_key_file_free( priv->params );
 
-  if( priv->ofd != NULL ) g_object_unref( priv->ofd );
-  if( priv->fd != NULL ) g_object_unref( priv->fd );
+  if( priv->ofd ) g_object_unref( priv->ofd );
+  if( priv->fd ) g_object_unref( priv->fd );
 
   g_mutex_clear( &priv->lock );
 
@@ -228,7 +228,7 @@ static gboolean hyscan_db_param_file_flush_params( GKeyFile *params, GOutputStre
   error = NULL;
   if( g_output_stream_write( ofd, data, dsize, NULL, &error ) != dsize )
     {
-    if( error != NULL )
+    if( error )
       g_critical( "hyscan_db_param_file_flush_params: %s", error->message );
     else
       g_critical( "hyscan_db_param_file_flush_params: can't flush parameters" );
@@ -246,7 +246,7 @@ static gboolean hyscan_db_param_file_flush_params( GKeyFile *params, GOutputStre
   exit:
 
   g_free( data );
-  if( error == NULL ) return TRUE;
+  if( !error ) return TRUE;
 
   g_error_free( error );
   return FALSE;
@@ -271,12 +271,12 @@ gchar **hyscan_db_param_file_get_param_list( HyScanDBParamFile *param )
 
   // Группы параметров.
   groups = g_key_file_get_groups( priv->params, NULL );
-  for( i = 0, k = 0; groups != NULL && groups[i] != NULL; i++ )
+  for( i = 0, k = 0; groups && groups[i]; i++ )
     {
 
     // Параметры в группе.
     keys = g_key_file_get_keys( priv->params, groups[i], NULL, NULL );
-    for( j = 0; keys != NULL && keys[j] != NULL; j++ )
+    for( j = 0; keys && keys[j]; j++ )
       {
 
       // Список параметров.
@@ -313,18 +313,18 @@ gboolean hyscan_db_param_file_remove_param( HyScanDBParamFile *param, const gcha
   if( priv->fail || priv->readonly ) return FALSE;
 
   pattern = g_pattern_spec_new( mask );
-  if( pattern == NULL ) return FALSE;
+  if( !pattern ) return FALSE;
 
   g_mutex_lock( &priv->lock );
 
   // Группы параметров.
   groups = g_key_file_get_groups( priv->params, NULL );
-  for( i = 0; groups != NULL && groups[i] != NULL; i++ )
+  for( i = 0; groups && groups[i]; i++ )
     {
 
     // Параметры в группе.
     keys = g_key_file_get_keys( priv->params, groups[i], NULL, NULL );
-    for( j = 0; keys != NULL && keys[j] != NULL; j++ )
+    for( j = 0; keys && keys[j]; j++ )
       {
 
       // Проверяем имя параметра.
@@ -341,7 +341,7 @@ gboolean hyscan_db_param_file_remove_param( HyScanDBParamFile *param, const gcha
 
     // Если группа стала пустой - удаляем её.
     keys = g_key_file_get_keys( priv->params, groups[i], NULL, NULL );
-    if( keys != NULL && g_strv_length( keys ) == 0 ) g_key_file_remove_group( priv->params, groups[i], NULL );
+    if( keys && g_strv_length( keys ) == 0 ) g_key_file_remove_group( priv->params, groups[i], NULL );
     g_strfreev( keys );
 
     }
