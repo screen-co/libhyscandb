@@ -100,8 +100,6 @@ typedef struct HyScanDBFilePriv {                // Внутренние дан�
 
   gchar                     *path;               // Путь к каталогу с проектами.
 
-  gint32                     next_id;            // Следующий используемый идентификатор объектов.
-
   GHashTable                *projects;           // Список открытых проектов.
   GMutex                     projects_lock;      // Блокировка многопоточных операций над списком проектов.
 
@@ -129,6 +127,7 @@ static void hyscan_db_remove_project_info( gpointer value );
 static void hyscan_db_remove_track_info( gpointer value );
 static void hyscan_db_remove_channel_info( gpointer value );
 static void hyscan_db_remove_param_info( gpointer value );
+static gint32 hyscan_db_file_make_id( HyScanDBFilePriv *priv );
 
 
 G_DEFINE_TYPE_WITH_CODE( HyScanDBFile, hyscan_db_file, G_TYPE_OBJECT,
@@ -186,7 +185,6 @@ static GObject* hyscan_db_file_object_constructor( GType g_type, guint n_constru
   HyScanDBFilePriv *priv = HYSCAN_DB_FILE_GET_PRIVATE( db );
 
   // Начальные значения.
-  priv->next_id = 1;
   priv->projects = g_hash_table_new_full( g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_project_info );
   priv->tracks = g_hash_table_new_full( g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_track_info );
   priv->channels = g_hash_table_new_full( g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_channel_info );
@@ -288,6 +286,35 @@ static void hyscan_db_remove_param_info( gpointer value )
   g_free( param_info->path );
 
   g_free( param_info );
+
+}
+
+// Функция расчета и проверки уникальности идентификатора открываемого объекта HyScanDB (идентификатор выбирается случайным образом).
+static gint32 hyscan_db_file_make_id( HyScanDBFilePriv *priv )
+{
+
+  gboolean info;
+  guint64 total_count = 0;
+  gint id;
+
+  total_count += g_hash_table_size( priv->projects );
+  total_count += g_hash_table_size( priv->tracks );
+  total_count += g_hash_table_size( priv->channels );
+  total_count += g_hash_table_size( priv->params );
+
+  if ( total_count >= G_MAXINT32 ) return -1;
+
+  do {
+
+    id = g_random_int_range( 1, G_MAXINT32 );
+    info = g_hash_table_contains( priv->projects, GINT_TO_POINTER( id ) );
+    info |= g_hash_table_contains( priv->tracks, GINT_TO_POINTER( id ) );
+    info |= g_hash_table_contains( priv->channels, GINT_TO_POINTER( id ) );
+    info |= g_hash_table_contains( priv->params, GINT_TO_POINTER( id ) );
+
+  } while ( info );
+
+  return id;
 
 }
 
@@ -715,6 +742,14 @@ gint32 hyscan_db_file_open_project( HyScanDB *db, const gchar *project_name )
     goto exit;
     }
 
+  // Генерация нового идентификатора открываемого объекта.
+  id = hyscan_db_file_make_id( priv );
+  if( id < 0 )
+    {
+    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    goto exit;
+    }
+
   // Проверяем, что каталог содержит проект.
   project_path = g_strdup_printf( "%s%s%s", priv->path, G_DIR_SEPARATOR_S, project_name );
   if( !hyscan_db_project_test( project_path, &ctime ) )
@@ -726,13 +761,12 @@ gint32 hyscan_db_file_open_project( HyScanDB *db, const gchar *project_name )
   // Открываем проект для работы.
   project_info = g_malloc( sizeof( HyScanDBFileProjectInfo ) );
   project_info->project_name = g_strdup( project_name );
-  project_info->id = priv->next_id++;
+  project_info->id = id;
   project_info->path = project_path;
   project_info->ctime = ctime;
   project_info->ref_counts = 1;
   project_path = NULL;
 
-  id = project_info->id;
   g_hash_table_insert( priv->projects, GINT_TO_POINTER( id ), project_info );
 
   exit:
@@ -1034,6 +1068,15 @@ gint32 hyscan_db_file_open_track( HyScanDB *db, gint32 project_id, const gchar *
     goto exit;
     }
 
+  // Генерация нового идентификатора открываемого объекта
+  id = hyscan_db_file_make_id( priv );
+  if( id < 0 )
+    {
+    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    goto exit;
+    }
+
+
   // Проверяем, что каталог содержит галс.
   track_path = g_strdup_printf( "%s%s%s", project_info->path, G_DIR_SEPARATOR_S, track_name );
   if( !hyscan_db_track_test( track_path, &ctime ) )
@@ -1047,12 +1090,11 @@ gint32 hyscan_db_file_open_track( HyScanDB *db, gint32 project_id, const gchar *
   track_info->project_name = g_strdup( project_info->project_name );
   track_info->track_name = g_strdup( track_name );
   track_info->ctime = ctime;
-  track_info->id = priv->next_id++;
+  track_info->id = id;
   track_info->ref_counts = 1;
   track_info->path = track_path;
   track_path = NULL;
 
-  id = track_info->id;
   g_hash_table_insert( priv->tracks, GINT_TO_POINTER( id ), track_info );
 
   exit:
@@ -1369,6 +1411,14 @@ gint32 hyscan_db_file_open_channel_int( HyScanDB *db, gint32 track_id, const gch
     goto exit;
     }
 
+  // Генерация нового идентификатора открываемого объекта.
+  id = hyscan_db_file_make_id( priv );
+  if( id < 0 )
+    {
+    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    goto exit;
+    }
+
   // Если канала нет и запрашивается его открытие на чтение или
   // если канал есть и запрашивается открытие на запись - ошибка.
   if( hyscan_db_channel_test( track_info->path, channel_name ) != readonly )
@@ -1384,12 +1434,11 @@ gint32 hyscan_db_file_open_channel_int( HyScanDB *db, gint32 track_id, const gch
   channel_info->track_name = g_strdup( track_info->track_name );
   channel_info->channel_name = g_strdup( channel_name );
   channel_info->path = g_strdup( track_info->path );
-  channel_info->id = priv->next_id++;
+  channel_info->id = id;
   channel_info->ref_counts = 1;
   channel_info->readonly = readonly;
   channel_info->channel = g_object_new( HYSCAN_TYPE_DB_CHANNEL_FILE, "path", track_info->path, "name", channel_name, "readonly", readonly, NULL );
 
-  id = channel_info->id;
   g_hash_table_insert( priv->channels, GINT_TO_POINTER( id ), channel_info );
 
   exit:
@@ -1527,17 +1576,24 @@ gint32 hyscan_db_file_open_channel_param( HyScanDB *db, gint32 channel_id )
     goto exit;
     }
 
+  // Генерация нового идентификатора открываемого объекта.
+  id = hyscan_db_file_make_id( priv );
+  if( id < 0 )
+    {
+    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    goto exit;
+    }
+
   // Открываем группу параметров для работы.
   param_info = g_malloc( sizeof( HyScanDBFileParamInfo ) );
   param_info->project_name = g_strdup( channel_info->project_name );
   param_info->track_name = g_strdup( channel_info->track_name );
   param_info->group_name = g_strdup( channel_info->channel_name );
   param_info->path = g_strdup( channel_info->path );
-  param_info->id = priv->next_id++;
+  param_info->id = id;
   param_info->ref_counts = 1;
   param_info->param = g_object_new( HYSCAN_TYPE_DB_PARAM_FILE, "path", channel_info->path, "name", channel_info->channel_name, "readonly", channel_info->readonly, NULL );
 
-  id = param_info->id;
   g_hash_table_insert( priv->params, GINT_TO_POINTER( id ), param_info );
 
   exit:
@@ -1797,17 +1853,24 @@ gint32 hyscan_db_file_open_project_param( HyScanDB *db, gint32 project_id, const
     goto exit;
     }
 
+  // Генерация нового идентификатора открываемого объекта.
+  id = hyscan_db_file_make_id( priv );
+  if( id < 0 )
+    {
+    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    goto exit;
+    }
+
   // Открываем группу параметров для работы.
   param_info = g_malloc( sizeof( HyScanDBFileParamInfo ) );
   param_info->project_name = g_strdup( project_info->project_name );
   param_info->track_name = NULL;
   param_info->group_name = g_strdup( group_name );
   param_info->path = g_strdup( project_info->path );
-  param_info->id = priv->next_id++;
+  param_info->id = id;
   param_info->ref_counts = 1;
   param_info->param = g_object_new( HYSCAN_TYPE_DB_PARAM_FILE, "path", project_info->path, "name", group_name, "readonly", FALSE, NULL );
 
-  id = param_info->id;
   g_hash_table_insert( priv->params, GINT_TO_POINTER( id ), param_info );
 
   exit:
@@ -1943,17 +2006,24 @@ gint32 hyscan_db_file_open_track_param( HyScanDB *db, gint32 track_id, const gch
     goto exit;
     }
 
+  // Генерация нового идентификатора открываемого объекта.
+  id = hyscan_db_file_make_id( priv );
+  if( id < 0 )
+    {
+    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    goto exit;
+    }
+
   // Открываем группу параметров для работы.
   param_info = g_malloc( sizeof( HyScanDBFileParamInfo ) );
   param_info->project_name = g_strdup( track_info->project_name );
   param_info->track_name = g_strdup( track_info->track_name );
   param_info->group_name = g_strdup( group_name );
   param_info->path = g_strdup( track_info->path );
-  param_info->id = priv->next_id++;
+  param_info->id = id;
   param_info->ref_counts = 1;
   param_info->param = g_object_new( HYSCAN_TYPE_DB_PARAM_FILE, "path", track_info->path, "name", group_name, "readonly", FALSE, NULL );
 
-  id = param_info->id;
   g_hash_table_insert( priv->params, GINT_TO_POINTER( id ), param_info );
 
   exit:
