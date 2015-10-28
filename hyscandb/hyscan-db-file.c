@@ -127,7 +127,7 @@ static void hyscan_db_remove_project_info( gpointer value );
 static void hyscan_db_remove_track_info( gpointer value );
 static void hyscan_db_remove_channel_info( gpointer value );
 static void hyscan_db_remove_param_info( gpointer value );
-static gint32 hyscan_db_file_make_id( HyScanDBFilePriv *priv );
+static gint32 hyscan_db_file_create_id( HyScanDBFilePriv *priv );
 
 
 G_DEFINE_TYPE_WITH_CODE( HyScanDBFile, hyscan_db_file, G_TYPE_OBJECT,
@@ -290,7 +290,7 @@ static void hyscan_db_remove_param_info( gpointer value )
 }
 
 // Функция расчета и проверки уникальности идентификатора открываемого объекта HyScanDB (идентификатор выбирается случайным образом).
-static gint32 hyscan_db_file_make_id( HyScanDBFilePriv *priv )
+static gint32 hyscan_db_file_create_id( HyScanDBFilePriv *priv )
 {
 
   gboolean info;
@@ -743,10 +743,10 @@ gint32 hyscan_db_file_open_project( HyScanDB *db, const gchar *project_name )
     }
 
   // Генерация нового идентификатора открываемого объекта.
-  id = hyscan_db_file_make_id( priv );
+  id = hyscan_db_file_create_id( priv );
   if( id < 0 )
     {
-    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    g_critical( "hyscan_db_file_open_project: too many open objects" );
     goto exit;
     }
 
@@ -809,7 +809,7 @@ gint32 hyscan_db_file_create_project( HyScanDB *db, const gchar *project_name, c
   // Проверяем, что каталога с названием проекта нет.
   if( g_file_test( project_path, G_FILE_TEST_IS_DIR ) )
     {
-//    g_critical( "hyscan_db_file_create_project: project '%s' already exists", project_name );
+    g_critical( "hyscan_db_file_create_project: project '%s' already exists", project_name );
     goto exit;
     }
 
@@ -1069,10 +1069,10 @@ gint32 hyscan_db_file_open_track( HyScanDB *db, gint32 project_id, const gchar *
     }
 
   // Генерация нового идентификатора открываемого объекта
-  id = hyscan_db_file_make_id( priv );
+  id = hyscan_db_file_create_id( priv );
   if( id < 0 )
     {
-    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    g_critical( "hyscan_db_file_open_track: too many open objects" );
     goto exit;
     }
 
@@ -1138,7 +1138,7 @@ gint32 hyscan_db_file_create_track( HyScanDB *db, gint32 project_id, const gchar
   // Проверяем, что каталога с названием проекта нет.
   if( g_file_test( track_path, G_FILE_TEST_IS_DIR ) )
     {
-//    g_critical( "hyscan_db_file_create_track: track '%s.%s' already exists", project_info->project_name, track_name );
+    g_critical( "hyscan_db_file_create_track: track '%s.%s' already exists", project_info->project_name, track_name );
     goto exit;
     }
 
@@ -1406,16 +1406,16 @@ gint32 hyscan_db_file_open_channel_int( HyScanDB *db, gint32 track_id, const gch
       channel_info->ref_counts += 1;
       id = channel_info->id;
       }
-//    else
-//      g_critical( "hyscan_db_file_create_channel: channel '%s.%s.%s' already exists", track_info->project_name, track_info->track_name, channel_name );
+    else
+      g_critical( "hyscan_db_file_create_channel: channel '%s.%s.%s' already exists", track_info->project_name, track_info->track_name, channel_name );
     goto exit;
     }
 
   // Генерация нового идентификатора открываемого объекта.
-  id = hyscan_db_file_make_id( priv );
+  id = hyscan_db_file_create_id( priv );
   if( id < 0 )
     {
-    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    g_critical( "hyscan_db_file_open_channel: too many open objects" );
     goto exit;
     }
 
@@ -1577,10 +1577,10 @@ gint32 hyscan_db_file_open_channel_param( HyScanDB *db, gint32 channel_id )
     }
 
   // Генерация нового идентификатора открываемого объекта.
-  id = hyscan_db_file_make_id( priv );
+  id = hyscan_db_file_create_id( priv );
   if( id < 0 )
     {
-    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    g_critical( "hyscan_db_file_open_channel_param: too many open objects" );
     goto exit;
     }
 
@@ -1854,10 +1854,10 @@ gint32 hyscan_db_file_open_project_param( HyScanDB *db, gint32 project_id, const
     }
 
   // Генерация нового идентификатора открываемого объекта.
-  id = hyscan_db_file_make_id( priv );
+  id = hyscan_db_file_create_id( priv );
   if( id < 0 )
     {
-    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    g_critical( "hyscan_db_file_open_project_param: too many open objects" );
     goto exit;
     }
 
@@ -2007,10 +2007,10 @@ gint32 hyscan_db_file_open_track_param( HyScanDB *db, gint32 track_id, const gch
     }
 
   // Генерация нового идентификатора открываемого объекта.
-  id = hyscan_db_file_make_id( priv );
+  id = hyscan_db_file_create_id( priv );
   if( id < 0 )
     {
-    g_error( "hyscan_db_file_make_id: the objects quantity is exceeded" );
+    g_critical( "hyscan_db_file_open_track_param: too many open objects" );
     goto exit;
     }
 
@@ -2514,7 +2514,3 @@ static void hyscan_db_file_interface_init( HyScanDBInterface *iface )
   iface->get_string_param = hyscan_db_file_get_string_param;
 
 }
-
-#warning "Check for next_id"
-#warning "replace g_file_set_contents with gio"
-#warning "lock main directory on use"
