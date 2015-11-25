@@ -8,7 +8,7 @@
     #define HYSCAN_DB_EXPORT __declspec (dllimport)
   #endif
 #else
-  #define URPC_EXPORT
+  #define HYSCAN_DB_EXPORT
 #endif
 
 #endif /* __HYSCAN_DB_EXPORTS_H__ */
