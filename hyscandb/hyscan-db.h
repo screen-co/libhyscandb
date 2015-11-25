@@ -1,4 +1,4 @@
-/*!
+/**
  * \file hyscan-db.h
  *
  * \brief Заголовочный файл интерфейса базы данных HyScan
@@ -135,97 +135,184 @@
  * Признаком этого будет ошибка, при выполнении действий с этим объектом.  Эти ошибки должны правильным образом
  * обрабатываться клиентом (закрытие объекта, исключение из дальнейшей обработки).
  *
-*/
+ */
 
-#ifndef _hyscan_db_h
-#define _hyscan_db_h
+#ifndef __HYSCAN_DB_H__
+#define __HYSCAN_DB_H__
 
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
+#define HYSCAN_TYPE_DB            (hyscan_db_get_type ())
+#define HYSCAN_DB(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_DB, HyScanDB))
+#define HYSCAN_IS_DB(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_DB))
+#define HYSCAN_DB_GET_IFACE(obj)  (G_TYPE_INSTANCE_GET_INTERFACE ((obj), HYSCAN_TYPE_DB, HyScanDBInterface))
 
-#define HYSCAN_TYPE_DB                           ( hyscan_db_get_type() )
-#define HYSCAN_DB( obj )                         ( G_TYPE_CHECK_INSTANCE_CAST( ( obj ), HYSCAN_TYPE_DB, HyScanDB ) )
-#define HYSCAN_IS_DB( obj )                      ( G_TYPE_CHECK_INSTANCE_TYPE( ( obj ), HYSCAN_TYPE_DB ) )
-#define HYSCAN_DB_GET_IFACE( obj )               ( G_TYPE_INSTANCE_GET_INTERFACE( ( obj ), HYSCAN_TYPE_DB, HyScanDBInterface ) )
+typedef struct _HyScanDB HyScanDB;
 
+typedef struct _HyScanDBInterface HyScanDBInterface;
 
-typedef struct HyScanDB HyScanDB;
-
-typedef struct HyScanDBInterface {
-
+struct _HyScanDBInterface
+{
   GTypeInterface g_iface;
 
-  gchar**    (*get_project_type_list)( HyScanDB *db );
-  gchar*                   (*get_uri)( HyScanDB *db );
+  gchar **     (*get_project_type_list)        (HyScanDB              *db);
+  gchar *      (*get_uri)                      (HyScanDB              *db);
 
-  gchar**         (*get_project_list)( HyScanDB *db );
-  gint32              (*open_project)( HyScanDB *db, const gchar *project_name );
-  gint32            (*create_project)( HyScanDB *db, const gchar *project_name, const gchar *project_type );
-  gboolean          (*remove_project)( HyScanDB *db, const gchar *project_name );
-  void               (*close_project)( HyScanDB *db, gint32 project_id );
-  GDateTime*     (*get_project_ctime)( HyScanDB *db, gint32 project_id );
+  gchar **     (*get_project_list)             (HyScanDB              *db);
+  gint32       (*open_project)                 (HyScanDB              *db,
+                                                const gchar           *project_name);
+  gint32       (*create_project)               (HyScanDB              *db,
+                                                const gchar           *project_name,
+                                                const gchar           *project_type);
+  gboolean     (*remove_project)               (HyScanDB              *db,
+                                                const gchar           *project_name);
+  void         (*close_project)                (HyScanDB              *db,
+                                                gint32                 project_id);
+  GDateTime *  (*get_project_ctime)            (HyScanDB              *db,
+                                                gint32                 project_id);
 
-  gchar**           (*get_track_list)( HyScanDB *db, gint32 project_id );
-  gint32                (*open_track)( HyScanDB *db, gint32 project_id, const gchar *track_name );
-  gint32              (*create_track)( HyScanDB *db, gint32 project_id, const gchar *track_name );
-  gboolean            (*remove_track)( HyScanDB *db, gint32 project_id, const gchar *track_name );
-  void                 (*close_track)( HyScanDB *db, gint32 track_id );
-  GDateTime*       (*get_track_ctime)( HyScanDB *db, gint32 track_id );
+  gchar **     (*get_track_list)               (HyScanDB              *db,
+                                                gint32                 project_id);
+  gint32       (*open_track)                   (HyScanDB              *db,
+                                                gint32                 project_id,
+                                                const gchar           *track_name);
+  gint32       (*create_track)                 (HyScanDB              *db,
+                                                gint32                 project_id,
+                                                const gchar           *track_name);
+  gboolean     (*remove_track)                 (HyScanDB              *db,
+                                                gint32                 project_id,
+                                                const gchar           *track_name);
+  void         (*close_track)                  (HyScanDB              *db,
+                                                gint32                 track_id);
+  GDateTime *  (*get_track_ctime)              (HyScanDB              *db,
+                                                gint32                 track_id);
 
-  gchar**         (*get_channel_list)( HyScanDB *db, gint32 track_id );
-  gint32              (*open_channel)( HyScanDB *db, gint32 track_id, const gchar *channel_name );
-  gboolean          (*create_channel)( HyScanDB *db, gint32 track_id, const gchar *channel_name );
-  gboolean          (*remove_channel)( HyScanDB *db, gint32 track_id, const gchar *channel_name );
-  void               (*close_channel)( HyScanDB *db, gint32 channel_id );
-  gint32        (*open_channel_param)( HyScanDB *db, gint32 channel_id );
+  gchar **     (*get_channel_list)             (HyScanDB              *db,
+                                                gint32                 track_id);
+  gint32       (*open_channel)                 (HyScanDB              *db,
+                                                gint32                 track_id,
+                                                const gchar           *channel_name);
+  gboolean     (*create_channel)               (HyScanDB              *db,
+                                                gint32                 track_id,
+                                                const gchar           *channel_name);
+  gboolean     (*remove_channel)               (HyScanDB              *db,
+                                                gint32                 track_id,
+                                                const gchar           *channel_name);
+  void         (*close_channel)                (HyScanDB              *db,
+                                                gint32                 channel_id);
+  gint32       (*open_channel_param)           (HyScanDB             *db,
+                                                gint32                 channel_id);
 
-  gboolean  (*set_channel_chunk_size)( HyScanDB *db, gint32 channel_id, gint32 chunk_size );
-  gboolean   (*set_channel_save_time)( HyScanDB *db, gint32 channel_id, gint64 save_time );
-  gboolean   (*set_channel_save_size)( HyScanDB *db, gint32 channel_id, gint64 save_size );
-  void            (*finalize_channel)( HyScanDB *db, gint32 channel_id );
+  gboolean     (*set_channel_chunk_size)       (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint32                 chunk_size);
+  gboolean     (*set_channel_save_time)        (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint64                 save_time);
+  gboolean     (*set_channel_save_size)        (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint64                 save_size);
+  void         (*finalize_channel)             (HyScanDB              *db,
+                                                gint32                 channel_id);
 
-  gboolean  (*get_channel_data_range)( HyScanDB *db, gint32 channel_id, gint32 *first_index, gint32 *last_index );
-  gboolean        (*add_channel_data)( HyScanDB *db, gint32 channel_id, gint64 time, gpointer data, gint32 size, gint32 *index );
-  gboolean        (*get_channel_data)( HyScanDB *db, gint32 channel_id, gint32 index, gpointer buffer, gint32 *buffer_size, gint64 *time );
-  gboolean       (*find_channel_data)( HyScanDB *db, gint32 channel_id, gint64 time, gint32 *lindex, gint32 *rindex, gint64 *ltime, gint64 *rtime );
+  gboolean     (*get_channel_data_range)       (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint32                *first_index,
+                                                gint32                *last_index);
+  gboolean     (*add_channel_data)             (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint64                 time,
+                                                gpointer data,
+                                                gint32                 size,
+                                                gint32                *index);
+  gboolean     (*get_channel_data)             (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint32                 index,
+                                                gpointer buffer,
+                                                gint32                *buffer_size,
+                                                gint64                *time);
+  gboolean     (*find_channel_data)            (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint64                 time,
+                                                gint32                *lindex,
+                                                gint32                *rindex,
+                                                gint64                *ltime,
+                                                gint64                *rtime);
 
-  gchar**   (*get_project_param_list)( HyScanDB *db, gint32 project_id );
-  gint32        (*open_project_param)( HyScanDB *db, gint32 project_id, const gchar *group_name );
-  gboolean    (*remove_project_param)( HyScanDB *db, gint32 project_id, const gchar *group_name );
+  gchar **     (*get_project_param_list)       (HyScanDB              *db,
+                                                gint32                 project_id );
+  gint32       (*open_project_param)           (HyScanDB              *db,
+                                                gint32                 project_id,
+                                                const gchar           *group_name);
+  gboolean     (*remove_project_param)         (HyScanDB              *db,
+                                                gint32                 project_id,
+                                                const gchar           *group_name);
 
-  gchar**     (*get_track_param_list)( HyScanDB *db, gint32 track_id );
-  gint32          (*open_track_param)( HyScanDB *db, gint32 track_id, const gchar *group_name );
-  gboolean      (*remove_track_param)( HyScanDB *db, gint32 track_id, const gchar *group_name );
+  gchar **     (*get_track_param_list)         (HyScanDB              *db,
+                                                gint32                 track_id );
+  gint32       (*open_track_param)             (HyScanDB              *db,
+                                                gint32                 track_id,
+                                                const gchar           *group_name);
+  gboolean     (*remove_track_param)           (HyScanDB              *db,
+                                                gint32                 track_id,
+                                                const gchar           *group_name);
 
-  gchar**           (*get_param_list)( HyScanDB *db, gint32 param_id );
-  gboolean              (*copy_param)( HyScanDB *db, gint32 src_param_id, gint32 dst_param_id, const gchar *mask );
-  gboolean            (*remove_param)( HyScanDB *db, gint32 param_id, const gchar *mask );
-  void                 (*close_param)( HyScanDB *db, gint32 param_id );
-  gboolean               (*has_param)( HyScanDB *db, gint32 param_id, const gchar *name );
+  gchar **     (*get_param_list)               (HyScanDB              *db,
+                                                gint32                 param_id);
+  gboolean     (*copy_param)                   (HyScanDB              *db,
+                                                gint32                 src_param_id,
+                                                gint32                 dst_param_id,
+                                                const gchar           *mask);
+  gboolean     (*remove_param)                 (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *mask);
+  void         (*close_param)                  (HyScanDB              *db,
+                                                gint32                 param_id);
+  gboolean     (*has_param)                    (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name);
 
-  gint64         (*inc_integer_param)( HyScanDB *db, gint32 param_id, const gchar *name );
-  gboolean       (*set_integer_param)( HyScanDB *db, gint32 param_id, const gchar *name, gint64 value );
-  gboolean        (*set_double_param)( HyScanDB *db, gint32 param_id, const gchar *name, gdouble value );
-  gboolean       (*set_boolean_param)( HyScanDB *db, gint32 param_id, const gchar *name, gboolean value );
-  gboolean        (*set_string_param)( HyScanDB *db, gint32 param_id, const gchar *name, const gchar *value );
-  gint64         (*get_integer_param)( HyScanDB *db, gint32 param_id, const gchar *name );
-  gdouble         (*get_double_param)( HyScanDB *db, gint32 param_id, const gchar *name );
-  gboolean       (*get_boolean_param)( HyScanDB *db, gint32 param_id, const gchar *name );
-  gchar*          (*get_string_param)( HyScanDB *db, gint32 param_id, const gchar *name );
+  gint64       (*inc_integer_param)            (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name);
+  gboolean     (*set_integer_param)            (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name,
+                                                gint64                 value);
+  gboolean     (*set_double_param)             (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name,
+                                                gdouble                value);
+  gboolean     (*set_boolean_param)            (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name,
+                                                gboolean               value);
+  gboolean     (*set_string_param)             (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name,
+                                                const gchar           *value);
+  gint64       (*get_integer_param)            (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name);
+  gdouble      (*get_double_param)             (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name);
+  gboolean     (*get_boolean_param)            (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name);
+  gchar*       (*get_string_param)             (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name);
 
-} HyScanDBInterface;
+};
 
+GType          hyscan_db_get_type              (void);
 
-GType hyscan_db_get_type( void );
+/* Общие функции. */
 
-
-//
-// Общие функции..
-
-
-/*!
+/**
  *
  * Функция подключается к системе хранения данных.
  *
@@ -245,11 +332,10 @@ GType hyscan_db_get_type( void );
  *
  * \return Указатель на интерфейс \link HyScanDB \endlink.
  *
-*/
-HyScanDB *hyscan_db_new( const gchar *uri );
+ */
+HyScanDB      *hyscan_db_new                   (const gchar           *uri);
 
-
-/*!
+/**
  *
  * Функция возвращает список доступных форматов хранения.
  *
@@ -259,11 +345,10 @@ HyScanDB *hyscan_db_new( const gchar *uri );
  *
  * \return NULL терминированный список форматов хранения, NULL - если доступен только формат по умолчанию.
  *
-*/
-gchar **hyscan_db_get_project_type_list( HyScanDB *db );
+ */
+gchar        **hyscan_db_get_project_type_list (HyScanDB              *db);
 
-
-/*!
+/**
  *
  * Функция возвращает строку uri с путём подключения к системе хранения.
  *
@@ -273,15 +358,12 @@ gchar **hyscan_db_get_project_type_list( HyScanDB *db );
  *
  * \return Строка uri или NULL в случае ошибки.
  *
-*/
-gchar *hyscan_db_get_uri( HyScanDB *db );
+ */
+gchar         *hyscan_db_get_uri               (HyScanDB              *db);
 
+/* Функции работы с проектами. */
 
-//
-// Функции работы с проектами.
-
-
-/*!
+/**
  *
  * Функция возвращает список проектов существующих в системе хранения.
  *
@@ -291,11 +373,10 @@ gchar *hyscan_db_get_uri( HyScanDB *db );
  *
  * \return NULL терминированный список проектов или NULL - если проектов нет.
  *
-*/
-gchar **hyscan_db_get_project_list( HyScanDB *db );
+ */
+gchar        **hyscan_db_get_project_list      (HyScanDB              *db);
 
-
-/*!
+/**
  *
  * Функция открывает существующий проект для работы.
  *
@@ -308,11 +389,11 @@ gchar **hyscan_db_get_project_list( HyScanDB *db );
  *
  * \return Идентификатор открытого проекта или отрицательное число в случае ошибки.
  *
-*/
-gint32 hyscan_db_open_project( HyScanDB *db, const gchar *project_name );
+ */
+gint32         hyscan_db_open_project          (HyScanDB              *db,
+                                                const gchar           *project_name);
 
-
-/*!
+/**
  *
  * Функция создаёт новый проект и открывает его для работы.
  *
@@ -329,11 +410,12 @@ gint32 hyscan_db_open_project( HyScanDB *db, const gchar *project_name );
  *
  * \return Идентификатор нового, открытого проекта или отрицательное число в случае ошибки.
  *
-*/
-gint32 hyscan_db_create_project( HyScanDB *db, const gchar *project_name, const gchar *project_type );
+ */
+gint32         hyscan_db_create_project        (HyScanDB              *db,
+                                                const gchar           *project_name,
+                                                const gchar           *project_type);
 
-
-/*!
+/**
  *
  * Функция удаляет существующий проект.
  *
@@ -345,11 +427,11 @@ gint32 hyscan_db_create_project( HyScanDB *db, const gchar *project_name, const 
  *
  * \return TRUE - если проект был удалён, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_remove_project( HyScanDB *db, const gchar *project_name );
+ */
+gboolean       hyscan_db_remove_project        (HyScanDB              *db,
+                                                const gchar           *project_name);
 
-
-/*!
+/**
  *
  * Функция закрывает открытый ранее проект.
  *
@@ -360,11 +442,11 @@ gboolean hyscan_db_remove_project( HyScanDB *db, const gchar *project_name );
  *
  * \return Функция не возвращает значений.
  *
-*/
-void hyscan_db_close_project( HyScanDB *db, gint32 project_id );
+ */
+void           hyscan_db_close_project         (HyScanDB              *db,
+                                                gint32                 project_id);
 
-
-/*!
+/**
  *
  * Функция возвращает информацию о дате и времени создания проекта.
  *
@@ -375,15 +457,13 @@ void hyscan_db_close_project( HyScanDB *db, gint32 project_id );
  *
  * \return Указатель на объект GDateTime или NULL в случае ошибки.
  *
-*/
-GDateTime *hyscan_db_get_project_ctime( HyScanDB *db, gint32 project_id );
+ */
+GDateTime     *hyscan_db_get_project_ctime     (HyScanDB              *db,
+                                                gint32                 project_id);
 
+/* Функции работы с галсами. */
 
-//
-// Функции работы с галсами.
-
-
-/*!
+/**
  *
  * Функция возвращает список галсов существующих в открытом проекте.
  *
@@ -394,11 +474,11 @@ GDateTime *hyscan_db_get_project_ctime( HyScanDB *db, gint32 project_id );
  *
  * \return NULL терминированный список галсов или NULL - если галсов нет.
  *
-*/
-gchar **hyscan_db_get_track_list( HyScanDB *db, gint32 project_id );
+ */
+gchar        **hyscan_db_get_track_list        (HyScanDB              *db,
+                                                gint32                 project_id);
 
-
-/*!
+/**
  *
  * Функция открывает существующий галс для работы.
  *
@@ -412,11 +492,12 @@ gchar **hyscan_db_get_track_list( HyScanDB *db, gint32 project_id );
  *
  * \return Идентификатор открытого галса или отрицательное число в случае ошибки.
  *
-*/
-gint32 hyscan_db_open_track( HyScanDB *db, gint32 project_id, const gchar *track_name );
+ */
+gint32         hyscan_db_open_track            (HyScanDB              *db,
+                                                gint32                 project_id,
+                                                const gchar           *track_name);
 
-
-/*!
+/**
  *
  * Функция создаёт новый галс и открывает его для работы.
  *
@@ -430,11 +511,12 @@ gint32 hyscan_db_open_track( HyScanDB *db, gint32 project_id, const gchar *track
  *
  * \return Идентификатор нового, открытого галса или отрицательное число в случае ошибки.
  *
-*/
-gint32 hyscan_db_create_track( HyScanDB *db, gint32 project_id, const gchar *track_name );
+ */
+gint32         hyscan_db_create_track          (HyScanDB              *db,
+                                                gint32                 project_id,
+                                                const gchar           *track_name);
 
-
-/*!
+/**
  *
  * Функция удаляет существующий галс.
  *
@@ -447,11 +529,12 @@ gint32 hyscan_db_create_track( HyScanDB *db, gint32 project_id, const gchar *tra
  *
  * \return TRUE - если галс был удалён, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_remove_track( HyScanDB *db, gint32 project_id, const gchar *track_name );
+ */
+gboolean       hyscan_db_remove_track          (HyScanDB              *db,
+                                                gint32                 project_id,
+                                                const gchar           *track_name);
 
-
-/*!
+/**
  *
  * Функция закрывает открытый ранее галс.
  *
@@ -462,11 +545,11 @@ gboolean hyscan_db_remove_track( HyScanDB *db, gint32 project_id, const gchar *t
  *
  * \return Функция не возвращает значений.
  *
-*/
-void hyscan_db_close_track( HyScanDB *db, gint32 track_id );
+ */
+void           hyscan_db_close_track           (HyScanDB              *db,
+                                                gint32                 track_id);
 
-
-/*!
+/**
  *
  * Функция возвращает информацию о дате и времени создания галса.
  *
@@ -477,15 +560,13 @@ void hyscan_db_close_track( HyScanDB *db, gint32 track_id );
  *
  * \return Указатель на объект GDateTime или NULL в случае ошибки.
  *
-*/
-GDateTime *hyscan_db_get_track_ctime( HyScanDB *db, gint32 track_id );
+ */
+GDateTime     *hyscan_db_get_track_ctime       (HyScanDB              *db,
+                                                gint32                 track_id);
 
+/* Функции работы с каналами данных. */
 
-//
-// Функции работы с каналами данных.
-
-
-/*!
+/**
  *
  * Функция возвращает список каналов данных существующих в открытом галсе.
  *
@@ -496,11 +577,11 @@ GDateTime *hyscan_db_get_track_ctime( HyScanDB *db, gint32 track_id );
  *
  * \return NULL терминированный список каналов данных или NULL - если каналов данных нет.
  *
-*/
-gchar **hyscan_db_get_channel_list( HyScanDB *db, gint32 track_id );
+ */
+gchar        **hyscan_db_get_channel_list      (HyScanDB              *db,
+                                                gint32                 track_id);
 
-
-/*!
+/**
  *
  * Функция открывает существующий канал данных для работы.
  *
@@ -516,11 +597,12 @@ gchar **hyscan_db_get_channel_list( HyScanDB *db, gint32 track_id );
  *
  * \return Идентификатор открытого канала данных или отрицательное число в случае ошибки.
  *
-*/
-gint32 hyscan_db_open_channel( HyScanDB *db, gint32 track_id, const gchar *channel_name );
+ */
+gint32         hyscan_db_open_channel          (HyScanDB              *db,
+                                                gint32                 track_id,
+                                                const gchar           *channel_name);
 
-
-/*!
+/**
  *
  * Функция создаёт новый канал данных и открывает его для работы.
  *
@@ -534,11 +616,12 @@ gint32 hyscan_db_open_channel( HyScanDB *db, gint32 track_id, const gchar *chann
  *
  * \return Идентификатор нового, открытого канала данных или отрицательное число в случае ошибки.
  *
-*/
-gint32 hyscan_db_create_channel( HyScanDB *db, gint32 track_id, const gchar *channel_name );
+ */
+gint32         hyscan_db_create_channel        (HyScanDB              *db,
+                                                gint32                 track_id,
+                                                const gchar           *channel_name);
 
-
-/*!
+/**
  *
  * Функция удаляет существующий канал данных.
  *
@@ -551,11 +634,12 @@ gint32 hyscan_db_create_channel( HyScanDB *db, gint32 track_id, const gchar *cha
  *
  * \return TRUE - если канал данных был удалён, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_remove_channel( HyScanDB *db, gint32 track_id, const gchar *channel_name );
+ */
+gboolean       hyscan_db_remove_channel        (HyScanDB                *db,
+                                                gint32                   track_id,
+                                                const gchar *channel_name);
 
-
-/*!
+/**
  *
  * Функция закрывает открытый ранее канал данных.
  *
@@ -566,11 +650,11 @@ gboolean hyscan_db_remove_channel( HyScanDB *db, gint32 track_id, const gchar *c
  *
  * \return Функция не возвращает значений.
  *
-*/
-void hyscan_db_close_channel( HyScanDB *db, gint32 channel_id );
+ */
+void           hyscan_db_close_channel         (HyScanDB                *db,
+                                                gint32                   channel_id);
 
-
-/*!
+/**
  *
  * Функция открывает группу параметров канала для работы.
  *
@@ -583,11 +667,11 @@ void hyscan_db_close_channel( HyScanDB *db, gint32 channel_id );
  *
  * \return Идентификатор открытой группы параметров или отрицательное число в случае ошибки.
  *
-*/
-gint32 hyscan_db_open_channel_param( HyScanDB *db, gint32 channel_id );
+ */
+gint32         hyscan_db_open_channel_param    (HyScanDB                *db,
+                                                gint32                   channel_id);
 
-
-/*!
+/**
  *
  * Функция задаёт максимальный размер файлов, хранящих данные канала, которые может создавать система.
  *
@@ -597,11 +681,12 @@ gint32 hyscan_db_open_channel_param( HyScanDB *db, gint32 channel_id );
  *
  * \return TRUE - если максимальный размер файлов изменён, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_set_channel_chunk_size( HyScanDB *db, gint32 channel_id, gint32 chunk_size );
+ */
+gboolean       hyscan_db_set_channel_chunk_size(HyScanDB                *db,
+                                                gint32                   channel_id,
+                                                gint32                   chunk_size);
 
-
-/*!
+/**
  *
  * Функция задаёт интервал времени, для которого сохраняются записываемые данные. Если данные
  * были записаны ранее "текущего времени" - "интервал хранения" они удаляются.
@@ -614,11 +699,12 @@ gboolean hyscan_db_set_channel_chunk_size( HyScanDB *db, gint32 channel_id, gint
  *
  * \return TRUE - если время хранения данных изменено, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_set_channel_save_time( HyScanDB *db, gint32 channel_id, gint64 save_time );
+ */
+gboolean       hyscan_db_set_channel_save_time (HyScanDB                *db,
+                                                gint32                   channel_id,
+                                                gint64                   save_time);
 
-
-/*!
+/**
  *
  * Функция задаёт объём сохраняемых данных в канале. Если объём данных превышает этот предел,
  * старые данные удаляются.
@@ -631,11 +717,12 @@ gboolean hyscan_db_set_channel_save_time( HyScanDB *db, gint32 channel_id, gint6
  *
  * \return TRUE - если объём сохраняемых данных изменён, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_set_channel_save_size( HyScanDB *db, gint32 channel_id, gint64 save_size );
+ */
+gboolean       hyscan_db_set_channel_save_size (HyScanDB                *db,
+                                                gint32                   channel_id,
+                                                gint64                   save_size);
 
-
-/*!
+/**
  *
  * Функция переводит канал данных в режим только чтения. После вызова этой функции
  * записывать новые данные в канал нельзя.
@@ -645,11 +732,11 @@ gboolean hyscan_db_set_channel_save_size( HyScanDB *db, gint32 channel_id, gint6
  *
  * \return Функция не возвращает значений.
  *
-*/
-void hyscan_db_finalize_channel( HyScanDB *db, gint32 channel_id );
+ */
+void           hyscan_db_finalize_channel      (HyScanDB                *db,
+                                                gint32                   channel_id);
 
-
-/*!
+/**
  *
  * Функция возвращает диапазон значений индексов записанных данных. Функция вернёт значения
  * начального и конечного индекса записей.
@@ -661,11 +748,13 @@ void hyscan_db_finalize_channel( HyScanDB *db, gint32 channel_id );
  *
  * \return TRUE - если границы записей определены, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_get_channel_data_range( HyScanDB *db, gint32 channel_id, gint32 *first_index, gint32 *last_index );
+ */
+gboolean       hyscan_db_get_channel_data_range(HyScanDB                *db,
+                                                gint32                   channel_id,
+                                                gint32                  *first_index,
+                                                gint32                  *last_index);
 
-
-/*!
+/**
  *
  * Функция записывает новые данные в канал.
  *
@@ -678,11 +767,15 @@ gboolean hyscan_db_get_channel_data_range( HyScanDB *db, gint32 channel_id, gint
  *
  * \return TRUE - если данные успешно записаны, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_add_channel_data( HyScanDB *db, gint32 channel_id, gint64 time, gpointer data, gint32 size, gint32 *index );
+ */
+gboolean       hyscan_db_add_channel_data      (HyScanDB                *db,
+                                                gint32                   channel_id,
+                                                gint64                   time,
+                                                gpointer data,
+                                                gint32                   size,
+                                                gint32                  *index);
 
-
-/*!
+/**
  *
  * Функция считывает записанные данные по номеру индекса.
  *
@@ -700,11 +793,15 @@ gboolean hyscan_db_add_channel_data( HyScanDB *db, gint32 channel_id, gint64 tim
  *
  * \return TRUE - если данные успешно считаны, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_get_channel_data( HyScanDB *db, gint32 channel_id, gint32 index, gpointer buffer, gint32 *buffer_size, gint64 *time );
+ */
+gboolean       hyscan_db_get_channel_data      (HyScanDB                *db,
+                                                gint32                   channel_id,
+                                                gint32                   index,
+                                                gpointer buffer,
+                                                gint32                  *buffer_size,
+                                                gint64                  *time);
 
-
-/*!
+/**
  *
  * Функция ищет индекс данных для указанного момента времени.
  *
@@ -728,15 +825,18 @@ gboolean hyscan_db_get_channel_data( HyScanDB *db, gint32 channel_id, gint32 ind
  *
  * \return TRUE - если данные найдены, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_find_channel_data( HyScanDB *db, gint32 channel_id, gint64 time, gint32 *lindex, gint32 *rindex, gint64 *ltime, gint64 *rtime );
+ */
+gboolean       hyscan_db_find_channel_data     (HyScanDB                *db,
+                                                gint32                   channel_id,
+                                                gint64                   time,
+                                                gint32                  *lindex,
+                                                gint32                  *rindex,
+                                                gint64                  *ltime,
+                                                gint64                  *rtime);
 
+/* Функции работы с параметрами. */
 
-//
-// Функции работы с параметрами.
-
-
-/*!
+/**
  *
  * Функция возвращает список групп параметров открытого проекта.
  *
@@ -747,11 +847,11 @@ gboolean hyscan_db_find_channel_data( HyScanDB *db, gint32 channel_id, gint64 ti
  *
  * \return NULL терминированный список групп параметров или NULL - если параметров нет.
  *
-*/
-gchar **hyscan_db_get_project_param_list( HyScanDB *db, gint32 project_id );
+ */
+gchar        **hyscan_db_get_project_param_list(HyScanDB                *db,
+                                                gint32                   project_id);
 
-
-/*!
+/**
  *
  * Функция открывает указанную группу параметров проекта для работы.
  *
@@ -765,11 +865,12 @@ gchar **hyscan_db_get_project_param_list( HyScanDB *db, gint32 project_id );
  *
  * \return Идентификатор открытой группы параметров или отрицательное число в случае ошибки.
  *
-*/
-gint32 hyscan_db_open_project_param( HyScanDB *db, gint32 project_id, const gchar *group_name );
+ */
+gint32         hyscan_db_open_project_param    (HyScanDB                *db,
+                                                gint32                   project_id,
+                                                const gchar             *group_name);
 
-
-/*!
+/**
  *
  * Функция удаляет указанную группу параметров проекта.
  *
@@ -783,11 +884,12 @@ gint32 hyscan_db_open_project_param( HyScanDB *db, gint32 project_id, const gcha
  * \return TRUE - если группа параметров была удалена, FALSE - в случае ошибки.
  *
  *
-*/
-gboolean hyscan_db_remove_project_param( HyScanDB *db, gint32 project_id, const gchar *group_name );
+ */
+gboolean       hyscan_db_remove_project_param  (HyScanDB                *db,
+                                                gint32                   project_id,
+                                                const gchar             *group_name);
 
-
-/*!
+/**
  *
  * Функция возвращает список групп параметров открытого галса.
  *
@@ -798,11 +900,11 @@ gboolean hyscan_db_remove_project_param( HyScanDB *db, gint32 project_id, const 
  *
  * \return NULL терминированный список групп параметров или NULL - если параметров нет.
  *
-*/
-gchar **hyscan_db_get_track_param_list( HyScanDB *db, gint32 track_id );
+ */
+gchar        **hyscan_db_get_track_param_list  (HyScanDB                *db,
+                                                gint32                   track_id);
 
-
-/*!
+/**
  *
  * Функция открывает указанную группу параметров галса для работы.
  *
@@ -816,11 +918,12 @@ gchar **hyscan_db_get_track_param_list( HyScanDB *db, gint32 track_id );
  *
  * \return Идентификатор открытой группы параметров или отрицательное число в случае ошибки.
  *
-*/
-gint32 hyscan_db_open_track_param( HyScanDB *db, gint32 track_id, const gchar *group_name );
+ */
+gint32         hyscan_db_open_track_param      (HyScanDB                *db,
+                                                gint32                   track_id,
+                                                const gchar             *group_name);
 
-
-/*!
+/**
  *
  * Функция удаляет указанную группу параметров галса.
  *
@@ -834,11 +937,12 @@ gint32 hyscan_db_open_track_param( HyScanDB *db, gint32 track_id, const gchar *g
  * \return TRUE - если группа параметров была удалена, FALSE - в случае ошибки.
  *
  *
-*/
-gboolean hyscan_db_remove_track_param( HyScanDB *db, gint32 track_id, const gchar *group_name );
+ */
+gboolean       hyscan_db_remove_track_param    (HyScanDB                *db,
+                                                gint32                   track_id,
+                                                const gchar             *group_name);
 
-
-/*!
+/**
  *
  * Функция возвращает список названий параметров в открытой группе.
  *
@@ -849,11 +953,11 @@ gboolean hyscan_db_remove_track_param( HyScanDB *db, gint32 track_id, const gcha
  *
  * \return NULL терминированный список названий параметров или NULL - если параметров нет.
  *
-*/
-gchar **hyscan_db_get_param_list( HyScanDB *db, gint32 param_id );
+ */
+gchar        **hyscan_db_get_param_list        (HyScanDB                *db,
+                                                gint32                   param_id);
 
-
-/*!
+/**
  *
  * Функция копирует параметры из одной открытой группы в другую.
  *
@@ -868,11 +972,13 @@ gchar **hyscan_db_get_param_list( HyScanDB *db, gint32 param_id );
  *
  * \return TRUE - если копирование успешно выполнено, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_copy_param( HyScanDB *db, gint32 src_param_id, gint32 dst_param_id, const gchar *mask );
+ */
+gboolean       hyscan_db_copy_param            (HyScanDB                *db,
+                                                gint32                   src_param_id,
+                                                gint32                   dst_param_id,
+                                                const gchar             *mask);
 
-
-/*!
+/**
  *
  * Функция удалаяет параметры в открытой группе.
  *
@@ -884,11 +990,12 @@ gboolean hyscan_db_copy_param( HyScanDB *db, gint32 src_param_id, gint32 dst_par
  *
  * \return TRUE - если удаление успешно выполнено, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_remove_param( HyScanDB *db, gint32 param_id, const gchar *mask );
+ */
+gboolean       hyscan_db_remove_param          (HyScanDB                *db,
+                                                gint32                   param_id,
+                                                const gchar             *mask);
 
-
-/*!
+/**
  *
  * Функция закрывает открытую ранее группу параметров.
  *
@@ -897,11 +1004,11 @@ gboolean hyscan_db_remove_param( HyScanDB *db, gint32 param_id, const gchar *mas
  *
  * \return Функция не возвращает значений.
  *
-*/
-void hyscan_db_close_param( HyScanDB *db, gint32 param_id );
+ */
+void           hyscan_db_close_param           (HyScanDB                *db,
+                                                gint32                   param_id);
 
-
-/*!
+/**
  *
  * Функция проверяет существование указанного параметра.
  *
@@ -911,11 +1018,12 @@ void hyscan_db_close_param( HyScanDB *db, gint32 param_id );
  *
  * \return TRUE - если параметр существует, FALSE - если нет.
  *
-*/
-gboolean hyscan_db_has_param( HyScanDB *db, gint32 param_id, const gchar *name );
+ */
+gboolean       hyscan_db_has_param             (HyScanDB                *db,
+                                                gint32                   param_id,
+                                                const gchar             *name);
 
-
-/*!
+/**
  *
  * Функция атомарно увеличивает значение параметра на единицу.
  *
@@ -925,11 +1033,12 @@ gboolean hyscan_db_has_param( HyScanDB *db, gint32 param_id, const gchar *name )
  *
  * \return Новое значение параметра.
  *
-*/
-gint64 hyscan_db_inc_integer_param( HyScanDB *db, gint32 param_id, const gchar *name );
+ */
+gint64         hyscan_db_inc_integer_param     (HyScanDB                *db,
+                                                gint32                   param_id,
+                                                const gchar             *name);
 
-
-/*!
+/**
  *
  * Функция устанавливает значение параметра типа integer.
  *
@@ -940,11 +1049,13 @@ gint64 hyscan_db_inc_integer_param( HyScanDB *db, gint32 param_id, const gchar *
  *
  * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_set_integer_param( HyScanDB *db, gint32 param_id, const gchar *name, gint64 value );
+ */
+gboolean       hyscan_db_set_integer_param     (HyScanDB                *db,
+                                                gint32                   param_id,
+                                                const gchar             *name,
+                                                gint64                   value);
 
-
-/*!
+/**
  *
  * Функция устанавливает значение параметра типа double.
  *
@@ -955,11 +1066,13 @@ gboolean hyscan_db_set_integer_param( HyScanDB *db, gint32 param_id, const gchar
  *
  * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_set_double_param( HyScanDB *db, gint32 param_id, const gchar *name, gdouble value );
+ */
+gboolean       hyscan_db_set_double_param      (HyScanDB                *db,
+                                                gint32                   param_id,
+                                                const gchar             *name,
+                                                gdouble                  value);
 
-
-/*!
+/**
  *
  * Функция устанавливает значение параметра типа boolean.
  *
@@ -970,11 +1083,13 @@ gboolean hyscan_db_set_double_param( HyScanDB *db, gint32 param_id, const gchar 
  *
  * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_set_boolean_param( HyScanDB *db, gint32 param_id, const gchar *name, gboolean value );
+ */
+gboolean       hyscan_db_set_boolean_param     (HyScanDB                *db,
+                                                gint32                   param_id,
+                                                const gchar             *name,
+                                                gboolean                 value);
 
-
-/*!
+/**
  *
  * Функция устанавливает значение параметра типа string.
  *
@@ -985,11 +1100,13 @@ gboolean hyscan_db_set_boolean_param( HyScanDB *db, gint32 param_id, const gchar
  *
  * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_set_string_param( HyScanDB *db, gint32 param_id, const gchar *name, const gchar *value );
+ */
+gboolean       hyscan_db_set_string_param      (HyScanDB                *db,
+                                                gint32                   param_id,
+                                                const gchar             *name,
+                                                const gchar             *value);
 
-
-/*!
+/**
  *
  * Функция считывает и возвращает значение параметра типа integer.
  *
@@ -999,11 +1116,12 @@ gboolean hyscan_db_set_string_param( HyScanDB *db, gint32 param_id, const gchar 
  *
  * \return Значение параметра или 0 - в случае ошибки.
  *
-*/
-gint64 hyscan_db_get_integer_param( HyScanDB *db, gint32 param_id, const gchar *name );
+ */
+gint64         hyscan_db_get_integer_param     (HyScanDB                *db,
+                                                gint32                   param_id,
+                                                const gchar             *name);
 
-
-/*!
+/**
  *
  * Функция считывает и возвращает значение параметра типа double.
  *
@@ -1013,11 +1131,12 @@ gint64 hyscan_db_get_integer_param( HyScanDB *db, gint32 param_id, const gchar *
  *
  * \return Значение параметра или 0.0 - в случае ошибки.
  *
-*/
-gdouble hyscan_db_get_double_param( HyScanDB *db, gint32 param_id, const gchar *name );
+ */
+gdouble        hyscan_db_get_double_param      (HyScanDB                *db,
+                                                gint32                   param_id,
+                                                const gchar             *name);
 
-
-/*!
+/**
  *
  * Функция считывает и возвращает значение параметра типа boolean.
  *
@@ -1027,11 +1146,12 @@ gdouble hyscan_db_get_double_param( HyScanDB *db, gint32 param_id, const gchar *
  *
  * \return Значение параметра или FALSE - в случае ошибки.
  *
-*/
-gboolean hyscan_db_get_boolean_param( HyScanDB *db, gint32 param_id, const gchar *name );
+ */
+gboolean       hyscan_db_get_boolean_param     (HyScanDB                *db,
+                                                gint32                   param_id,
+                                                const gchar             *name);
 
-
-/*!
+/**
  *
  * Функция считывает и возвращает значение параметра типа string.
  *
@@ -1043,10 +1163,11 @@ gboolean hyscan_db_get_boolean_param( HyScanDB *db, gint32 param_id, const gchar
  *
  * \return Значение параметра или NULL - в случае ошибки.
  *
-*/
-gchar *hyscan_db_get_string_param( HyScanDB *db, gint32 param_id, const gchar *name );
-
+ */
+gchar         *hyscan_db_get_string_param     (HyScanDB                *db,
+                                               gint32                   param_id,
+                                               const gchar             *name);
 
 G_END_DECLS
 
-#endif // _hyscan_db_h
+#endif /* __HYSCAN_DB_H__ */

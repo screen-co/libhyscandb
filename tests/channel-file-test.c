@@ -241,7 +241,7 @@ int main( int argc, char **argv )
       g_warning( "hyscan_db_channel_find failed" );
 
     if( ltime != rtime || ltime != time64 )
-      g_warning( "time %ld.%06ld mismatch ( %ld.%06ld : %ld.%06ld )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
+      g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " mismatch ( %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
 
     if( lindex != i || rindex != i )
       g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
@@ -264,7 +264,7 @@ int main( int argc, char **argv )
       g_warning( "hyscan_db_channel_find failed" );
 
     if( ltime != rtime || ltime != time64 )
-      g_warning( "time %ld.%06ld mismatch ( %ld.%06ld : %ld.%06ld )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
+      g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " mismatch ( %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
 
     if( lindex != i || rindex != i )
       g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
@@ -293,7 +293,7 @@ int main( int argc, char **argv )
       g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
 
     if( rtime - 1 != time64 || ltime >= rtime )
-      g_warning( "time %ld.%06ld mismatch ( %ld.%06ld : %ld.%06ld )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
+      g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " mismatch ( %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
 
     }
 
@@ -319,7 +319,7 @@ int main( int argc, char **argv )
       g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
 
     if( ltime + 1 != time64 || ltime >= rtime )
-      g_warning( "time %ld.%06ld mismatch ( %ld.%06ld : %ld.%06ld )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
+      g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " mismatch ( %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
 
     }
 
