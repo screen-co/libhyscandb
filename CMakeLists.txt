@@ -1,9 +1,9 @@
 
 cmake_minimum_required (VERSION 2.6)
 
-project( libhyscandb )
+project (libhyscandb)
 
-include( FindPkgConfig )
+include (FindPkgConfig)
 
 #
 # Default build type.
