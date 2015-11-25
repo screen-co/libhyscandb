@@ -17,7 +17,7 @@ check_list (gchar  *error_prefix,
             gchar **list)
 {
   gint64 sum = 0;
-  gint n;
+  guint n;
 
   /* Hash сумма всех строк контрольного списка. */
   for (n = 0; n < g_strv_length (orig); n++)
