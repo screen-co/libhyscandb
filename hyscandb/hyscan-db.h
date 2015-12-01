@@ -225,13 +225,13 @@ struct _HyScanDBInterface
   gboolean     (*add_channel_data)             (HyScanDB              *db,
                                                 gint32                 channel_id,
                                                 gint64                 time,
-                                                gpointer data,
+                                                gpointer               data,
                                                 gint32                 size,
                                                 gint32                *index);
   gboolean     (*get_channel_data)             (HyScanDB              *db,
                                                 gint32                 channel_id,
                                                 gint32                 index,
-                                                gpointer buffer,
+                                                gpointer               buffer,
                                                 gint32                *buffer_size,
                                                 gint64                *time);
   gboolean     (*find_channel_data)            (HyScanDB              *db,
@@ -656,9 +656,9 @@ gint32         hyscan_db_create_channel        (HyScanDB              *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_remove_channel        (HyScanDB                *db,
-                                                gint32                   track_id,
-                                                const gchar *channel_name);
+gboolean       hyscan_db_remove_channel        (HyScanDB              *db,
+                                                gint32                 track_id,
+                                                const gchar           *channel_name);
 
 /**
  *
@@ -673,8 +673,8 @@ gboolean       hyscan_db_remove_channel        (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-void           hyscan_db_close_channel         (HyScanDB                *db,
-                                                gint32                   channel_id);
+void           hyscan_db_close_channel         (HyScanDB              *db,
+                                                gint32                 channel_id);
 
 /**
  *
@@ -691,8 +691,8 @@ void           hyscan_db_close_channel         (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gint32         hyscan_db_open_channel_param    (HyScanDB                *db,
-                                                gint32                   channel_id);
+gint32         hyscan_db_open_channel_param    (HyScanDB              *db,
+                                                gint32                 channel_id);
 
 /**
  *
@@ -706,9 +706,9 @@ gint32         hyscan_db_open_channel_param    (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_set_channel_chunk_size(HyScanDB                *db,
-                                                gint32                   channel_id,
-                                                gint32                   chunk_size);
+gboolean       hyscan_db_set_channel_chunk_size(HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint32                 chunk_size);
 
 /**
  *
@@ -725,9 +725,9 @@ gboolean       hyscan_db_set_channel_chunk_size(HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_set_channel_save_time (HyScanDB                *db,
-                                                gint32                   channel_id,
-                                                gint64                   save_time);
+gboolean       hyscan_db_set_channel_save_time (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint64                 save_time);
 
 /**
  *
@@ -744,9 +744,9 @@ gboolean       hyscan_db_set_channel_save_time (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_set_channel_save_size (HyScanDB                *db,
-                                                gint32                   channel_id,
-                                                gint64                   save_size);
+gboolean       hyscan_db_set_channel_save_size (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint64                 save_size);
 
 /**
  *
@@ -760,8 +760,8 @@ gboolean       hyscan_db_set_channel_save_size (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-void           hyscan_db_finalize_channel      (HyScanDB                *db,
-                                                gint32                   channel_id);
+void           hyscan_db_finalize_channel      (HyScanDB              *db,
+                                                gint32                 channel_id);
 
 /**
  *
@@ -777,10 +777,10 @@ void           hyscan_db_finalize_channel      (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_get_channel_data_range(HyScanDB                *db,
-                                                gint32                   channel_id,
-                                                gint32                  *first_index,
-                                                gint32                  *last_index);
+gboolean       hyscan_db_get_channel_data_range(HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint32                *first_index,
+                                                gint32                *last_index);
 
 /**
  *
@@ -797,12 +797,12 @@ gboolean       hyscan_db_get_channel_data_range(HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_add_channel_data      (HyScanDB                *db,
-                                                gint32                   channel_id,
-                                                gint64                   time,
-                                                gpointer data,
-                                                gint32                   size,
-                                                gint32                  *index);
+gboolean       hyscan_db_add_channel_data      (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint64                 time,
+                                                gpointer               data,
+                                                gint32                 size,
+                                                gint32                *index);
 
 /**
  *
@@ -824,12 +824,12 @@ gboolean       hyscan_db_add_channel_data      (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_get_channel_data      (HyScanDB                *db,
-                                                gint32                   channel_id,
-                                                gint32                   index,
-                                                gpointer buffer,
-                                                gint32                  *buffer_size,
-                                                gint64                  *time);
+gboolean       hyscan_db_get_channel_data      (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint32                 index,
+                                                gpointer               buffer,
+                                                gint32                *buffer_size,
+                                                gint64                *time);
 
 /**
  *
@@ -857,13 +857,13 @@ gboolean       hyscan_db_get_channel_data      (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_find_channel_data     (HyScanDB                *db,
-                                                gint32                   channel_id,
-                                                gint64                   time,
-                                                gint32                  *lindex,
-                                                gint32                  *rindex,
-                                                gint64                  *ltime,
-                                                gint64                  *rtime);
+gboolean       hyscan_db_find_channel_data     (HyScanDB              *db,
+                                                gint32                 channel_id,
+                                                gint64                 time,
+                                                gint32                *lindex,
+                                                gint32                *rindex,
+                                                gint64                *ltime,
+                                                gint64                *rtime);
 
 /* Функции работы с параметрами. */
 
@@ -880,8 +880,8 @@ gboolean       hyscan_db_find_channel_data     (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gchar        **hyscan_db_get_project_param_list(HyScanDB                *db,
-                                                gint32                   project_id);
+gchar        **hyscan_db_get_project_param_list(HyScanDB              *db,
+                                                gint32                 project_id);
 
 /**
  *
@@ -899,9 +899,9 @@ gchar        **hyscan_db_get_project_param_list(HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gint32         hyscan_db_open_project_param    (HyScanDB                *db,
-                                                gint32                   project_id,
-                                                const gchar             *group_name);
+gint32         hyscan_db_open_project_param    (HyScanDB              *db,
+                                                gint32                 project_id,
+                                                const gchar           *group_name);
 
 /**
  *
@@ -919,9 +919,9 @@ gint32         hyscan_db_open_project_param    (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_remove_project_param  (HyScanDB                *db,
-                                                gint32                   project_id,
-                                                const gchar             *group_name);
+gboolean       hyscan_db_remove_project_param  (HyScanDB              *db,
+                                                gint32                 project_id,
+                                                const gchar           *group_name);
 
 /**
  *
@@ -936,8 +936,8 @@ gboolean       hyscan_db_remove_project_param  (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gchar        **hyscan_db_get_track_param_list  (HyScanDB                *db,
-                                                gint32                   track_id);
+gchar        **hyscan_db_get_track_param_list  (HyScanDB              *db,
+                                                gint32                 track_id);
 
 /**
  *
@@ -955,9 +955,9 @@ gchar        **hyscan_db_get_track_param_list  (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gint32         hyscan_db_open_track_param      (HyScanDB                *db,
-                                                gint32                   track_id,
-                                                const gchar             *group_name);
+gint32         hyscan_db_open_track_param      (HyScanDB              *db,
+                                                gint32                 track_id,
+                                                const gchar           *group_name);
 
 /**
  *
@@ -975,9 +975,9 @@ gint32         hyscan_db_open_track_param      (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_remove_track_param    (HyScanDB                *db,
-                                                gint32                   track_id,
-                                                const gchar             *group_name);
+gboolean       hyscan_db_remove_track_param    (HyScanDB              *db,
+                                                gint32                 track_id,
+                                                const gchar           *group_name);
 
 /**
  *
@@ -992,8 +992,8 @@ gboolean       hyscan_db_remove_track_param    (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gchar        **hyscan_db_get_param_list        (HyScanDB                *db,
-                                                gint32                   param_id);
+gchar        **hyscan_db_get_param_list        (HyScanDB              *db,
+                                                gint32                 param_id);
 
 /**
  *
@@ -1012,10 +1012,10 @@ gchar        **hyscan_db_get_param_list        (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_copy_param            (HyScanDB                *db,
-                                                gint32                   src_param_id,
-                                                gint32                   dst_param_id,
-                                                const gchar             *mask);
+gboolean       hyscan_db_copy_param            (HyScanDB              *db,
+                                                gint32                 src_param_id,
+                                                gint32                 dst_param_id,
+                                                const gchar           *mask);
 
 /**
  *
@@ -1031,9 +1031,9 @@ gboolean       hyscan_db_copy_param            (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_remove_param          (HyScanDB                *db,
-                                                gint32                   param_id,
-                                                const gchar             *mask);
+gboolean       hyscan_db_remove_param          (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *mask);
 
 /**
  *
@@ -1046,8 +1046,8 @@ gboolean       hyscan_db_remove_param          (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-void           hyscan_db_close_param           (HyScanDB                *db,
-                                                gint32                   param_id);
+void           hyscan_db_close_param           (HyScanDB              *db,
+                                                gint32                 param_id);
 
 /**
  *
@@ -1061,9 +1061,9 @@ void           hyscan_db_close_param           (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_has_param             (HyScanDB                *db,
-                                                gint32                   param_id,
-                                                const gchar             *name);
+gboolean       hyscan_db_has_param             (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name);
 
 /**
  *
@@ -1077,9 +1077,9 @@ gboolean       hyscan_db_has_param             (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gint64         hyscan_db_inc_integer_param     (HyScanDB                *db,
-                                                gint32                   param_id,
-                                                const gchar             *name);
+gint64         hyscan_db_inc_integer_param     (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name);
 
 /**
  *
@@ -1094,10 +1094,10 @@ gint64         hyscan_db_inc_integer_param     (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_set_integer_param     (HyScanDB                *db,
-                                                gint32                   param_id,
-                                                const gchar             *name,
-                                                gint64                   value);
+gboolean       hyscan_db_set_integer_param     (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name,
+                                                gint64                 value);
 
 /**
  *
@@ -1112,10 +1112,10 @@ gboolean       hyscan_db_set_integer_param     (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_set_double_param      (HyScanDB                *db,
-                                                gint32                   param_id,
-                                                const gchar             *name,
-                                                gdouble                  value);
+gboolean       hyscan_db_set_double_param      (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name,
+                                                gdouble                value);
 
 /**
  *
@@ -1130,10 +1130,10 @@ gboolean       hyscan_db_set_double_param      (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_set_boolean_param     (HyScanDB                *db,
-                                                gint32                   param_id,
-                                                const gchar             *name,
-                                                gboolean                 value);
+gboolean       hyscan_db_set_boolean_param     (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name,
+                                                gboolean               value);
 
 /**
  *
@@ -1148,10 +1148,10 @@ gboolean       hyscan_db_set_boolean_param     (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_set_string_param      (HyScanDB                *db,
-                                                gint32                   param_id,
-                                                const gchar             *name,
-                                                const gchar             *value);
+gboolean       hyscan_db_set_string_param      (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name,
+                                                const gchar           *value);
 
 /**
  *
@@ -1165,9 +1165,9 @@ gboolean       hyscan_db_set_string_param      (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gint64         hyscan_db_get_integer_param     (HyScanDB                *db,
-                                                gint32                   param_id,
-                                                const gchar             *name);
+gint64         hyscan_db_get_integer_param     (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name);
 
 /**
  *
@@ -1181,9 +1181,9 @@ gint64         hyscan_db_get_integer_param     (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gdouble        hyscan_db_get_double_param      (HyScanDB                *db,
-                                                gint32                   param_id,
-                                                const gchar             *name);
+gdouble        hyscan_db_get_double_param      (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name);
 
 /**
  *
@@ -1197,9 +1197,9 @@ gdouble        hyscan_db_get_double_param      (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gboolean       hyscan_db_get_boolean_param     (HyScanDB                *db,
-                                                gint32                   param_id,
-                                                const gchar             *name);
+gboolean       hyscan_db_get_boolean_param     (HyScanDB              *db,
+                                                gint32                 param_id,
+                                                const gchar           *name);
 
 /**
  *
@@ -1215,9 +1215,9 @@ gboolean       hyscan_db_get_boolean_param     (HyScanDB                *db,
  *
  */
 HYSCAN_DB_EXPORT
-gchar         *hyscan_db_get_string_param     (HyScanDB                *db,
-                                               gint32                   param_id,
-                                               const gchar             *name);
+gchar         *hyscan_db_get_string_param     (HyScanDB               *db,
+                                               gint32                  param_id,
+                                               const gchar            *name);
 
 G_END_DECLS
 

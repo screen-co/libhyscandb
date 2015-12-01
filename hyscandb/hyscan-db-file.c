@@ -118,11 +118,11 @@ struct _HyScanDBFile
 };
 
 static void            hyscan_db_file_interface_init     (HyScanDBInterface *iface);
-static void            hyscan_db_file_set_property       (GObject           *db,
+static void            hyscan_db_file_set_property       (GObject           *object,
                                                           guint              prop_id,
                                                           const GValue      *value,
                                                           GParamSpec        *pspec);
-static void            hyscan_db_file_object_finalize    (GObject           *db);
+static void            hyscan_db_file_object_finalize    (GObject           *object);
 
 static void            hyscan_db_remove_project_info     (gpointer           value);
 static void            hyscan_db_remove_track_info       (gpointer           value);
@@ -142,9 +142,8 @@ hyscan_db_file_class_init (HyScanDBFileClass *klass)
   object_class->finalize = hyscan_db_file_object_finalize;
 
   g_object_class_install_property (object_class, PROP_PATH,
-                                   g_param_spec_string ("path", "Path",
-                                                        "Path to projects",
-                                                        NULL, G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+                                   g_param_spec_string ("path", "Path", "Path to projects", NULL,
+                                                        G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
