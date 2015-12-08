@@ -385,7 +385,6 @@ hyscan_db_project_test (const gchar *path,
   status = TRUE;
 
 exit:
-
   g_key_file_free (project_param);
   g_free (project_param_file);
 
@@ -418,7 +417,6 @@ hyscan_db_track_test (const gchar *path,
   status = TRUE;
 
 exit:
-
   g_key_file_free (track_param);
   g_free (track_param_file);
 
@@ -711,7 +709,6 @@ hyscan_db_file_get_project_list (HyScanDB *db)
     }
 
 exit:
-
   g_mutex_unlock (&dbf->projects_lock);
 
   if (db_dir != NULL)
@@ -777,7 +774,6 @@ hyscan_db_file_open_project (HyScanDB    *db,
   g_hash_table_insert (dbf->projects, GINT_TO_POINTER (id), project_info);
 
 exit:
-
   g_mutex_unlock (&dbf->projects_lock);
 
   g_free (project_path);
@@ -841,7 +837,6 @@ hyscan_db_file_create_project (HyScanDB    *db,
   status = TRUE;
 
 exit:
-
   g_mutex_unlock (&dbf->projects_lock);
 
   g_key_file_free (project_param);
@@ -930,7 +925,6 @@ hyscan_db_file_remove_project (HyScanDB    *db,
   status = hyscan_db_file_remove_directory (project_path);
 
 exit:
-
   g_mutex_unlock (&dbf->projects_lock);
 
   g_free (project_path);
@@ -962,7 +956,6 @@ hyscan_db_file_close_project (HyScanDB *db,
   g_hash_table_remove (dbf->projects, GINT_TO_POINTER (project_info->id));
 
 exit:
-
   g_mutex_unlock (&dbf->projects_lock);
 }
 
@@ -986,7 +979,6 @@ hyscan_db_file_get_project_ctime (HyScanDB *db,
   ctime = g_date_time_new_from_unix_local (project_info->ctime);
 
 exit:
-
   g_mutex_unlock (&dbf->projects_lock);
 
   return ctime;
@@ -1049,7 +1041,6 @@ hyscan_db_file_get_track_list (HyScanDB *db,
     }
 
 exit:
-
   g_mutex_unlock (&dbf->tracks_lock);
   g_mutex_unlock (&dbf->projects_lock);
 
@@ -1125,7 +1116,6 @@ hyscan_db_file_open_track (HyScanDB    *db,
   g_hash_table_insert (dbf->tracks, GINT_TO_POINTER (id), track_info);
 
 exit:
-
   g_mutex_unlock (&dbf->tracks_lock);
   g_mutex_unlock (&dbf->projects_lock);
 
@@ -1175,9 +1165,8 @@ hyscan_db_file_create_track (HyScanDB    *db,
   /* Создаём каталог для проекта. */
   if (g_mkdir_with_parents (track_path, 0777) != 0)
     {
-      g_critical
-        ("hyscan_db_file_create_track: can't create track '%s.s%s' directory",
-         project_info->project_name, track_name);
+      g_critical ("hyscan_db_file_create_track: can't create track '%s.s%s' directory",
+                  project_info->project_name, track_name);
       goto exit;
     }
 
@@ -1187,16 +1176,14 @@ hyscan_db_file_create_track (HyScanDB    *db,
   param_data = g_key_file_to_data (track_param, NULL, NULL);
   if (!g_file_set_contents (track_param_file, param_data, -1, NULL))
     {
-      g_critical
-        ("hyscan_db_file_create_track: can't save track '%s.%s' parameters",
-         project_info->project_name, track_name);
+      g_critical ("hyscan_db_file_create_track: can't save track '%s.%s' parameters",
+                  project_info->project_name, track_name);
       goto exit;
     }
 
   status = TRUE;
 
 exit:
-
   g_mutex_unlock (&dbf->tracks_lock);
   g_mutex_unlock (&dbf->projects_lock);
 
@@ -1284,7 +1271,6 @@ hyscan_db_file_remove_track (HyScanDB    *db,
   status = hyscan_db_file_remove_directory (track_path);
 
 exit:
-
   g_mutex_unlock (&dbf->tracks_lock);
   g_mutex_unlock (&dbf->projects_lock);
 
@@ -1317,7 +1303,6 @@ hyscan_db_file_close_track (HyScanDB *db,
   g_hash_table_remove (dbf->tracks, GINT_TO_POINTER (track_info->id));
 
 exit:
-
   g_mutex_unlock (&dbf->tracks_lock);
 }
 
@@ -1341,7 +1326,6 @@ hyscan_db_file_get_track_ctime (HyScanDB *db,
   ctime = g_date_time_new_from_unix_local (track_info->ctime);
 
 exit:
-
   g_mutex_unlock (&dbf->tracks_lock);
 
   return ctime;
@@ -1414,7 +1398,6 @@ hyscan_db_file_get_channel_list (HyScanDB *db,
     }
 
 exit:
-
   g_mutex_unlock (&dbf->channels_lock);
   g_mutex_unlock (&dbf->tracks_lock);
 
@@ -1464,9 +1447,8 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
           id = channel_info->id;
         }
       else
-        g_critical
-          ("hyscan_db_file_create_channel: channel '%s.%s.%s' already exists",
-           track_info->project_name, track_info->track_name, channel_name);
+        g_critical ("hyscan_db_file_create_channel: channel '%s.%s.%s' already exists",
+                    track_info->project_name, track_info->track_name, channel_name);
       goto exit;
     }
 
@@ -1506,7 +1488,6 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
   g_hash_table_insert (dbf->channels, GINT_TO_POINTER (id), channel_info);
 
 exit:
-
   g_mutex_unlock (&dbf->channels_lock);
   g_mutex_unlock (&dbf->tracks_lock);
 
@@ -1573,7 +1554,6 @@ hyscan_db_file_remove_channel (HyScanDB    *db,
   status = hyscan_db_file_remove_channel_files (track_info->path, channel_name);
 
 exit:
-
   g_mutex_unlock (&dbf->channels_lock);
   g_mutex_unlock (&dbf->tracks_lock);
 
@@ -1604,7 +1584,6 @@ hyscan_db_file_close_channel (HyScanDB *db,
   g_hash_table_remove (dbf->channels, GINT_TO_POINTER (channel_info->id));
 
 exit:
-
   g_mutex_unlock (&dbf->channels_lock);
 }
 
@@ -1666,7 +1645,6 @@ hyscan_db_file_open_channel_param (HyScanDB *db,
   g_hash_table_insert (dbf->params, GINT_TO_POINTER (id), param_info);
 
 exit:
-
   g_mutex_unlock (&dbf->params_lock);
   g_mutex_unlock (&dbf->channels_lock);
 
@@ -1887,7 +1865,6 @@ hyscan_db_file_get_project_param_list (HyScanDB *db,
   params = hyscan_db_file_get_directory_param_list (project_info->path, "project");
 
 exit:
-
   g_mutex_unlock (&dbf->params_lock);
   g_mutex_unlock (&dbf->projects_lock);
 
@@ -1956,7 +1933,6 @@ hyscan_db_file_open_project_param (HyScanDB    *db,
   g_hash_table_insert (dbf->params, GINT_TO_POINTER (id), param_info);
 
 exit:
-
   g_mutex_unlock (&dbf->params_lock);
   g_mutex_unlock (&dbf->projects_lock);
 
@@ -2016,7 +1992,6 @@ hyscan_db_file_remove_project_param (HyScanDB    *db,
   g_free (param_path);
 
 exit:
-
   g_mutex_unlock (&dbf->params_lock);
   g_mutex_unlock (&dbf->projects_lock);
 
@@ -2046,7 +2021,6 @@ hyscan_db_file_get_track_param_list (HyScanDB *db,
   params = hyscan_db_file_get_directory_param_list (track_info->path, "track");
 
 exit:
-
   g_mutex_unlock (&dbf->params_lock);
   g_mutex_unlock (&dbf->tracks_lock);
 
@@ -2116,7 +2090,6 @@ hyscan_db_file_open_track_param (HyScanDB    *db,
   g_hash_table_insert (dbf->params, GINT_TO_POINTER (id), param_info);
 
 exit:
-
   g_mutex_unlock (&dbf->params_lock);
   g_mutex_unlock (&dbf->tracks_lock);
 
@@ -2176,7 +2149,6 @@ hyscan_db_file_remove_track_param (HyScanDB    *db,
   g_free (param_path);
 
 exit:
-
   g_mutex_unlock (&dbf->params_lock);
   g_mutex_unlock (&dbf->tracks_lock);
 
@@ -2258,7 +2230,6 @@ hyscan_db_file_copy_param (HyScanDB    *db,
   status = TRUE;
 
 exit:
-
   g_mutex_unlock (&dbf->params_lock);
 
   g_pattern_spec_free (pattern);
@@ -2314,7 +2285,6 @@ hyscan_db_file_close_param (HyScanDB *db,
   g_hash_table_remove (dbf->params, GINT_TO_POINTER (param_info->id));
 
 exit:
-
   g_mutex_unlock (&dbf->params_lock);
 }
 

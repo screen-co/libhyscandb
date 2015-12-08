@@ -158,10 +158,10 @@ struct _HyScanDBInterface
 {
   GTypeInterface g_iface;
 
-  gchar **     (*get_project_type_list)        (HyScanDB              *db);
-  gchar *      (*get_uri)                      (HyScanDB              *db);
+  gchar      **(*get_project_type_list)        (HyScanDB              *db);
+  gchar       *(*get_uri)                      (HyScanDB              *db);
 
-  gchar **     (*get_project_list)             (HyScanDB              *db);
+  gchar      **(*get_project_list)             (HyScanDB              *db);
   gint32       (*open_project)                 (HyScanDB              *db,
                                                 const gchar           *project_name);
   gint32       (*create_project)               (HyScanDB              *db,
@@ -171,10 +171,10 @@ struct _HyScanDBInterface
                                                 const gchar           *project_name);
   void         (*close_project)                (HyScanDB              *db,
                                                 gint32                 project_id);
-  GDateTime *  (*get_project_ctime)            (HyScanDB              *db,
+  GDateTime   *(*get_project_ctime)            (HyScanDB              *db,
                                                 gint32                 project_id);
 
-  gchar **     (*get_track_list)               (HyScanDB              *db,
+  gchar      **(*get_track_list)               (HyScanDB              *db,
                                                 gint32                 project_id);
   gint32       (*open_track)                   (HyScanDB              *db,
                                                 gint32                 project_id,
@@ -187,10 +187,10 @@ struct _HyScanDBInterface
                                                 const gchar           *track_name);
   void         (*close_track)                  (HyScanDB              *db,
                                                 gint32                 track_id);
-  GDateTime *  (*get_track_ctime)              (HyScanDB              *db,
+  GDateTime   *(*get_track_ctime)              (HyScanDB              *db,
                                                 gint32                 track_id);
 
-  gchar **     (*get_channel_list)             (HyScanDB              *db,
+  gchar      **(*get_channel_list)             (HyScanDB              *db,
                                                 gint32                 track_id);
   gint32       (*open_channel)                 (HyScanDB              *db,
                                                 gint32                 track_id,
@@ -242,7 +242,7 @@ struct _HyScanDBInterface
                                                 gint64                *ltime,
                                                 gint64                *rtime);
 
-  gchar **     (*get_project_param_list)       (HyScanDB              *db,
+  gchar      **(*get_project_param_list)       (HyScanDB              *db,
                                                 gint32                 project_id );
   gint32       (*open_project_param)           (HyScanDB              *db,
                                                 gint32                 project_id,
@@ -251,7 +251,7 @@ struct _HyScanDBInterface
                                                 gint32                 project_id,
                                                 const gchar           *group_name);
 
-  gchar **     (*get_track_param_list)         (HyScanDB              *db,
+  gchar      **(*get_track_param_list)         (HyScanDB              *db,
                                                 gint32                 track_id );
   gint32       (*open_track_param)             (HyScanDB              *db,
                                                 gint32                 track_id,
@@ -260,7 +260,7 @@ struct _HyScanDBInterface
                                                 gint32                 track_id,
                                                 const gchar           *group_name);
 
-  gchar **     (*get_param_list)               (HyScanDB              *db,
+  gchar      **(*get_param_list)               (HyScanDB              *db,
                                                 gint32                 param_id);
   gboolean     (*copy_param)                   (HyScanDB              *db,
                                                 gint32                 src_param_id,
@@ -303,7 +303,7 @@ struct _HyScanDBInterface
   gboolean     (*get_boolean_param)            (HyScanDB              *db,
                                                 gint32                 param_id,
                                                 const gchar           *name);
-  gchar*       (*get_string_param)             (HyScanDB              *db,
+  gchar       *(*get_string_param)             (HyScanDB              *db,
                                                 gint32                 param_id,
                                                 const gchar           *name);
 

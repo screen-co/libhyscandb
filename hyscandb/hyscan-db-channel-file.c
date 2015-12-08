@@ -1,4 +1,4 @@
-/*!
+/**
  * \file hyscan-db-channel-file.c
  *
  * \brief Исходный файл класса хранения данных канала в файловой системе
@@ -116,17 +116,17 @@ struct _HyScanDBChannelFile
 
 };
 
-static void                      hyscan_db_channel_file_set_property       (GObject      *object,
-                                                                            guint         prop_id,
-                                                                            const GValue *value,
-                                                                            GParamSpec   *pspec);
-static void                      hyscan_db_channel_file_object_constructed (GObject *object);
-static void                      hyscan_db_channel_file_object_finalize    (GObject *object);
+static void                      hyscan_db_channel_file_set_property       (GObject             *object,
+                                                                            guint                prop_id,
+                                                                            const GValue        *value,
+                                                                            GParamSpec          *pspec);
+static void                      hyscan_db_channel_file_object_constructed (GObject             *object);
+static void                      hyscan_db_channel_file_object_finalize    (GObject             *object);
 
 static gboolean                  hyscan_db_channel_file_add_part           (HyScanDBChannelFile *channel);
 static gboolean                  hyscan_db_channel_file_remove_old_part    (HyScanDBChannelFile *channel);
 static HyScanDBChannelFileIndex *hyscan_db_channel_file_read_index         (HyScanDBChannelFile *channel,
-                                                                            gint32 index);
+                                                                            gint32               index);
 
 G_DEFINE_TYPE (HyScanDBChannelFile, hyscan_db_channel_file, G_TYPE_OBJECT);
 
@@ -301,8 +301,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       ifdi = G_INPUT_STREAM (g_file_read (fdi, NULL, &error));
       if (error != NULL)
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
         }
 
@@ -311,8 +311,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       ifdd = G_INPUT_STREAM (g_file_read (fdd, NULL, &error));
       if (error != NULL)
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
         }
 
@@ -325,8 +325,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       finfo = g_file_query_info (fdi, G_FILE_ATTRIBUTE_STANDARD_SIZE, G_FILE_QUERY_INFO_NONE, NULL, &error);
       if (error != NULL)
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
           goto break_open;
         }
@@ -354,8 +354,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       finfo = g_file_query_info (fdd, G_FILE_ATTRIBUTE_STANDARD_SIZE, G_FILE_QUERY_INFO_NONE, NULL, &error);
       if (error != NULL)
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
           goto break_open;
         }
@@ -367,8 +367,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       iosize = sizeof (gint32);
       if (g_input_stream_read (ifdi, &value, iosize, NULL, &error) != iosize)
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
           goto break_open;
         }
@@ -387,8 +387,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       iosize = sizeof (gint32);
       if (g_input_stream_read (ifdi, &value, iosize, NULL, &error) != iosize)
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
           goto break_open;
         }
@@ -407,8 +407,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       iosize = sizeof (gint32);
       if (g_input_stream_read (ifdd, &value, iosize, NULL, &error) != iosize)
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
           goto break_open;
         }
@@ -427,8 +427,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       iosize = sizeof (gint32);
       if (g_input_stream_read (ifdd, &value, iosize, NULL, &error) != iosize)
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
           goto break_open;
         }
@@ -447,8 +447,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       iosize = sizeof (gint32);
       if (g_input_stream_read (ifdi, &value, iosize, NULL, &error) != iosize)
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
           goto break_open;
         }
@@ -457,8 +457,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       value = GINT32_FROM_LE (value);
       if (value < 0 || (channel->n_parts > 0 && value != channel->parts[channel->n_parts - 1]->end_index + 1))
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: invalid index", channel->name,
-                      channel->n_parts);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: invalid index",
+                      channel->name, channel->n_parts);
           goto break_open;
         }
 
@@ -473,8 +473,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       error = NULL;
       if (!g_seekable_seek (G_SEEKABLE (ifdi), offset, G_SEEK_SET, NULL, &error))
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
           goto break_open;
         }
@@ -482,8 +482,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       error = NULL;
       if (g_input_stream_read (ifdi, &rec_index, iosize, NULL, &error) != iosize)
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
           goto break_open;
         }
@@ -499,8 +499,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       error = NULL;
       if (!g_seekable_seek (G_SEEKABLE (ifdi), offset, G_SEEK_SET, NULL, &error))
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
           goto break_open;
         }
@@ -508,8 +508,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       error = NULL;
       if (g_input_stream_read (ifdi, &rec_index, iosize, NULL, &error) != iosize)
         {
-          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s", channel->name,
-                      channel->n_parts, error->message);
+          g_critical ("hyscan_db_channel_file_constructor: channel '%s': part %d: %s",
+                      channel->name, channel->n_parts, error->message);
           g_error_free (error);
           goto break_open;
         }

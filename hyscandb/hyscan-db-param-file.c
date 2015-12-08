@@ -1,4 +1,4 @@
-/*!
+/**
  * \file hyscan-db-param-file.c
  *
  * \brief Исходный файл класса хранения параметров в файловой системе
@@ -44,8 +44,8 @@ static void     hyscan_db_param_file_set_property       (GObject          *objec
                                                          guint             prop_id,
                                                          const GValue     *value,
                                                          GParamSpec       *pspec);
-static void     hyscan_db_param_file_object_constructed (GObject *object);
-static void     hyscan_db_param_file_object_finalize    (GObject *object);
+static void     hyscan_db_param_file_object_constructed (GObject          *object);
+static void     hyscan_db_param_file_object_finalize    (GObject          *object);
 
 static gboolean hyscan_db_param_file_parse_name         (const gchar      *name,
                                                          gchar           **group,
@@ -137,7 +137,7 @@ hyscan_db_param_file_object_constructed (GObject *object)
          сигнализируем о ней. */
       if (error->code != G_FILE_ERROR_NOENT)
         {
-          g_critical ("hyscan_db_param_file_object_constructor: %s: %s", param->file, error->message);
+          g_critical ("hyscan_db_param_file_object_constructed: %s: %s", param->file, error->message);
           param->fail = TRUE;
         }
       g_error_free (error);
