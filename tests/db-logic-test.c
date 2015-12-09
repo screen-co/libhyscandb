@@ -1,5 +1,5 @@
 
-#include "hyscan-db-file.h"
+#include "hyscan-db.h"
 
 #include <glib/gstdio.h>
 #include <string.h>
@@ -286,14 +286,13 @@ int
 main (int argc, char **argv)
 {
   /* Параметры программы. */
-  gchar       *db_path = NULL;         /* Путь к каталогу с базой данных. */
+  gchar       *db_uri = NULL;          /* Путь к базе данных. */
   gint         n_projects = 8;         /* Число проектов в базе данных. */
   gint         n_tracks = 8;           /* Число галсов в каждом проекте. */
   gint         n_channels = 8;         /* Число каналов данных в каждом галсе. */
   gint         n_gparams = 8;          /* Число групп параметров в каждом проекте и галсе. */
 
   HyScanDB    *db;
-  gchar       *uri;
 
   gchar      **projects;               /* Контрольный список проектов. */
   gchar      **tracks;                 /* Контрольный список галсов. */
@@ -361,7 +360,7 @@ main (int argc, char **argv)
     args = g_strdupv (argv);
 #endif
 
-    context = g_option_context_new ("<db-path>");
+    context = g_option_context_new ("<db-uri>");
     g_option_context_set_help_enabled (context, TRUE);
     g_option_context_add_main_entries (context, entries, NULL);
     g_option_context_set_ignore_unknown_options (context, FALSE);
@@ -379,7 +378,7 @@ main (int argc, char **argv)
 
     g_option_context_free (context);
 
-    db_path = g_strdup (args[1]);
+    db_uri = g_strdup (args[1]);
     g_strfreev (args);
   }
 
@@ -460,28 +459,11 @@ main (int argc, char **argv)
   sample_size = strlen (sample1) + 1;
   buffer = g_malloc (sample_size);
 
-  /* Проверяем, что указанный каталог базы данных пустой. */
-  {
-    GDir *dir;
-
-    /* Создаём каталог, если его еще нет. */
-    if (g_mkdir_with_parents (db_path, 0777) != 0)
-      g_error ("can't create directory '%s'", db_path);
-
-    dir = g_dir_open (db_path, 0, NULL);
-    if (dir == NULL)
-      g_error ("can't open directory '%s'", db_path);
-    if (g_dir_read_name (dir) != NULL)
-      g_error ("db directory '%s' must be empty", db_path);
-    g_dir_close (dir);
-  }
-
   /* Создаём объект базы данных. */
-  g_message ("creating db");
-  db = g_object_new (HYSCAN_TYPE_DB_FILE, "path", db_path, NULL);
-  uri = hyscan_db_get_uri (db);
-  g_message ("db uri %s", uri);
-  g_free (uri);
+  g_message ("db uri %s", db_uri);
+  db = hyscan_db_new (db_uri);
+  if (db == NULL)
+    g_error ("can't open db at: %s", db_uri);
 
   /* Тесты уровня проектов. */
   g_message (" ");
@@ -988,7 +970,9 @@ main (int argc, char **argv)
   g_message ("re-opening db");
 
   /* Пересоздаём объект базы данных с уже существующими проектами. */
-  db = g_object_new (HYSCAN_TYPE_DB_FILE, "path", db_path, NULL);
+  db = hyscan_db_new (db_uri);
+  if (db == NULL)
+    g_error ("can't open db at: %s", db_uri);
 
   /* Тесты уровня проектов. */
   g_message (" ");
@@ -1372,10 +1356,6 @@ main (int argc, char **argv)
   /* Удаляем объект базы данных. */
   g_object_unref (db);
 
-  /* Удаляем каталог проектов. */
-  if (g_rmdir (db_path) != 0)
-    g_error ("can't delete directory '%s'", db_path);
-
   /* Освобождаем память (для нормальной работы valgind). */
   g_strfreev (projects);
   g_strfreev (tracks);
@@ -1411,7 +1391,7 @@ main (int argc, char **argv)
 
   g_free (buffer);
 
-  g_free (db_path);
+  g_free (db_uri);
 
   return 0;
 
