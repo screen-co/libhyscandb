@@ -13,7 +13,7 @@ int main( int argc, char **argv )
   gint32 index;
   gchar *datap[DATA_PATTERNS];
   gchar *data;
-  guint i, j, k;
+  gint i, j, k;
 
   gint32 first_index, last_index;
 
