@@ -86,6 +86,24 @@ add_definitions (${GLIB2_CFLAGS})
 link_directories (${GLIB2_LIBRARY_DIRS})
 
 #
+# uRPC library default path.
+if (NOT URPC_SOURCE_DIR)
+  set (URPC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../urpc)
+endif ()
+
+#
+# uRPC dependencies.
+pkg_check_modules (URPC QUIET urpc)
+if (${URPC_FOUND})
+  add_definitions (${URPC_CFLAGS})
+  link_directories (${URPC_LIBRARY_DIRS})
+else ()
+  include_directories ("${URPC_SOURCE_DIR}/urpc")
+  link_directories ("${URPC_SOURCE_DIR}/bin")
+  set (URPC_LIBRARIES urpc)
+endif ()
+
+#
 # Include directories.
 include_directories ("${CMAKE_CURRENT_SOURCE_DIR}/hyscandb")
 

@@ -332,7 +332,7 @@ GType          hyscan_db_get_type              (void);
  *
  * \param uri адрес подключения.
  *
- * \return Указатель на интерфейс \link HyScanDB \endlink.
+ * \return Указатель на интерфейс \link HyScanDB \endlink или NULL.
  *
  */
 HYSCAN_DB_EXPORT
