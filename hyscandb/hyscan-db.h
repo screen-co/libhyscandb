@@ -195,7 +195,7 @@ struct _HyScanDBInterface
   gint32       (*open_channel)                 (HyScanDB              *db,
                                                 gint32                 track_id,
                                                 const gchar           *channel_name);
-  gboolean     (*create_channel)               (HyScanDB              *db,
+  gint32       (*create_channel)               (HyScanDB              *db,
                                                 gint32                 track_id,
                                                 const gchar           *channel_name);
   gboolean     (*remove_channel)               (HyScanDB              *db,
@@ -203,7 +203,7 @@ struct _HyScanDBInterface
                                                 const gchar           *channel_name);
   void         (*close_channel)                (HyScanDB              *db,
                                                 gint32                 channel_id);
-  gint32       (*open_channel_param)           (HyScanDB             *db,
+  gint32       (*open_channel_param)           (HyScanDB              *db,
                                                 gint32                 channel_id);
 
   gboolean     (*set_channel_chunk_size)       (HyScanDB              *db,

@@ -1469,11 +1469,11 @@ gboolean
 hyscan_db_channel_file_set_channel_save_size (HyScanDBChannelFile *channel,
                                               gint64               save_size)
 {
-  /* Проверяем новый интервал времени. */
-  if (save_size < 1024 * 1024)
+  /* Проверяем новый максимальный размер. */
+  if (save_size < MIN_DATA_FILE_SIZE)
     return FALSE;
 
-  /* Устанавливаем новый интервал времени. */
+  /* Устанавливаем новый максимальный размер. */
   g_mutex_lock (&channel->lock);
   channel->save_size = save_size;
   g_mutex_unlock (&channel->lock);
