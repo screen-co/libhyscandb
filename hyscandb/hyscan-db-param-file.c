@@ -321,7 +321,7 @@ hyscan_db_param_file_remove_param (HyScanDBParamFile *param,
           gchar *name = g_strdup_printf ("%s.%s", groups[i], keys[j]);
 
           /* Удаляем если оно совпадает с шаблоном. */
-          if (g_pattern_match (pattern, strlen (name), name, NULL))
+          if (g_pattern_match (pattern, (guint)strlen (name), name, NULL))
             g_key_file_remove_key (param->params, groups[i], keys[j], NULL);
 
           g_free (name);

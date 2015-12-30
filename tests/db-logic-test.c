@@ -335,7 +335,7 @@ main (int argc, char **argv)
   gint      ***track_param_id;
   gint      ***channel_param_id;
 
-  gint         sample_size = 0;
+  gint32       sample_size = 0;
   gchar       *sample1 = "THIS IS SAMPLE DATA";
   gchar       *buffer = NULL;
 
@@ -456,7 +456,7 @@ main (int argc, char **argv)
     }
 
   /* Буфер ввода/вывода. */
-  sample_size = strlen (sample1) + 1;
+  sample_size = (gint32)strlen (sample1) + 1;
   buffer = g_malloc (sample_size);
 
   /* Создаём объект базы данных. */

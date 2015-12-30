@@ -258,11 +258,11 @@ hyscan_db_channel_file_object_constructed (GObject *object)
 
       GFile *fdi = NULL;
       GInputStream *ifdi = NULL;
-      goffset index_file_size;
+      gint32 index_file_size;
 
       GFile *fdd = NULL;
       GInputStream *ifdd = NULL;
-      goffset data_file_size;
+      gint32 data_file_size;
 
       guint64 begin_time;
       guint64 end_time;
@@ -463,8 +463,7 @@ hyscan_db_channel_file_object_constructed (GObject *object)
         }
 
       begin_index = value;
-      end_index =
-        begin_index + ((index_file_size - INDEX_FILE_HEADER_SIZE) / sizeof (HyScanDBChannelFileIndexRec)) - 1;
+      end_index = begin_index + ((index_file_size - INDEX_FILE_HEADER_SIZE) / sizeof (HyScanDBChannelFileIndexRec)) - 1;
 
       /* Считываем первый индекс части данных. */
       iosize = sizeof (HyScanDBChannelFileIndexRec);

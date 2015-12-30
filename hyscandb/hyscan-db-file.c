@@ -2214,7 +2214,7 @@ hyscan_db_file_copy_param (HyScanDB    *db,
     {
 
       /* Копируем параметры совпадающие с маской. */
-      if (g_pattern_match (pattern, strlen (src_list[i]), src_list[i], NULL))
+      if (g_pattern_match (pattern, (guint)strlen (src_list[i]), src_list[i], NULL))
         {
           gchar *value = hyscan_db_param_file_get_string (src_param_info->param,
                                                           src_list[i]);
