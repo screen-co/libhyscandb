@@ -1025,6 +1025,11 @@ hyscan_db_server_rpc_proc_get_channel_data (guint32   session,
           if (urpc_data_set (urpc_data, HYSCAN_DB_RPC_PARAM_DATA, NULL, buffer_size) == NULL )
             hyscan_db_server_set_error ("data-size");
         }
+      else
+        {
+          if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_SIZE, buffer_size) != 0)
+            hyscan_db_server_set_error ("buffer_size");
+        }
 
       if (urpc_data_set_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_TIME, time) != 0)
         hyscan_db_server_set_error ("time");
@@ -1341,7 +1346,7 @@ hyscan_db_server_rpc_proc_copy_param (guint32   session,
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_DST_ID, &dst_param_id) != 0)
     hyscan_db_server_get_error ("dst_param_id");
 
-  mask = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_MASK, 0);
+  mask = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_MASK, 0);
   if (mask == NULL)
     hyscan_db_server_get_error ("mask");
 
@@ -1372,7 +1377,7 @@ hyscan_db_server_rpc_proc_remove_param (guint32   session,
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
     hyscan_db_server_get_error ("param_id");
 
-  mask = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_MASK, 0);
+  mask = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_MASK, 0);
   if (mask == NULL)
     hyscan_db_server_get_error ("mask");
 
