@@ -963,6 +963,51 @@ main (int argc, char **argv)
           g_free (error_prefix);
         }
 
+  /* Закрываем все объекты. */
+  for (i = 0; i < n_projects; i++)
+    for (j = 0; j < n_tracks; j++)
+      for (k = 0; k < n_channels; k++)
+        {
+          hyscan_db_close_param (db, channel_param_id[i][j][k]);
+          hyscan_db_close_param (db, channel_param_id[i][j][k]);
+        }
+
+  for (i = 0; i < n_projects; i++)
+    for (j = 0; j < n_tracks; j++)
+      for (k = 0; k < n_gparams; k++)
+        {
+          hyscan_db_close_param (db, track_param_id[i][j][k]);
+          hyscan_db_close_param (db, track_param_id[i][j][k]);
+        }
+
+  for (i = 0; i < n_projects; i++)
+    for (j = 0; j < n_gparams; j++)
+      {
+        hyscan_db_close_param (db, project_param_id[i][j]);
+        hyscan_db_close_param (db, project_param_id[i][j]);
+      }
+
+  for (i = 0; i < n_projects; i++)
+    for (j = 0; j < n_tracks; j++)
+      for (k = 0; k < n_channels; k++)
+        {
+          hyscan_db_close_channel (db, channel_id[i][j][k]);
+          hyscan_db_close_channel (db, channel_id[i][j][k]);
+        }
+
+  for (i = 0; i < n_projects; i++)
+    for (j = 0; j < n_tracks; j++)
+      {
+        hyscan_db_close_track (db, track_id[i][j]);
+        hyscan_db_close_track (db, track_id[i][j]);
+      }
+
+  for (i = 0; i < n_projects; i++)
+    {
+      hyscan_db_close_project (db, project_id[i]);
+      hyscan_db_close_project (db, project_id[i]);
+    }
+
   /* Удаляем объект базы данных. */
   g_object_unref (db);
 
@@ -1025,7 +1070,7 @@ main (int argc, char **argv)
       }
 
   /* Изменяем параметры проектов. */
-  g_message ("changing project parameters names");
+  g_message ("changing project parameters values");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
