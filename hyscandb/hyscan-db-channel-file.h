@@ -80,6 +80,11 @@ struct _HyScanDBChannelFileClass
 
 GType hyscan_db_channel_file_get_type (void);
 
+/* Функция создаёт новый объект HyScanDBChannelFile. */
+HyScanDBChannelFile *hyscan_db_channel_file_new            (const gchar         *path,
+                                                            const gchar         *name,
+                                                            gboolean             readonly);
+
 /* Функция возвращает диапазон текущих значений индексов данных. */
 gboolean   hyscan_db_channel_file_get_channel_data_range   (HyScanDBChannelFile *channel,
                                                             gint32              *first_index,
