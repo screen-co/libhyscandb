@@ -1727,7 +1727,7 @@ hyscan_db_server_rpc_proc_get_string_param (guint32   session,
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
   const gchar *name;
   gint32 param_id;
-  const gchar *value;
+  gchar *value = NULL;
 
   if (dbs->acl != NULL && !dbs->acl ("get_string_param", key_data))
     hyscan_db_server_acl_error ();
@@ -1746,6 +1746,7 @@ hyscan_db_server_rpc_proc_get_string_param (guint32   session,
   rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
 exit:
+  g_free (value);
   urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
   return 0;
 }

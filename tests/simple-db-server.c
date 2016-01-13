@@ -75,6 +75,8 @@ main (int    argc,
   getchar ();
 
   g_object_unref (server);
+  g_object_unref (db);
+  g_free (server_uri);
 
   return 0;
 }
