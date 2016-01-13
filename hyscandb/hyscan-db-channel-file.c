@@ -1003,6 +1003,15 @@ hyscan_db_channel_file_read_index (HyScanDBChannelFile *channel,
   return db_index;
 }
 
+/* Функция создаёт новый объект HyScanDBChannelFile. */
+HyScanDBChannelFile *
+hyscan_db_channel_file_new (const gchar *path,
+                            const gchar *name,
+                            gboolean     readonly)
+{
+  return g_object_new (HYSCAN_TYPE_DB_CHANNEL_FILE, "path", path, "name", name, "readonly", readonly, NULL);
+}
+
 /* Функция возвращает диапазон текущих значений индексов данных. */
 gboolean
 hyscan_db_channel_file_get_channel_data_range (HyScanDBChannelFile *channel,

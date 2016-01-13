@@ -18,7 +18,6 @@ enum
   PROP_O,
   PROP_PATH,
   PROP_NAME,
-  PROP_READONLY
 };
 
 /* Внутренние данные объекта. */
@@ -30,7 +29,6 @@ struct _HyScanDBParamFile
   gchar               *name;           /* Название файла параметров. */
   gchar               *file;           /* Полное имя файла параметров. */
 
-  gboolean             readonly;       /* Создавать или нет файлы при открытии канала. */
   gboolean             fail;           /* Признак ошибки. */
 
   GMutex               lock;           /* Блокировка многопоточного доступа. */
@@ -63,17 +61,13 @@ hyscan_db_param_file_class_init (HyScanDBParamFileClass *klass)
   object_class->constructed = hyscan_db_param_file_object_constructed;
   object_class->finalize = hyscan_db_param_file_object_finalize;
 
-  g_object_class_install_property (object_class, PROP_NAME,
-                                   g_param_spec_string ("name", "Name", "Parameters group name", NULL,
-                                                        G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
-
   g_object_class_install_property (object_class, PROP_PATH,
                                    g_param_spec_string ("path", "Path", "Path to parameters group", NULL,
                                                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 
-  g_object_class_install_property (object_class, PROP_READONLY,
-                                   g_param_spec_boolean ("readonly", "ReadOnly", "Read only mode", FALSE,
-                                                         G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+  g_object_class_install_property (object_class, PROP_NAME,
+                                   g_param_spec_string ("name", "Name", "Parameters group name", NULL,
+                                                        G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
@@ -97,10 +91,6 @@ hyscan_db_param_file_set_property (GObject          *object,
 
     case PROP_PATH:
       param->path = g_value_dup_string (value);
-      break;
-
-    case PROP_READONLY:
-      param->readonly = g_value_get_boolean (value);
       break;
 
     default:
@@ -144,11 +134,8 @@ hyscan_db_param_file_object_constructed (GObject *object)
     }
 
   /* Объект для записи содержимого файла параметров. */
-  if (!param->readonly)
-    {
-      param->fd = g_file_new_for_path (param->file);
-      param->ofd = G_OUTPUT_STREAM (g_file_append_to (param->fd, G_FILE_CREATE_NONE, NULL, NULL));
-    }
+  param->fd = g_file_new_for_path (param->file);
+  param->ofd = G_OUTPUT_STREAM (g_file_append_to (param->fd, G_FILE_CREATE_NONE, NULL, NULL));
 }
 
 static void
@@ -251,6 +238,14 @@ exit:
   return FALSE;
 }
 
+/* Функция создаёт новый объект HyScanDBParamFile. */
+HyScanDBParamFile *
+hyscan_db_param_file_new (const gchar *path,
+                          const gchar *name)
+{
+  return g_object_new (HYSCAN_TYPE_DB_PARAM_FILE, "path", path, "name", name, NULL);
+}
+
 /* Функция возвращает список параметров. */
 gchar **
 hyscan_db_param_file_get_param_list (HyScanDBParamFile *param)
@@ -300,7 +295,7 @@ hyscan_db_param_file_remove_param (HyScanDBParamFile *param,
   gboolean status;
   gint i, j;
 
-  if (param->fail || param->readonly)
+  if (param->fail)
     return FALSE;
 
   pattern = g_pattern_spec_new (mask);
@@ -379,7 +374,7 @@ hyscan_db_param_file_inc_integer (HyScanDBParamFile *param,
   gchar *group, *key;
   gboolean status;
 
-  if (param->fail || param->readonly)
+  if (param->fail)
     return FALSE;
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return FALSE;
@@ -407,7 +402,7 @@ hyscan_db_param_file_set_integer (HyScanDBParamFile *param,
   gchar *group, *key;
   gboolean status;
 
-  if (param->fail || param->readonly)
+  if (param->fail)
     return FALSE;
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return FALSE;
@@ -434,7 +429,7 @@ hyscan_db_param_file_set_double (HyScanDBParamFile *param,
   gchar *group, *key;
   gboolean status;
 
-  if (param->fail || param->readonly)
+  if (param->fail)
     return FALSE;
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return FALSE;
@@ -461,7 +456,7 @@ hyscan_db_param_file_set_boolean (HyScanDBParamFile *param,
   gchar *group, *key;
   gboolean status;
 
-  if (param->fail || param->readonly)
+  if (param->fail)
     return FALSE;
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return FALSE;
@@ -488,7 +483,7 @@ hyscan_db_param_file_set_string (HyScanDBParamFile *param,
   gchar *group, *key;
   gboolean status;
 
-  if (param->fail || param->readonly)
+  if (param->fail)
     return FALSE;
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return FALSE;

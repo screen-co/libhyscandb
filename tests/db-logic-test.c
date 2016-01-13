@@ -328,18 +328,18 @@ main (int argc, char **argv)
       NULL
   };
 
-  gint        *project_id;
-  gint       **track_id;
-  gint      ***channel_id;
-  gint       **project_param_id;
-  gint      ***track_param_id;
-  gint      ***channel_param_id;
+  gint32      *project_id;
+  gint32     **track_id;
+  gint32    ***channel_id;
+  gint32     **project_param_id;
+  gint32    ***track_param_id;
+  gint32    ***channel_param_id;
 
   gint32       sample_size = 0;
   gchar       *sample1 = "THIS IS SAMPLE DATA";
   gchar       *buffer = NULL;
 
-  gint i, j, k;
+  gint i, j, k, l, m, n;
 
   /* Разбор командной строки. */
   {
@@ -432,26 +432,26 @@ main (int argc, char **argv)
 
 
   /* Идентификаторы открытых объектов. */
-  project_id = g_malloc (n_projects * sizeof (gint));
-  project_param_id = g_malloc (n_projects * sizeof (gint *));
-  track_id = g_malloc (n_projects * sizeof (gint *));
-  track_param_id = g_malloc (n_projects * sizeof (gint *));
-  channel_id = g_malloc (n_projects * sizeof (gint *));
-  channel_param_id = g_malloc (n_projects * sizeof (gint *));
+  project_id = g_malloc0 (n_projects * sizeof (gint32));
+  project_param_id = g_malloc0 (n_projects * sizeof (gint32 *));
+  track_id = g_malloc0 (n_projects * sizeof (gint32 *));
+  track_param_id = g_malloc0 (n_projects * sizeof (gint32 *));
+  channel_id = g_malloc0 (n_projects * sizeof (gint32 *));
+  channel_param_id = g_malloc0 (n_projects * sizeof (gint32 *));
 
   for (i = 0; i < n_projects; i++)
     {
-      project_param_id[i] = g_malloc (n_gparams * sizeof (gint));
-      track_id[i] = g_malloc (n_tracks * sizeof (gint));
-      track_param_id[i] = g_malloc (n_tracks * sizeof (gint *));
-      channel_id[i] = g_malloc (n_tracks * sizeof (gint *));
-      channel_param_id[i] = g_malloc (n_tracks * sizeof (gint *));
+      project_param_id[i] = g_malloc0 (n_gparams * sizeof (gint32));
+      track_id[i] = g_malloc0 (n_tracks * sizeof (gint32));
+      track_param_id[i] = g_malloc0 (n_tracks * sizeof (gint32 *));
+      channel_id[i] = g_malloc0 (n_tracks * sizeof (gint32 *));
+      channel_param_id[i] = g_malloc0 (n_tracks * sizeof (gint32 *));
 
       for (j = 0; j < n_tracks; j++)
         {
-          track_param_id[i][j] = g_malloc (n_gparams * sizeof (gint *));
-          channel_id[i][j] = g_malloc (n_channels * sizeof (gint *));
-          channel_param_id[i][j] = g_malloc (n_channels * sizeof (gint *));
+          track_param_id[i][j] = g_malloc0 (n_gparams * sizeof (gint32 *));
+          channel_id[i][j] = g_malloc0 (n_channels * sizeof (gint32 *));
+          channel_param_id[i][j] = g_malloc0 (n_channels * sizeof (gint32 *));
         }
     }
 
@@ -490,11 +490,21 @@ main (int argc, char **argv)
     if (hyscan_db_create_project (db, projects[i], NULL) > 0)
       g_error ("'%s' duplicated", projects[i]);
 
-  /* Проверяем, что при открытии уже открытых проектов возвращаются правильные идентификаторы. */
+  /* Проверяем, что при открытии уже открытых проектов возвращаются уникальные идентификаторы. */
   g_message ("checking projects identifiers");
   for (i = 0; i < n_projects; i++)
-    if (project_id[i] != hyscan_db_open_project (db, projects[i]))
-      g_error ("wrong '%s' id", projects[i]);
+    {
+      gint32 nid;
+      if ((nid = hyscan_db_open_project (db, projects[i])) < 0)
+        g_error ("can't open '%s'", projects[i]);
+      for (j=0; j < n_projects; j++)
+        {
+          if (nid == project_id[j])
+            g_error ("duplicated '%s' id", projects[i]);
+        }
+      hyscan_db_close_project (db, project_id[i]);
+      project_id[i] = nid;
+    }
 
   /* Проверяем, что список групп параметров в каждом проекте изначально пустой. */
   g_message ("checking project parameter groups list is empty");
@@ -518,12 +528,20 @@ main (int argc, char **argv)
       g_free (error_prefix);
     }
 
-  /* Проверяем, что при открытии уже открытых групп параметров возвращаются правильные идентификаторы. */
+  /* Проверяем, что при открытии уже открытых групп параметров возвращаются уникальные идентификаторы. */
   g_message ("checking project parameters identifiers");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
-      if (project_param_id[i][j] != hyscan_db_open_project_param (db, project_id[i], gparams[j]))
-        g_error ("wrong '%s.%s' id", projects[i], gparams[j]);
+      {
+        gint32 nid;
+        if((nid = hyscan_db_open_project_param (db, project_id[i], gparams[j])) < 0)
+          g_error ("can't open '%s.%s'", projects[i], gparams[j]);
+        for (k = 0; k < n_projects; k++)
+          for (l = 0; l < n_gparams; l++)
+            if (nid == project_param_id[k][l])
+              g_error ("duplicated '%s.%s' id", projects[i], gparams[j]);
+        hyscan_db_close_param (db, nid);
+      }
 
   /* Устанавливаем параметры. */
   g_message ("setting project parameters values");
@@ -637,12 +655,21 @@ main (int argc, char **argv)
       if (hyscan_db_create_track (db, project_id[i], tracks[j]) > 0)
         g_error ("'%s.%s' duplicated", projects[i], tracks[j]);
 
-  /* Проверяем, что при открытии уже открытых галсов возвращаются правильные идентификаторы. */
+  /* Проверяем, что при открытии уже открытых галсов возвращаются уникальные идентификаторы. */
   g_message ("checking tracks identifiers");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      if (track_id[i][j] != hyscan_db_open_track (db, project_id[i], tracks[j]))
-        g_error ("wrong '%s.%s' id", projects[i], tracks[j]);
+      {
+        gint32 nid;
+        if ((nid = hyscan_db_open_track (db, project_id[i], tracks[j])) < 0)
+          g_error ("can't open '%s.%s'", projects[i], tracks[j]);
+        for (k = 0; k < n_projects; k++)
+          for (l = 0; l < n_tracks; l++)
+            if (nid == track_id[k][l])
+              g_error ("duplicated '%s.%s' id", projects[i], tracks[j]);
+        hyscan_db_close_track (db, track_id[i][j]);
+        track_id[i][j] = nid;
+      }
 
   /* Проверяем, что список групп параметров в каждом галсе изначально пустой. */
   g_message ("checking track parameters list is empty");
@@ -669,13 +696,22 @@ main (int argc, char **argv)
         g_free (error_prefix);
       }
 
-  /* Проверяем, что при открытии уже открытых групп параметров возвращаются правильные идентификаторы. */
+  /* Проверяем, что при открытии уже открытых групп параметров возвращаются уникальные идентификаторы. */
   g_message ("checking track parameters identifiers");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
-        if (track_param_id[i][j][k] != hyscan_db_open_track_param (db, track_id[i][j], gparams[k]))
-          g_error ("wrong '%s.%s.%s' id", projects[i], tracks[j], gparams[k]);
+        {
+          gint32 nid;
+          if((nid = hyscan_db_open_track_param (db, track_id[i][j], gparams[k])) < 0)
+            g_error ("can't open '%s.%s.%s'", projects[i], tracks[j], gparams[k]);
+          for (l = 0; l < n_projects; l++)
+            for (m = 0; m < n_tracks; m++)
+              for (n = 0; n < n_gparams; n++)
+                if (nid == track_param_id[l][m][n])
+                  g_error ("duplicated '%s.%s.%s' id", projects[i], tracks[j], gparams[k]);
+          hyscan_db_close_param (db, nid);
+        }
 
   /* Устанавливаем параметры. */
   g_message ("setting track parameters values");
@@ -810,13 +846,30 @@ main (int argc, char **argv)
         if (hyscan_db_create_channel (db, track_id[i][j], channels[k]) > 0)
           g_error ("'%s.%s.%s' duplicated", projects[i], tracks[j], channels[k]);
 
-  /* Проверяем, что при открытии уже открытых каналов данных возвращаются правильные идентификаторы. */
+  /* Проверяем, что при открытии уже открытых каналов данных возвращаются уникальные идентификаторы. */
   g_message ("checking channels identifiers");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
-        if (channel_id[i][j][k] != hyscan_db_open_channel (db, track_id[i][j], channels[k]))
-          g_error ("wrong '%s.%s.%s' id", projects[i], tracks[j], channels[k]);
+        {
+          gint32 nid;
+          gint32 readed_size;
+          if((nid = hyscan_db_open_channel (db, track_id[i][j], channels[k])) < 0)
+            g_error ("can't open '%s.%s.%s'", projects[i], tracks[j], channels[k]);
+          for (l = 0; l < n_projects; l++)
+            for (m = 0; m < n_tracks; m++)
+              for (n = 0; n < n_channels; n++)
+                if (nid == channel_id[l][m][n])
+                  g_error ("duplicated '%s.%s.%s' id", projects[i], tracks[j], channels[k]);
+          if (hyscan_db_add_channel_data (db, nid, 1, sample1, sample_size, NULL))
+            g_error ("'%s.%s.%s' must be read only", projects[i], tracks[j], channels[k]);
+          readed_size = sample_size;
+          if (!hyscan_db_get_channel_data (db, nid, 0, buffer, &sample_size, NULL))
+            g_error ("can't read data from '%s.%s.%s'", projects[i], tracks[j], channels[k]);
+          if (readed_size != sample_size || g_strcmp0 (sample1, buffer) != 0)
+            g_error ("wrong '%s.%s.%s' data", projects[i], tracks[j], channels[k]);
+          hyscan_db_close_channel (db, nid);
+        }
 
   /* Проверяем, что данные записанные в канал совпадают с образцом. */
   g_message ("checking channels content");
@@ -824,7 +877,7 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gint readed_size = sample_size;
+          gint32 readed_size = sample_size;
           if (!hyscan_db_get_channel_data (db, channel_id[i][j][k], 0, buffer, &sample_size, NULL))
             g_error ("can't read data from 'Project %d.Track %d.Channel %d'", i + 1, j + 1, k + 1);
           if (readed_size != sample_size || g_strcmp0 (sample1, buffer) != 0)
@@ -839,13 +892,22 @@ main (int argc, char **argv)
         if ((channel_param_id[i][j][k] = hyscan_db_open_channel_param (db, channel_id[i][j][k])) < 0)
           g_error ("can't open '%s.%s.%s' parameters", projects[i], tracks[j], channels[k]);
 
-  /* Проверяем, что при открытии уже открытых групп параметров возвращаются правильные идентификаторы. */
+  /* Проверяем, что при открытии уже открытых групп параметров возвращаются уникальные идентификаторы. */
   g_message ("checking channel parameters identifiers");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
-        if (channel_param_id[i][j][k] != hyscan_db_open_channel_param (db, channel_id[i][j][k]))
-          g_error ("wrong '%s.%s.%s' id", projects[i], tracks[j], channels[k]);
+        {
+          gint32 nid;
+          if((nid = hyscan_db_open_channel_param (db, channel_id[i][j][k])) < 0)
+            g_error ("can't open '%s.%s.%s' parameters", projects[i], tracks[j], channels[k]);
+          for (l = 0; l < n_projects; l++)
+            for (m = 0; m < n_tracks; m++)
+              for (n = 0; n < n_channels; n++)
+                if (nid == channel_param_id[l][m][n])
+                  g_error ("duplicated '%s.%s.%s' parameters id", projects[i], tracks[j], channels[k]);
+          hyscan_db_close_param (db, nid);
+        }
 
   /* Устанавливаем параметры канала данных. */
   g_message ("setting channel parameters values");
@@ -967,46 +1029,28 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
-        {
-          hyscan_db_close_param (db, channel_param_id[i][j][k]);
-          hyscan_db_close_param (db, channel_param_id[i][j][k]);
-        }
+        hyscan_db_close_param (db, channel_param_id[i][j][k]);
 
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
-        {
-          hyscan_db_close_param (db, track_param_id[i][j][k]);
-          hyscan_db_close_param (db, track_param_id[i][j][k]);
-        }
+        hyscan_db_close_param (db, track_param_id[i][j][k]);
 
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
-      {
-        hyscan_db_close_param (db, project_param_id[i][j]);
-        hyscan_db_close_param (db, project_param_id[i][j]);
-      }
+      hyscan_db_close_param (db, project_param_id[i][j]);
 
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
-        {
-          hyscan_db_close_channel (db, channel_id[i][j][k]);
-          hyscan_db_close_channel (db, channel_id[i][j][k]);
-        }
+        hyscan_db_close_channel (db, channel_id[i][j][k]);
 
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      {
-        hyscan_db_close_track (db, track_id[i][j]);
-        hyscan_db_close_track (db, track_id[i][j]);
-      }
+      hyscan_db_close_track (db, track_id[i][j]);
 
   for (i = 0; i < n_projects; i++)
-    {
-      hyscan_db_close_project (db, project_id[i]);
-      hyscan_db_close_project (db, project_id[i]);
-    }
+    hyscan_db_close_project (db, project_id[i]);
 
   /* Удаляем объект базы данных. */
   g_object_unref (db);
@@ -1207,7 +1251,7 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gint readed_size = sample_size;
+          gint32 readed_size = sample_size;
           if (!hyscan_db_get_channel_data (db, channel_id[i][j][k], 0, buffer, &sample_size, NULL))
             g_error ("can't read data from '%s.%s.%s'", projects[i], tracks[j], channels[k]);
           if (readed_size != sample_size || g_strcmp0 (sample1, buffer) != 0)
