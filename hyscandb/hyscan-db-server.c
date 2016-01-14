@@ -225,6 +225,37 @@ exit:
   return 0;
 }
 
+/* RPC Функция HYSCAN_DB_RPC_PROC_GET_MOD_COUNT. */
+static gint
+hyscan_db_server_rpc_proc_get_mod_count (guint32   session,
+                                         uRpcData *urpc_data,
+                                         void     *proc_data,
+                                         void     *key_data)
+{
+  HyScanDBServer *dbs = proc_data;
+  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
+  gint32 id;
+  guint32 mod_count;
+
+  if (dbs->acl != NULL && !dbs->acl ("get_mod_count", key_data))
+    hyscan_db_server_acl_error ();
+
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_ID, &id) != 0)
+    hyscan_db_server_get_error ("id");
+
+  mod_count = hyscan_db_get_mod_count (dbs->db, id);
+  if (urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_MOD_COUNT, mod_count) != 0)
+    hyscan_db_server_set_error ("mod_count");
+
+  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+
+exit:
+  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
+  return 0;
+}
+
+
 /* RPC Функция HYSCAN_DB_RPC_PROC_GET_PROJECT_LIST. */
 static gint
 hyscan_db_server_rpc_proc_get_project_list (guint32   session,
@@ -1805,6 +1836,11 @@ hyscan_db_server_start (HyScanDBServer *server)
 
   status = urpc_server_add_proc (server->rpc, HYSCAN_DB_RPC_PROC_GET_URI,
                                  hyscan_db_server_rpc_proc_get_uri, server);
+  if (status != 0)
+    goto fail;
+
+  status = urpc_server_add_proc (server->rpc, HYSCAN_DB_RPC_PROC_GET_MOD_COUNT,
+                                 hyscan_db_server_rpc_proc_get_mod_count, server);
   if (status != 0)
     goto fail;
 

@@ -35,6 +35,16 @@ hyscan_db_get_uri (HyScanDB *db)
   return NULL;
 }
 
+guint32
+hyscan_db_get_mod_count (HyScanDB *db,
+                         gint32    id)
+{
+  if (HYSCAN_DB_GET_IFACE (db)->get_mod_count != NULL)
+    return HYSCAN_DB_GET_IFACE (db)->get_mod_count (db, id);
+
+  return 0;
+}
+
 gchar **
 hyscan_db_get_project_list (HyScanDB * db)
 {

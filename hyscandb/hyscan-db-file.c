@@ -33,7 +33,8 @@ enum
 /* Информация о проекте. */
 typedef struct
 {
-  gint                 ref_counts;             /* Число ссылок на объект. */
+  gint                 ref_count;              /* Число ссылок на объект. */
+  guint32              mod_count;              /* Номер изменения объекта. */
 
   gchar               *project_name;           /* Название проекта. */
   gchar               *path;                   /* Путь к каталогу с проектом. */
@@ -44,7 +45,8 @@ typedef struct
 /* Информация о галсе. */
 typedef struct
 {
-  gint                 ref_counts;             /* Число ссылок на объект. */
+  gint                 ref_count;              /* Число ссылок на объект. */
+  guint32              mod_count;              /* Номер изменения объекта. */
 
   gchar               *project_name;           /* Название проекта. */
   gchar               *track_name;             /* Название галса. */
@@ -56,7 +58,8 @@ typedef struct
 /* Информация о канале данных. */
 typedef struct
 {
-  gint                 ref_counts;             /* Число ссылок на объект. */
+  gint                 ref_count;              /* Число ссылок на объект. */
+  guint32              mod_count;              /* Номер изменения объекта. */
 
   gchar               *project_name;           /* Название проекта. */
   gchar               *track_name;             /* Название галса. */
@@ -70,7 +73,8 @@ typedef struct
 /* Информация о параметрах. */
 typedef struct
 {
-  gint                 ref_counts;             /* Число ссылок на объект. */
+  gint                 ref_count;             /* Число ссылок на объект. */
+  guint32              mod_count;              /* Номер изменения объекта. */
 
   gchar               *project_name;           /* Название проекта. */
   gchar               *track_name;             /* Название галса. */
@@ -96,6 +100,7 @@ struct _HyScanDBFile
   GObject              parent_instance;
 
   gchar               *path;                   /* Путь к каталогу с проектами. */
+  guint32              mod_count;              /* Номер изменения объекта. */
 
   GHashTable          *projects;               /* Список открытых проектов. */
   GMutex               projects_lock;          /* Блокировка многопоточных операций
@@ -659,6 +664,40 @@ hyscan_db_file_get_uri (HyScanDB *db)
   return uri;
 }
 
+/* Функция возвращает номер изменения в объекте. */
+guint32
+hyscan_db_file_get_mod_count (HyScanDB *db,
+                              gint32    id)
+{
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
+
+  HyScanDBFileProjectInfo *project_info;
+  HyScanDBFileTrackInfo *track_info;
+  HyScanDBFileChannelInfo *channel_info;
+  HyScanDBFileParamInfo *param_info;
+
+  if (id ==0)
+    return dbf->mod_count;
+
+  project_info = g_hash_table_lookup (dbf->projects, GINT_TO_POINTER (id));
+  if (project_info != NULL)
+    return project_info->mod_count;
+
+  track_info = g_hash_table_lookup (dbf->tracks, GINT_TO_POINTER (id));
+  if (track_info != NULL)
+    return track_info->mod_count;
+
+  channel_info = g_hash_table_lookup (dbf->channels, GINT_TO_POINTER (id));
+  if (channel_info != NULL)
+    return channel_info->mod_count;
+
+  param_info = g_hash_table_lookup (dbf->params, GINT_TO_POINTER (id));
+  if (param_info != NULL)
+    return param_info->mod_count;
+
+  return 0;
+}
+
 /* Функция возвращает список доступных проектов. */
 gchar **
 hyscan_db_file_get_project_list (HyScanDB *db)
@@ -750,7 +789,7 @@ hyscan_db_file_open_project (HyScanDB    *db,
   if (project_info != NULL)
     {
       id = nid;
-      project_info->ref_counts += 1;
+      project_info->ref_count += 1;
     }
 
   /* Открываем проект для работы. */
@@ -765,7 +804,8 @@ hyscan_db_file_open_project (HyScanDB    *db,
         }
 
       project_info = g_malloc (sizeof (HyScanDBFileProjectInfo));
-      project_info->ref_counts = 1;
+      project_info->ref_count = 1;
+      project_info->mod_count = 1;
       project_info->project_name = g_strdup (project_name);
       project_info->path = project_path;
       project_info->ctime = ctime;
@@ -836,6 +876,7 @@ hyscan_db_file_create_project (HyScanDB    *db,
       goto exit;
     }
 
+  dbf->mod_count += 1;
   status = TRUE;
 
 exit:
@@ -883,8 +924,8 @@ hyscan_db_file_remove_project (HyScanDB    *db,
       if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
         continue;
 
-      param_info->ref_counts -= 1;
-      if (param_info->ref_counts > 0)
+      param_info->ref_count -= 1;
+      if (param_info->ref_count > 0)
         g_hash_table_iter_steal (&iter);
       else
         g_hash_table_iter_remove (&iter);
@@ -899,8 +940,8 @@ hyscan_db_file_remove_project (HyScanDB    *db,
       if (!hyscan_db_check_channel_by_object_name (key, value, &object_info))
         continue;
 
-      channel_info->ref_counts -= 1;
-      if (channel_info->ref_counts > 0)
+      channel_info->ref_count -= 1;
+      if (channel_info->ref_count > 0)
         g_hash_table_iter_steal (&iter);
       else
         g_hash_table_iter_remove (&iter);
@@ -915,8 +956,8 @@ hyscan_db_file_remove_project (HyScanDB    *db,
       if (!hyscan_db_check_track_by_object_name (key, value, &object_info))
         continue;
 
-      track_info->ref_counts -= 1;
-      if (track_info->ref_counts > 0)
+      track_info->ref_count -= 1;
+      if (track_info->ref_count > 0)
         g_hash_table_iter_steal (&iter);
       else
         g_hash_table_iter_remove (&iter);
@@ -931,8 +972,8 @@ hyscan_db_file_remove_project (HyScanDB    *db,
       if (!hyscan_db_check_project_by_object_name (key, value, &object_info))
         continue;
 
-      project_info->ref_counts -= 1;
-      if (project_info->ref_counts > 0)
+      project_info->ref_count -= 1;
+      if (project_info->ref_count > 0)
         g_hash_table_iter_steal (&iter);
       else
         g_hash_table_iter_remove (&iter);
@@ -949,6 +990,7 @@ hyscan_db_file_remove_project (HyScanDB    *db,
 
   /* Удаляем каталог с проектом. */
   status = hyscan_db_file_remove_directory (project_path);
+  dbf->mod_count += 1;
 
 exit:
   g_mutex_unlock (&dbf->projects_lock);
@@ -975,8 +1017,8 @@ hyscan_db_file_close_project (HyScanDB *db,
     goto exit;
 
   /* Уменьшили счётчик ссылок, если счётчик станет равным нулю - удаляем объект. */
-  project_info->ref_counts -= 1;
-  if (project_info->ref_counts > 0)
+  project_info->ref_count -= 1;
+  if (project_info->ref_count > 0)
     g_hash_table_steal (dbf->projects, GINT_TO_POINTER (project_id));
   else
     g_hash_table_remove (dbf->projects, GINT_TO_POINTER (project_id));
@@ -1120,7 +1162,7 @@ hyscan_db_file_open_track (HyScanDB    *db,
   if (track_info != NULL)
     {
       id = nid;
-      track_info->ref_counts += 1;
+      track_info->ref_count += 1;
     }
 
   /* Открываем галс для работы. */
@@ -1135,7 +1177,7 @@ hyscan_db_file_open_track (HyScanDB    *db,
         }
 
       track_info = g_malloc (sizeof (HyScanDBFileTrackInfo));
-      track_info->ref_counts = 1;
+      track_info->ref_count = 1;
       track_info->project_name = g_strdup (project_info->project_name);
       track_info->track_name = g_strdup (track_name);
       track_info->path = track_path;
@@ -1182,8 +1224,8 @@ hyscan_db_file_create_track (HyScanDB    *db,
 
   track_param = g_key_file_new ();
   track_path = g_strdup_printf ("%s%s%s", project_info->path, G_DIR_SEPARATOR_S, track_name);
-  track_param_file =
-    g_strdup_printf ("%s%s%s%strack.ini", project_info->path, G_DIR_SEPARATOR_S, track_name, G_DIR_SEPARATOR_S);
+  track_param_file = g_strdup_printf ("%s%s%s%strack.ini", project_info->path,
+                                      G_DIR_SEPARATOR_S, track_name, G_DIR_SEPARATOR_S);
 
   /* Проверяем, что каталога с названием проекта нет. */
   if (g_file_test (track_path, G_FILE_TEST_IS_DIR))
@@ -1212,6 +1254,7 @@ hyscan_db_file_create_track (HyScanDB    *db,
       goto exit;
     }
 
+  project_info->mod_count += 1;
   status = TRUE;
 
 exit:
@@ -1268,8 +1311,8 @@ hyscan_db_file_remove_track (HyScanDB    *db,
       if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
         continue;
 
-      param_info->ref_counts -= 1;
-      if (param_info->ref_counts > 0)
+      param_info->ref_count -= 1;
+      if (param_info->ref_count > 0)
         g_hash_table_iter_steal (&iter);
       else
         g_hash_table_iter_remove (&iter);
@@ -1284,8 +1327,8 @@ hyscan_db_file_remove_track (HyScanDB    *db,
       if (!hyscan_db_check_channel_by_object_name (key, value, &object_info))
         continue;
 
-      channel_info->ref_counts -= 1;
-      if (channel_info->ref_counts > 0)
+      channel_info->ref_count -= 1;
+      if (channel_info->ref_count > 0)
         g_hash_table_iter_steal (&iter);
       else
         g_hash_table_iter_remove (&iter);
@@ -1300,8 +1343,8 @@ hyscan_db_file_remove_track (HyScanDB    *db,
       if (!hyscan_db_check_track_by_object_name (key, value, &object_info))
         continue;
 
-      track_info->ref_counts -= 1;
-      if (track_info->ref_counts > 0)
+      track_info->ref_count -= 1;
+      if (track_info->ref_count > 0)
         g_hash_table_iter_steal (&iter);
       else
         g_hash_table_iter_remove (&iter);
@@ -1318,6 +1361,7 @@ hyscan_db_file_remove_track (HyScanDB    *db,
 
   /* Удаляем каталог с галсом. */
   status = hyscan_db_file_remove_directory (track_path);
+  project_info->mod_count += 1;
 
 exit:
   g_mutex_unlock (&dbf->tracks_lock);
@@ -1345,8 +1389,8 @@ hyscan_db_file_close_track (HyScanDB *db,
     goto exit;
 
   /* Уменьшили счётчик ссылок, если счётчик станет равным нулю - удаляем объект. */
-  track_info->ref_counts -= 1;
-  if (track_info->ref_counts > 0)
+  track_info->ref_count -= 1;
+  if (track_info->ref_count > 0)
     g_hash_table_steal (dbf->tracks, GINT_TO_POINTER (track_id));
   else
     g_hash_table_remove (dbf->tracks, GINT_TO_POINTER (track_id));
@@ -1502,7 +1546,7 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
     {
       if (readonly)
         {
-          channel_info->ref_counts += 1;
+          channel_info->ref_count += 1;
           id = nid;
         }
       else
@@ -1531,7 +1575,8 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
         }
 
       channel_info = g_malloc (sizeof (HyScanDBFileChannelInfo));
-      channel_info->ref_counts = 1;
+      channel_info->ref_count = 1;
+      channel_info->mod_count = 1;
       channel_info->project_name = g_strdup (track_info->project_name);
       channel_info->track_name = g_strdup (track_info->track_name);
       channel_info->channel_name = g_strdup (channel_name);
@@ -1540,9 +1585,14 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
                                                           channel_info->channel_name,
                                                           readonly);
       if (readonly)
-        channel_info->wid = -1;
+        {
+          channel_info->wid = -1;
+        }
       else
-        channel_info->wid = nid;
+        {
+          channel_info->wid = nid;
+          track_info->mod_count += 1;
+        }
       id = nid;
     }
 
@@ -1611,8 +1661,8 @@ hyscan_db_file_remove_channel (HyScanDB    *db,
       if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
         continue;
 
-      param_info->ref_counts -= 1;
-      if (param_info->ref_counts > 0)
+      param_info->ref_count -= 1;
+      if (param_info->ref_count > 0)
         g_hash_table_iter_steal (&iter);
       else
         g_hash_table_iter_remove (&iter);
@@ -1627,8 +1677,8 @@ hyscan_db_file_remove_channel (HyScanDB    *db,
       if (!hyscan_db_check_channel_by_object_name (key, value, &object_info))
         continue;
 
-      channel_info->ref_counts -= 1;
-      if (channel_info->ref_counts > 0)
+      channel_info->ref_count -= 1;
+      if (channel_info->ref_count > 0)
         g_hash_table_iter_steal (&iter);
       else
         g_hash_table_iter_remove (&iter);
@@ -1636,6 +1686,7 @@ hyscan_db_file_remove_channel (HyScanDB    *db,
 
   /* Удаляем файлы канала данных. */
   status = hyscan_db_file_remove_channel_files (track_info->path, channel_name);
+  track_info->mod_count += 1;
 
 exit:
   g_mutex_unlock (&dbf->channels_lock);
@@ -1665,8 +1716,8 @@ hyscan_db_file_close_channel (HyScanDB *db,
     channel_info->wid = -1;
 
   /* Уменьшили счётчик ссылок, если счётчик станет равным нулю - удаляем объект. */
-  channel_info->ref_counts -= 1;
-  if (channel_info->ref_counts > 0)
+  channel_info->ref_count -= 1;
+  if (channel_info->ref_count > 0)
     g_hash_table_steal (dbf->channels, GINT_TO_POINTER (channel_id));
   else
     g_hash_table_remove (dbf->channels, GINT_TO_POINTER (channel_id));
@@ -1716,7 +1767,9 @@ hyscan_db_file_open_channel_param (HyScanDB *db,
   /* Параметры уже открыты. */
   if (param_info != NULL)
     {
-      param_info->ref_counts += 1;
+      if (channel_info->wid == channel_id && param_info->wid == -1)
+        param_info->wid = nid;
+      param_info->ref_count += 1;
       id = nid;
     }
 
@@ -1724,7 +1777,8 @@ hyscan_db_file_open_channel_param (HyScanDB *db,
   else
     {
       param_info = g_malloc (sizeof (HyScanDBFileParamInfo));
-      param_info->ref_counts = 1;
+      param_info->ref_count = 1;
+      param_info->mod_count = 1;
       param_info->project_name = g_strdup (channel_info->project_name);
       param_info->track_name = g_strdup (channel_info->track_name);
       param_info->group_name = g_strdup (channel_info->channel_name);
@@ -1880,7 +1934,11 @@ hyscan_db_file_add_channel_data (HyScanDB *db,
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (dbf->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL && channel_info->wid == channel_id)
-    status = hyscan_db_channel_file_add_channel_data (channel_info->channel, time, data, size, index);
+    {
+      status = hyscan_db_channel_file_add_channel_data (channel_info->channel, time, data, size, index);
+      if (status)
+        channel_info->mod_count += 1;
+    }
 
   g_mutex_unlock (&dbf->channels_lock);
 
@@ -2015,7 +2073,7 @@ hyscan_db_file_open_project_param (HyScanDB    *db,
   /* Параметры уже открыты. */
   if (param_info != NULL)
     {
-      param_info->ref_counts += 1;
+      param_info->ref_count += 1;
       id = nid;
     }
 
@@ -2023,13 +2081,15 @@ hyscan_db_file_open_project_param (HyScanDB    *db,
   else
     {
       param_info = g_malloc (sizeof (HyScanDBFileParamInfo));
-      param_info->ref_counts = 1;
+      param_info->ref_count = 1;
+      param_info->mod_count = 1;
       param_info->project_name = g_strdup (project_info->project_name);
       param_info->track_name = g_strdup ("");
       param_info->group_name = g_strdup (group_name);
       param_info->path = g_strdup (project_info->path);
       param_info->wid = 0;
       param_info->param = hyscan_db_param_file_new (param_info->path, param_info->group_name );
+      project_info->mod_count += 1;
       id = nid;
     }
 
@@ -2085,8 +2145,8 @@ hyscan_db_file_remove_project_param (HyScanDB    *db,
       if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
         continue;
 
-      param_info->ref_counts -= 1;
-      if (param_info->ref_counts > 0)
+      param_info->ref_count -= 1;
+      if (param_info->ref_count > 0)
         g_hash_table_iter_steal (&iter);
       else
         g_hash_table_iter_remove (&iter);
@@ -2103,6 +2163,8 @@ hyscan_db_file_remove_project_param (HyScanDB    *db,
         g_critical ("hyscan_db_file_remove_project_param: can't remove file: %s", param_path);
         status = FALSE;
       }
+
+  project_info->mod_count += 1;
 
   g_free (param_path);
 
@@ -2187,7 +2249,7 @@ hyscan_db_file_open_track_param (HyScanDB    *db,
   /* Параметры уже открыты. */
   if (param_info != NULL)
     {
-      param_info->ref_counts += 1;
+      param_info->ref_count += 1;
       id = nid;
     }
 
@@ -2195,13 +2257,15 @@ hyscan_db_file_open_track_param (HyScanDB    *db,
   else
     {
       param_info = g_malloc (sizeof (HyScanDBFileParamInfo));
-      param_info->ref_counts = 1;
+      param_info->ref_count = 1;
+      param_info->mod_count = 1;
       param_info->project_name = g_strdup (track_info->project_name);
       param_info->track_name = g_strdup (track_info->track_name);
       param_info->group_name = g_strdup (group_name);
       param_info->path = g_strdup (track_info->path);
       param_info->wid = 0;
       param_info->param = hyscan_db_param_file_new (param_info->path, param_info->group_name );
+      track_info->mod_count += 1;
       id = nid;
     }
 
@@ -2257,8 +2321,8 @@ hyscan_db_file_remove_track_param (HyScanDB    *db,
       if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
         continue;
 
-      param_info->ref_counts -= 1;
-      if (param_info->ref_counts > 0)
+      param_info->ref_count -= 1;
+      if (param_info->ref_count > 0)
         g_hash_table_iter_steal (&iter);
       else
         g_hash_table_iter_remove (&iter);
@@ -2275,6 +2339,8 @@ hyscan_db_file_remove_track_param (HyScanDB    *db,
         g_critical ("hyscan_db_file_remove_track_param: can't remove file: %s", param_path);
         status = FALSE;
       }
+
+  track_info->mod_count += 1;
 
   g_free (param_path);
 
@@ -2354,6 +2420,7 @@ hyscan_db_file_copy_param (HyScanDB    *db,
           gchar *value = hyscan_db_param_file_get_string (src_param_info->param,
                                                           src_list[i]);
           hyscan_db_param_file_set_string (dst_param_info->param, src_list[i], value);
+          dst_param_info->mod_count += 1;
           g_free (value);
         }
 
@@ -2381,18 +2448,22 @@ hyscan_db_file_remove_param (HyScanDB    *db,
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
 
   HyScanDBFileParamInfo *param_info;
-  gboolean value = FALSE;
+  gboolean status = FALSE;
 
   g_mutex_lock (&dbf->params_lock);
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (dbf->params, GINT_TO_POINTER (param_id));
   if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
-    value = hyscan_db_param_file_remove_param (param_info->param, mask);
+    {
+      status = hyscan_db_param_file_remove_param (param_info->param, mask);
+      if (status)
+        param_info->mod_count += 1;
+    }
 
   g_mutex_unlock (&dbf->params_lock);
 
-  return value;
+  return status;
 }
 
 /* Функция закрывает группу параметров. */
@@ -2416,8 +2487,8 @@ hyscan_db_file_close_param (HyScanDB *db,
     param_info->wid = -1;
 
   /* Уменьшили счётчик ссылок, если счётчик станет равным нулю - удаляем объект. */
-  param_info->ref_counts -= 1;
-  if (param_info->ref_counts > 0)
+  param_info->ref_count -= 1;
+  if (param_info->ref_count > 0)
     g_hash_table_steal (dbf->params, GINT_TO_POINTER (param_id));
   else
     g_hash_table_remove (dbf->params, GINT_TO_POINTER (param_id));
@@ -2465,7 +2536,10 @@ hyscan_db_file_inc_integer_param (HyScanDB    *db,
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (dbf->params, GINT_TO_POINTER (param_id));
   if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
-    value = hyscan_db_param_file_inc_integer (param_info->param, name);
+    {
+      value = hyscan_db_param_file_inc_integer (param_info->param, name);
+      param_info->mod_count += 1;
+    }
 
   g_mutex_unlock (&dbf->params_lock);
 
@@ -2489,7 +2563,11 @@ hyscan_db_file_set_integer_param (HyScanDB    *db,
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (dbf->params, GINT_TO_POINTER (param_id));
   if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
-    status = hyscan_db_param_file_set_integer (param_info->param, name, value);
+    {
+      status = hyscan_db_param_file_set_integer (param_info->param, name, value);
+      if (status)
+        param_info->mod_count += 1;
+    }
 
   g_mutex_unlock (&dbf->params_lock);
 
@@ -2513,7 +2591,11 @@ hyscan_db_file_set_double_param (HyScanDB    *db,
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (dbf->params, GINT_TO_POINTER (param_id));
   if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
-    status = hyscan_db_param_file_set_double (param_info->param, name, value);
+    {
+      status = hyscan_db_param_file_set_double (param_info->param, name, value);
+      if (status)
+        param_info->mod_count += 1;
+    }
 
   g_mutex_unlock (&dbf->params_lock);
 
@@ -2537,7 +2619,11 @@ hyscan_db_file_set_boolean_param (HyScanDB    *db,
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (dbf->params, GINT_TO_POINTER (param_id));
   if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
-    status = hyscan_db_param_file_set_boolean (param_info->param, name, value);
+    {
+      status = hyscan_db_param_file_set_boolean (param_info->param, name, value);
+      if (status)
+        param_info->mod_count += 1;
+    }
 
   g_mutex_unlock (&dbf->params_lock);
 
@@ -2561,7 +2647,11 @@ hyscan_db_file_set_string_param (HyScanDB    *db,
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (dbf->params, GINT_TO_POINTER (param_id));
   if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
-    status = hyscan_db_param_file_set_string (param_info->param, name, value);
+    {
+      status = hyscan_db_param_file_set_string (param_info->param, name, value);
+      if (status)
+        param_info->mod_count += 1;
+    }
 
   g_mutex_unlock (&dbf->params_lock);
 
@@ -2665,6 +2755,7 @@ hyscan_db_file_interface_init (HyScanDBInterface *iface)
 {
   iface->get_project_type_list = NULL;
   iface->get_uri = hyscan_db_file_get_uri;
+  iface->get_mod_count = hyscan_db_file_get_mod_count;
   iface->get_project_list = hyscan_db_file_get_project_list;
   iface->open_project = hyscan_db_file_open_project;
   iface->create_project = hyscan_db_file_create_project;
