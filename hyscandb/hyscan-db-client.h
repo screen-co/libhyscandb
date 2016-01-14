@@ -61,4 +61,4 @@ HyScanDBClient        *hyscan_db_client_new            (const gchar           *u
 
 G_END_DECLS
 
-#endif /* __HYSCAN_DB_H__ */
+#endif /* __HYSCAN_DB_CLIENT_H__ */

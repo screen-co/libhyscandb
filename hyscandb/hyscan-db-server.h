@@ -102,4 +102,4 @@ gboolean               hyscan_db_server_start          (HyScanDBServer        *s
 
 G_END_DECLS
 
-#endif /* __HYSCAN__H__ */
+#endif /* __HYSCAN_DB_SERVER_H__ */
