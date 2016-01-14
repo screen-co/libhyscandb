@@ -339,6 +339,8 @@ main (int argc, char **argv)
   gchar       *sample1 = "THIS IS SAMPLE DATA";
   gchar       *buffer = NULL;
 
+  guint32      mod_count;
+
   gint i, j, k, l, m, n;
 
   /* Разбор командной строки. */
@@ -476,9 +478,15 @@ main (int argc, char **argv)
 
   /* Создаём проекты. */
   g_message ("creating projects");
+  mod_count = hyscan_db_get_mod_count (db, 0);
   for (i = 0; i < n_projects; i++)
+    {
     if ((project_id[i] = hyscan_db_create_project (db, projects[i], NULL)) < 0)
       g_error ("can't create '%s'", projects[i]);
+    if (mod_count == hyscan_db_get_mod_count (db, 0))
+      g_error ("modification counter fail on create '%s'", projects[i]);
+    mod_count = hyscan_db_get_mod_count (db, 0);
+    }
 
   /* Проверяем названия созданных проектов. */
   g_message ("checking projects names");
@@ -515,15 +523,23 @@ main (int argc, char **argv)
   /* Создаём группы параметров в каждом проекте. */
   g_message ("creating project parameters");
   for (i = 0; i < n_projects; i++)
-    for (j = 0; j < n_gparams; j++)
-      if ((project_param_id[i][j] = hyscan_db_open_project_param (db, project_id[i], gparams[j])) < 0)
-        g_error ("can't create '%s.%s'", projects[i], gparams[j]);
+    {
+      mod_count = hyscan_db_get_mod_count (db, project_id[i]);
+      for (j = 0; j < n_gparams; j++)
+        {
+          if ((project_param_id[i][j] = hyscan_db_open_project_param (db, project_id[i], gparams[j])) < 0)
+            g_error ("can't create '%s.%s'", projects[i], gparams[j]);
+          if (mod_count == hyscan_db_get_mod_count (db, project_id[i]))
+            g_error ("modification counter fail on create '%s.%s'", projects[i], gparams[j]);
+          mod_count = hyscan_db_get_mod_count (db, project_id[i]);
+        }
+    }
 
   /* Проверяем названия созданных групп параметров. */
   g_message ("checking project parameters groups names");
   for (i = 0; i < n_projects; i++)
     {
-      gchar *error_prefix = g_strdup_printf ("check_project_param_list( '%s' )", projects[i]);
+      gchar *error_prefix = g_strdup_printf ("check_project_param_list ('%s')", projects[i]);
       check_project_param_list (db, error_prefix, gparams, project_id[i]);
       g_free (error_prefix);
     }
@@ -548,8 +564,11 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("set_parameters( '%s.%s' )", projects[i], gparams[j]);
+        gchar *error_prefix = g_strdup_printf ("set_parameters ('%s.%s')", projects[i], gparams[j]);
+        mod_count = hyscan_db_get_mod_count (db, project_param_id[i][j]);
         set_parameters (db, error_prefix, j + 1, project_param_id[i][j]);
+        if (mod_count == hyscan_db_get_mod_count (db, project_param_id[i][j]))
+          g_error ("modification counter fail on set_parameters ('%s.%s')", projects[i], gparams[j]);
         g_free (error_prefix);
       }
 
@@ -558,7 +577,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_parameters( '%s.%s' )", projects[i], gparams[j]);
+        gchar *error_prefix = g_strdup_printf ("check_parameters ('%s.%s')", projects[i], gparams[j]);
         check_parameters (db, error_prefix, j + 1, project_param_id[i][j]);
         g_free (error_prefix);
       }
@@ -568,7 +587,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_param_list( '%s.%s' )", projects[i], gparams[j]);
+        gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s')", projects[i], gparams[j]);
         check_param_list (db, error_prefix, params, project_param_id[i][j]);
         g_free (error_prefix);
       }
@@ -578,9 +597,15 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
-        gchar *error_prefix =
-          g_strdup_printf ("add_temporary_parameters( '%s.%s' )", projects[i], gparams[j]);
+        gchar *error_prefix = g_strdup_printf ("add_temporary_parameters ('%s.%s')",
+                                               projects[i], gparams[j]);
+        mod_count = hyscan_db_get_mod_count (db, project_param_id[i][j]);
         add_temporary_parameters (db, error_prefix, j + 1, project_id[i], project_param_id[i][j]);
+        if (mod_count == hyscan_db_get_mod_count (db, project_param_id[i][j]))
+          {
+            g_error ("modification counter fail on add_temporary_parameters ('%s.%s')",
+                     projects[i], gparams[j]);
+          }
         g_free (error_prefix);
       }
 
@@ -589,8 +614,8 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
-        gchar *error_prefix =
-          g_strdup_printf ("check_temporary_parameters( '%s.%s' )", projects[i], gparams[j]);
+        gchar *error_prefix = g_strdup_printf ("check_temporary_parameters ('%s.%s')",
+                                               projects[i], gparams[j]);
         check_temporary_parameters (db, error_prefix, j + 1, project_param_id[i][j]);
         g_free (error_prefix);
       }
@@ -600,7 +625,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_param_list( '%s.%s' )", projects[i], gparams[j]);
+        gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s')", projects[i], gparams[j]);
         check_param_list (db, error_prefix, params_ex, project_param_id[i][j]);
         g_free (error_prefix);
       }
@@ -609,15 +634,20 @@ main (int argc, char **argv)
   g_message ("removing temporary project parameters");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
-      if (!hyscan_db_remove_param (db, project_param_id[i][j], "test*.param*"))
-        g_error ("can't remove '%s.%s' test parameters", projects[i], gparams[j]);
+      {
+        mod_count = hyscan_db_get_mod_count (db, project_param_id[i][j]);
+        if (!hyscan_db_remove_param (db, project_param_id[i][j], "test*.param*"))
+          g_error ("can't remove '%s.%s' test parameters", projects[i], gparams[j]);
+        if (mod_count == hyscan_db_get_mod_count (db, project_param_id[i][j]))
+          g_error ("modification counter fail on remove '%s.%s' test parameters", projects[i], gparams[j]);
+      }
 
   /* Проверяем список параметров проектов. */
   g_message ("checking project parameters names");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_param_list( '%s.%s' )", projects[i], gparams[j]);
+        gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s')", projects[i], gparams[j]);
         check_param_list (db, error_prefix, params, project_param_id[i][j]);
         g_free (error_prefix);
       }
@@ -635,15 +665,23 @@ main (int argc, char **argv)
   /* Создаём галсы в каждом проекте. */
   g_message ("creating tracks");
   for (i = 0; i < n_projects; i++)
-    for (j = 0; j < n_tracks; j++)
-      if ((track_id[i][j] = hyscan_db_create_track (db, project_id[i], tracks[j])) < 0)
-        g_error ("can't create '%s.%s'", projects[i], tracks[j]);
+    {
+      mod_count = hyscan_db_get_mod_count (db, project_id[i]);
+      for (j = 0; j < n_tracks; j++)
+        {
+        if ((track_id[i][j] = hyscan_db_create_track (db, project_id[i], tracks[j])) < 0)
+          g_error ("can't create '%s.%s'", projects[i], tracks[j]);
+        if (mod_count == hyscan_db_get_mod_count (db, project_id[i]))
+          g_error ("modification counter fail on create '%s.%s'", projects[i], tracks[j]);
+        mod_count = hyscan_db_get_mod_count (db, project_id[i]);
+        }
+    }
 
   /* Проверяем названия созданных галсов. */
   g_message ("checking tracks names");
   for (i = 0; i < n_projects; i++)
     {
-      gchar *error_prefix = g_strdup_printf ("check_track_list( '%s' )", projects[i]);
+      gchar *error_prefix = g_strdup_printf ("check_track_list ('%s')", projects[i]);
       check_track_list (db, error_prefix, tracks, project_id[i]);
       g_free (error_prefix);
     }
@@ -683,15 +721,20 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
-        if ((track_param_id[i][j][k] = hyscan_db_open_track_param (db, track_id[i][j], gparams[k])) < 0)
-          g_error ("can't create '%s.%s.%s'", projects[i], tracks[j], gparams[k]);
+        {
+          mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
+          if ((track_param_id[i][j][k] = hyscan_db_open_track_param (db, track_id[i][j], gparams[k])) < 0)
+            g_error ("can't create '%s.%s.%s'", projects[i], tracks[j], gparams[k]);
+          if (mod_count == hyscan_db_get_mod_count (db, track_id[i][j]))
+            g_error ("modification counter fail on create '%s.%s.%s'", projects[i], tracks[j], gparams[k]);
+        }
 
   /* Проверяем названия созданных групп параметров. */
   g_message ("checking track parameters groups names");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_track_param_list( '%s.%s' )", projects[i], tracks[j]);
+        gchar *error_prefix = g_strdup_printf ("check_track_param_list ('%s.%s')", projects[i], tracks[j]);
         check_track_param_list (db, error_prefix, gparams, track_id[i][j]);
         g_free (error_prefix);
       }
@@ -719,9 +762,15 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("set_parameters( '%s.%s.%s' )", projects[i], tracks[j], gparams[k]);
+          gchar *error_prefix = g_strdup_printf ("set_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], gparams[k]);
+          mod_count = hyscan_db_get_mod_count (db, track_param_id[i][j][k]);
           set_parameters (db, error_prefix, k + 1, track_param_id[i][j][k]);
+          if (mod_count == hyscan_db_get_mod_count (db, track_param_id[i][j][k]))
+            {
+              g_error ("modification counter fail on set_parameters ('%s.%s.%s')",
+                       projects[i], tracks[j], gparams[k]);
+            }
           g_free (error_prefix);
         }
 
@@ -731,8 +780,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_parameters( '%s.%s.%s' )", projects[i], tracks[j], gparams[k]);
+          gchar *error_prefix = g_strdup_printf ("check_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], gparams[k]);
           check_parameters (db, error_prefix, k + 1, track_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -743,8 +792,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_param_list( '%s.%s.%s' )", projects[i], tracks[j], gparams[k]);
+          gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s.%s')",
+                                                 projects[i], tracks[j], gparams[k]);
           check_param_list (db, error_prefix, params, track_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -755,9 +804,15 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("add_temporary_parameters( '%s.%s.%s' )", projects[i], tracks[j], gparams[k]);
+          gchar *error_prefix = g_strdup_printf ("add_temporary_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], gparams[k]);
+          mod_count = hyscan_db_get_mod_count (db, track_param_id[i][j][k]);
           add_temporary_parameters (db, error_prefix, k + 1, project_id[i], track_param_id[i][j][k]);
+          if (mod_count == hyscan_db_get_mod_count (db, track_param_id[i][j][k]))
+            {
+              g_error ("modification counter fail on add_temporary_parameters ('%s.%s.%s')",
+                       projects[i], tracks[j], gparams[k]);
+            }
           g_free (error_prefix);
         }
 
@@ -767,8 +822,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_temporary_parameters( '%s.%s.%s' )", projects[i], tracks[j], gparams[k]);
+          gchar *error_prefix = g_strdup_printf ("check_temporary_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], gparams[k]);
           check_temporary_parameters (db, error_prefix, k + 1, track_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -779,8 +834,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_param_list( '%s.%s.%s' )", projects[i], tracks[j], gparams[k]);
+          gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s.%s')",
+                                                 projects[i], tracks[j], gparams[k]);
           check_param_list (db, error_prefix, params_ex, track_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -790,8 +845,16 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
-        if (!hyscan_db_remove_param (db, track_param_id[i][j][k], "test*.param*"))
-          g_error ("can't remove '%s.%s.%s' test parameters", projects[i], tracks[j], gparams[k]);
+        {
+          mod_count = hyscan_db_get_mod_count (db, track_param_id[i][j][k]);
+          if (!hyscan_db_remove_param (db, track_param_id[i][j][k], "test*.param*"))
+            g_error ("can't remove '%s.%s.%s' test parameters", projects[i], tracks[j], gparams[k]);
+          if (mod_count == hyscan_db_get_mod_count (db, track_param_id[i][j][k]))
+            {
+              g_error ("modification counter fail on remove '%s.%s.%s' test parameters",
+                       projects[i], tracks[j], gparams[k]);
+            }
+        }
 
   /* Проверяем список параметров галса. */
   g_message ("checking track parameters names");
@@ -799,8 +862,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_param_list( '%s.%s.%s' )", projects[i], tracks[j], gparams[k]);
+          gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s.%s')",
+                                                 projects[i], tracks[j], gparams[k]);
           check_param_list (db, error_prefix, params, track_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -820,20 +883,35 @@ main (int argc, char **argv)
   g_message ("creating channels");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      for (k = 0; k < n_channels; k++)
-        {
-          if ((channel_id[i][j][k] = hyscan_db_create_channel (db, track_id[i][j], channels[k])) < 0)
-            g_error ("can't create '%s.%s.%s'", projects[i], tracks[j], channels[k]);
-          if (!hyscan_db_add_channel_data (db, channel_id[i][j][k], 0, sample1, sample_size, NULL))
-            g_error ("can't add data to '%s.%s.%s'", projects[i], tracks[j], channels[k]);
-        }
+      {
+        mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
+        for (k = 0; k < n_channels; k++)
+          {
+            if ((channel_id[i][j][k] = hyscan_db_create_channel (db, track_id[i][j], channels[k])) < 0)
+              g_error ("can't create '%s.%s.%s'", projects[i], tracks[j], channels[k]);
+            if (mod_count == hyscan_db_get_mod_count (db, track_id[i][j]))
+              {
+                g_error ("modification counter fail on create '%s.%s.%s'",
+                         projects[i], tracks[j], channels[k]);
+              }
+            mod_count = hyscan_db_get_mod_count (db, channel_id[i][j][k]);
+            if (!hyscan_db_add_channel_data (db, channel_id[i][j][k], 0, sample1, sample_size, NULL))
+              g_error ("can't add data to '%s.%s.%s'", projects[i], tracks[j], channels[k]);
+            if (mod_count == hyscan_db_get_mod_count (db, channel_id[i][j][k]))
+              {
+              g_error ("modification counter fail on add data to '%s.%s.%s'",
+                       projects[i], tracks[j], channels[k]);
+              }
+            mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
+          }
+      }
 
   /* Проверяем названия созданных каналов данных. */
   g_message ("checking channels names");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_channel_list( '%s.%s' )", projects[i], tracks[j]);
+        gchar *error_prefix = g_strdup_printf ("check_channel_list ('%s.%s')", projects[i], tracks[j]);
         check_channel_list (db, error_prefix, channels, track_id[i][j]);
         g_free (error_prefix);
       }
@@ -915,9 +993,15 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("set_parameters( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("set_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
+          mod_count = hyscan_db_get_mod_count (db, channel_param_id[i][j][k]);
           set_parameters (db, error_prefix, k + 1, channel_param_id[i][j][k]);
+          if (mod_count == hyscan_db_get_mod_count (db, channel_param_id[i][j][k]))
+            {
+              g_error ("modification counter fail on set_parameters ('%s.%s.%s')",
+                       projects[i], tracks[j], channels[k]);
+            }
           g_free (error_prefix);
         }
 
@@ -927,8 +1011,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_parameters( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("check_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
           check_parameters (db, error_prefix, k + 1, channel_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -939,9 +1023,15 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("set_parameters( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("set_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
+          mod_count = hyscan_db_get_mod_count (db, channel_param_id[i][j][k]);
           set_parameters (db, error_prefix, 2 * (k + 1), channel_param_id[i][j][k]);
+          if (mod_count == hyscan_db_get_mod_count (db, channel_param_id[i][j][k]))
+            {
+              g_error ("modification counter fail on set_parameters ('%s.%s.%s')",
+                       projects[i], tracks[j], channels[k]);
+            }
           g_free (error_prefix);
         }
 
@@ -951,8 +1041,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_parameters( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("check_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
           check_parameters (db, error_prefix, 2 * (k + 1), channel_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -963,8 +1053,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_param_list( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
           check_param_list (db, error_prefix, params, channel_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -975,9 +1065,15 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("add_temporary_parameters( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("add_temporary_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
+          mod_count = hyscan_db_get_mod_count (db, channel_param_id[i][j][k]);
           add_temporary_parameters (db, error_prefix, k + 1, project_id[i], channel_param_id[i][j][k]);
+          if (mod_count == hyscan_db_get_mod_count (db, channel_param_id[i][j][k]))
+            {
+              g_error ("modification counter fail on add_temporary_parameters ('%s.%s.%s')",
+                       projects[i], tracks[j], channels[k]);
+            }
           g_free (error_prefix);
         }
 
@@ -987,8 +1083,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_temporary_parameters( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("check_temporary_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
           check_temporary_parameters (db, error_prefix, k + 1, channel_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -999,8 +1095,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_param_list( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
           check_param_list (db, error_prefix, params_ex, channel_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -1010,8 +1106,16 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
-        if (!hyscan_db_remove_param (db, channel_param_id[i][j][k], "test*.param*"))
-          g_error ("can't remove '%s.%s.%s' test parameters", params[i], tracks[j], channels[k]);
+        {
+          mod_count = hyscan_db_get_mod_count (db, channel_param_id[i][j][k]);
+          if (!hyscan_db_remove_param (db, channel_param_id[i][j][k], "test*.param*"))
+            g_error ("can't remove '%s.%s.%s' test parameters", params[i], tracks[j], channels[k]);
+          if (mod_count == hyscan_db_get_mod_count (db, channel_param_id[i][j][k]))
+            {
+              g_error ("modification counter fail on remove '%s.%s.%s' test parameters",
+                       projects[i], tracks[j], channels[k]);
+            }
+        }
 
   /* Проверяем список параметров канала данных. */
   g_message ("checking channel parameters names");
@@ -1019,8 +1123,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_param_list( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
           check_param_list (db, error_prefix, params, channel_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -1081,7 +1185,7 @@ main (int argc, char **argv)
   g_message ("checking project parameters groups names");
   for (i = 0; i < n_projects; i++)
     {
-      gchar *error_prefix = g_strdup_printf ("check_project_param_list( '%s' )", projects[i]);
+      gchar *error_prefix = g_strdup_printf ("check_project_param_list ('%s')", projects[i]);
       check_project_param_list (db, error_prefix, gparams, project_id[i]);
       g_free (error_prefix);
     }
@@ -1098,7 +1202,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_param_list( '%s.%s' )", projects[i], gparams[j]);
+        gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s')", projects[i], gparams[j]);
         check_param_list (db, error_prefix, params, project_param_id[i][j]);
         g_free (error_prefix);
       }
@@ -1108,7 +1212,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_parameters( '%s.%s' )", projects[i], gparams[j]);
+        gchar *error_prefix = g_strdup_printf ("check_parameters ('%s.%s')", projects[i], gparams[j]);
         check_parameters (db, error_prefix, j + 1, project_param_id[i][j]);
         g_free (error_prefix);
       }
@@ -1118,8 +1222,11 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("set_parameters( '%s.%s' )", projects[i], gparams[j]);
+        gchar *error_prefix = g_strdup_printf ("set_parameters ('%s.%s')", projects[i], gparams[j]);
+        mod_count = hyscan_db_get_mod_count (db, project_param_id[i][j]);
         set_parameters (db, error_prefix, 2 * (j + 1), project_param_id[i][j]);
+        if (mod_count == hyscan_db_get_mod_count (db, project_param_id[i][j]))
+          g_error ("modification counter fail on set_parameters ('%s.%s')", projects[i], gparams[j]);
         g_free (error_prefix);
       }
 
@@ -1128,7 +1235,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_parameters( '%s.%s' )", projects[i], gparams[j]);
+        gchar *error_prefix = g_strdup_printf ("check_parameters ('%s.%s')", projects[i], gparams[j]);
         check_parameters (db, error_prefix, 2 * (j + 1), project_param_id[i][j]);
         g_free (error_prefix);
       }
@@ -1141,7 +1248,7 @@ main (int argc, char **argv)
   g_message ("checking tracks names");
   for (i = 0; i < n_projects; i++)
     {
-      gchar *error_prefix = g_strdup_printf ("check_track_list( '%s' )", projects[i]);
+      gchar *error_prefix = g_strdup_printf ("check_track_list ('%s')", projects[i]);
       check_track_list (db, error_prefix, tracks, project_id[i]);
       g_free (error_prefix);
     }
@@ -1158,7 +1265,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_track_param_list( '%s.%s' )", projects[i], tracks[j]);
+        gchar *error_prefix = g_strdup_printf ("check_track_param_list ('%s.%s')", projects[i], tracks[j]);
         check_track_param_list (db, error_prefix, gparams, track_id[i][j]);
         g_free (error_prefix);
       }
@@ -1177,8 +1284,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_param_list( '%s.%s.%s' )", projects[i], tracks[j], gparams[k]);
+          gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s.%s')",
+                                                 projects[i], tracks[j], gparams[k]);
           check_param_list (db, error_prefix, params, track_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -1189,8 +1296,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_parameters( '%s.%s.%s' )", projects[i], tracks[j], gparams[k]);
+          gchar *error_prefix = g_strdup_printf ("check_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], gparams[k]);
           check_parameters (db, error_prefix, k + 1, track_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -1201,9 +1308,13 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("set_parameters( '%s.%s.%s' )", projects[i], tracks[j], gparams[k]);
+          gchar *error_prefix = g_strdup_printf ("set_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], gparams[k]);
+          mod_count = hyscan_db_get_mod_count (db, track_param_id[i][j][k]);
           set_parameters (db, error_prefix, 2 * (k + 1), track_param_id[i][j][k]);
+          if (mod_count == hyscan_db_get_mod_count (db, track_param_id[i][j][k]))
+            g_error ("modification counter fail on set_parameters ('%s.%s.%s')",
+                     projects[i], tracks[j], gparams[k]);
           g_free (error_prefix);
         }
 
@@ -1213,8 +1324,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_gparams; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_parameters( '%s.%s.%s' )", projects[i], tracks[j], gparams[k]);
+          gchar *error_prefix = g_strdup_printf ("check_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], gparams[k]);
           check_parameters (db, error_prefix, 2 * (k + 1), track_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -1228,7 +1339,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_channel_list( '%s.%s' )", projects[i], tracks[j]);
+        gchar *error_prefix = g_strdup_printf ("check_channel_list ('%s.%s')", projects[i], tracks[j]);
         check_channel_list (db, error_prefix, channels, track_id[i][j]);
         g_free (error_prefix);
       }
@@ -1264,8 +1375,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_param_list( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("check_param_list ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
           check_param_list (db, error_prefix, params, channel_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -1276,8 +1387,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_parameters( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("check_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
           check_parameters (db, error_prefix, 2 * (k + 1), channel_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -1304,8 +1415,8 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gchar *error_prefix =
-            g_strdup_printf ("check_parameters( '%s.%s.%s' )", projects[i], tracks[j], channels[k]);
+          gchar *error_prefix = g_strdup_printf ("check_parameters ('%s.%s.%s')",
+                                                 projects[i], tracks[j], channels[k]);
           check_parameters (db, error_prefix, 2 * (k + 1), channel_param_id[i][j][k]);
           g_free (error_prefix);
         }
@@ -1318,16 +1429,27 @@ main (int argc, char **argv)
   g_message ("removing half channels");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      for (k = 0; k < n_channels; k += 2)
-        if (!hyscan_db_remove_channel (db, track_id[i][j], channels[k]))
-          g_error ("can't remove '%s.%s.%s'", projects[i], tracks[j], channels[k]);
+      {
+        mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
+        for (k = 0; k < n_channels; k += 2)
+          {
+            if (!hyscan_db_remove_channel (db, track_id[i][j], channels[k]))
+              g_error ("can't remove '%s.%s.%s'", projects[i], tracks[j], channels[k]);
+            if (mod_count == hyscan_db_get_mod_count (db, track_id[i][j]))
+              {
+                g_error ("modification counter fail on remove '%s.%s.%s'",
+                         projects[i], tracks[j], channels[k]);
+              }
+            mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
+          }
+      }
 
   /* Проверяем изменившейся список. */
   g_message ("checking channels names");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_channel_list( '%s.%s' )", projects[i], tracks[j]);
+        gchar *error_prefix = g_strdup_printf ("check_channel_list ('%s.%s')", projects[i], tracks[j]);
         check_channel_list (db, error_prefix, channels2, track_id[i][j]);
         g_free (error_prefix);
       }
@@ -1336,16 +1458,27 @@ main (int argc, char **argv)
   g_message ("removing half track parameters");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      for (k = 0; k < n_gparams; k += 2)
-        if (!hyscan_db_remove_track_param (db, track_id[i][j], gparams[k]))
-          g_error ("can't remove '%s.%s.%s'", projects[i], tracks[j], gparams[k]);
+      {
+        mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
+        for (k = 0; k < n_gparams; k += 2)
+          {
+            if (!hyscan_db_remove_track_param (db, track_id[i][j], gparams[k]))
+              g_error ("can't remove '%s.%s.%s'", projects[i], tracks[j], gparams[k]);
+            if (mod_count == hyscan_db_get_mod_count (db, track_id[i][j]))
+              {
+                g_error ("modification counter fail on remove '%s.%s.%s'",
+                         projects[i], tracks[j], gparams[k]);
+              }
+            mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
+          }
+      }
 
   /* Проверяем изменившейся список. */
   g_message ("checking track parameters names");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       {
-        gchar *error_prefix = g_strdup_printf ("check_track_param_list( '%s.%s' )", projects[i], tracks[j]);
+        gchar *error_prefix = g_strdup_printf ("check_track_param_list ('%s.%s')", projects[i], tracks[j]);
         check_track_param_list (db, error_prefix, gparams2, track_id[i][j]);
         g_free (error_prefix);
       }
@@ -1353,15 +1486,23 @@ main (int argc, char **argv)
   /* Удаляем половину галсов. */
   g_message ("removing half tracks");
   for (i = 0; i < n_projects; i++)
-    for (j = 0; j < n_tracks; j += 2)
-      if (!hyscan_db_remove_track (db, project_id[i], tracks[j]))
-        g_error ("can't remove '%s.%s'", projects[i], tracks[j]);
+    {
+      mod_count = hyscan_db_get_mod_count (db, project_id[i]);
+      for (j = 0; j < n_tracks; j += 2)
+        {
+          if (!hyscan_db_remove_track (db, project_id[i], tracks[j]))
+            g_error ("can't remove '%s.%s'", projects[i], tracks[j]);
+          if (mod_count == hyscan_db_get_mod_count (db, project_id[i]))
+            g_error ("modification counter fail on remove '%s.%s'", projects[i], tracks[j]);
+          mod_count = hyscan_db_get_mod_count (db, project_id[i]);
+        }
+    }
 
   /* Проверяем изменившейся список. */
   g_message ("checking tracks names");
   for (i = 0; i < n_projects; i++)
     {
-      gchar *error_prefix = g_strdup_printf ("check_track_list( '%s' )", projects[i]);
+      gchar *error_prefix = g_strdup_printf ("check_track_list ('%s')", projects[i]);
       check_track_list (db, error_prefix, tracks2, project_id[i]);
       g_free (error_prefix);
     }
@@ -1369,24 +1510,37 @@ main (int argc, char **argv)
   /* Удаляем половину групп параметров проектов. */
   g_message ("removing half project parameters");
   for (i = 0; i < n_projects; i++)
-    for (j = 0; j < n_gparams; j += 2)
-      if (!hyscan_db_remove_project_param (db, project_id[i], gparams[j]))
-        g_error ("can't remove '%s.%s'", projects[i], gparams[j]);
+    {
+      mod_count = hyscan_db_get_mod_count (db, project_id[i]);
+      for (j = 0; j < n_gparams; j += 2)
+        {
+          if (!hyscan_db_remove_project_param (db, project_id[i], gparams[j]))
+            g_error ("can't remove '%s.%s'", projects[i], gparams[j]);
+          if (mod_count == hyscan_db_get_mod_count (db, project_id[i]))
+            g_error ("modification counter fail on remove '%s.%s'", projects[i], gparams[j]);
+          mod_count = hyscan_db_get_mod_count (db, project_id[i]);
+        }
+    }
 
   /* Проверяем изменившейся список. */
   g_message ("checking project parameters names");
   for (i = 0; i < n_projects; i++)
     {
-      gchar *error_prefix = g_strdup_printf ("check_project_param_list( '%s' )", projects[i]);
+      gchar *error_prefix = g_strdup_printf ("check_project_param_list ('%s')", projects[i]);
       check_project_param_list (db, error_prefix, gparams2, project_id[i]);
       g_free (error_prefix);
     }
 
   /* Удаляем половину проектов. */
   g_message ("removing half projects");
+  mod_count = hyscan_db_get_mod_count (db, 0);
   for (i = 0; i < n_projects; i += 2)
-    if (!hyscan_db_remove_project (db, projects[i]))
-      g_error ("can't remove '%s'", projects[i]);
+    {
+      if (!hyscan_db_remove_project (db, projects[i]))
+        g_error ("can't remove '%s'", projects[i]);
+      if (mod_count == hyscan_db_get_mod_count (db, 0))
+        g_error ("modification counter fail on remove '%s'", projects[i]);
+    }
 
   /* Проверяем изменившейся список. */
   g_message ("checking projects names");
@@ -1394,9 +1548,14 @@ main (int argc, char **argv)
 
   /* Удаляем оставшиеся проекты. */
   g_message ("removing all projects");
+  mod_count = hyscan_db_get_mod_count (db, 0);
   for (i = 1; i < n_projects; i += 2)
-    if (!hyscan_db_remove_project (db, projects[i]))
-      g_error ("can't delete '%s'", projects[i]);
+    {
+      if (!hyscan_db_remove_project (db, projects[i]))
+        g_error ("can't delete '%s'", projects[i]);
+      if (mod_count == hyscan_db_get_mod_count (db, 0))
+        g_error ("modification counter fail on remove '%s'", projects[i]);
+    }
 
   /* Проверяем, что список проектов пустой. */
   g_message ("checking db projects list is empty");

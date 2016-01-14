@@ -239,6 +239,45 @@ exit:
   return uri;
 }
 
+guint32
+hyscan_db_client_get_mod_count (HyScanDB *db,
+                                gint32    id)
+{
+  HyScanDBClient *dbc = HYSCAN_DB_CLIENT (db);
+  uRpcData *urpc_data;
+  guint32 exec_status;
+
+  guint32 mod_count;
+
+  if (dbc->rpc == NULL)
+    return 0;
+
+  urpc_data = urpc_client_lock (dbc->rpc);
+  if (urpc_data == NULL)
+    hyscan_db_client_lock_error ();
+
+  if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_ID, id) != 0)
+    hyscan_db_client_set_error ("id");
+
+  if (urpc_client_exec (dbc->rpc, HYSCAN_DB_RPC_PROC_GET_MOD_COUNT) != URPC_STATUS_OK)
+    hyscan_db_client_exec_error ();
+
+  if (urpc_data_get_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, &exec_status) != 0)
+    hyscan_db_client_get_error ("exec_status");
+  if (exec_status != HYSCAN_DB_RPC_STATUS_OK)
+    goto exit;
+
+  if (urpc_data_get_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_MOD_COUNT, &mod_count) != 0)
+    {
+      mod_count = 0;
+      hyscan_db_client_get_error ("mod_count");
+    }
+
+exit:
+  urpc_client_unlock (dbc->rpc);
+  return mod_count;
+}
+
 static gchar **
 hyscan_db_client_get_project_list (HyScanDB *db)
 {
@@ -2169,6 +2208,7 @@ hyscan_db_client_interface_init (HyScanDBInterface *iface)
 {
   iface->get_project_type_list = hyscan_db_client_get_project_type_list;
   iface->get_uri = hyscan_db_client_get_uri;
+  iface->get_mod_count = hyscan_db_client_get_mod_count;
   iface->get_project_list = hyscan_db_client_get_project_list;
   iface->open_project = hyscan_db_client_open_project;
   iface->create_project = hyscan_db_client_create_project;
