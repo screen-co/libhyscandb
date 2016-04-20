@@ -1,4 +1,4 @@
-/**
+/*
  * \file hyscan-db-channel-file.h
  *
  * \brief Заголовочный файл класса хранения данных канала в файловой системе
@@ -6,9 +6,9 @@
  * \date 2015
  * \license Проприетарная лицензия ООО "Экран"
  *
- * \defgroup HyScanDBChannelFile HyScanDBChannelFile - класс работы с данными канала в формате HyScan версии 5
+ * HyScanDBChannelFile - класс работы с данными канала в формате HyScan версии 5
  *
- * Описание функций класса совпадает с соответствующими функциями интерфейса \link HyScanDB \endlink.
+ * Описание функций класса совпадает с соответствующими функциями интерфейса HyScanDB.
  *
  * Создание объекта класса осуществляется при помощи функции g_object_new.
  *
@@ -71,7 +71,15 @@ G_BEGIN_DECLS
 #define HYSCAN_DB_CHANNEL_FILE_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_DB_CHANNEL_FILE, HyScanDBChannelFileClass))
 
 typedef struct _HyScanDBChannelFile HyScanDBChannelFile;
+typedef struct _HyScanDBChannelFilePrivate HyScanDBChannelFilePrivate;
 typedef struct _HyScanDBChannelFileClass HyScanDBChannelFileClass;
+
+struct _HyScanDBChannelFile
+{
+  GObject parent_instance;
+
+  HyScanDBChannelFilePrivate *priv;
+};
 
 struct _HyScanDBChannelFileClass
 {

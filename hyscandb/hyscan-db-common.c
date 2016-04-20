@@ -1,4 +1,4 @@
-/**
+/*
  * \file hyscan-db-common.c
  *
  * \brief Исходный файл общих функций базы данных HyScan
@@ -30,7 +30,7 @@ hyscan_db_new (const gchar *uri)
          протокола file невозможно. */
       if (g_pattern_match_simple("*@*", path))
         {
-          g_warning ("hyscan_db_new: authenticated connection is unsupported for 'file://' protocol");
+          g_warning ("HyScanDB: authenticated connection is unsupported for 'file://' protocol");
           return NULL;
         }
 
@@ -38,7 +38,7 @@ hyscan_db_new (const gchar *uri)
       dir = g_dir_open (path, 0, NULL);
       if (dir == NULL)
         {
-          g_warning ("hyscan_db_new: no such directory '%s'", path);
+          g_warning ("HyScanDB: no such directory '%s'", path);
           return NULL;
         }
       else
@@ -63,7 +63,7 @@ hyscan_db_new (const gchar *uri)
          протокола file невозможно. */
       if (g_pattern_match_simple("*@*", path))
         {
-          g_warning ("hyscan_db_new: authenticated connection to server is not yet supported");
+          g_warning ("HyScanDB: authenticated connection to server is not yet supported");
           return NULL;
         }
 
@@ -78,6 +78,6 @@ hyscan_db_new (const gchar *uri)
       return db;
     }
 
-  g_warning ("hyscan_db_new: unsupported protocol");
+  g_warning ("HyScanDB: unsupported protocol");
   return NULL;
 }

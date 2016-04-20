@@ -14,11 +14,11 @@ int
 main (int    argc,
       char **argv)
 {
-  gchar *db_uri;
-  gchar *db_path;
-  gchar *server_uri;
-  gint   n_threads;
-  gint   n_clients;
+  gchar *db_uri = NULL;
+  gchar *db_path = NULL;
+  gchar *server_uri = NULL;
+  gint   n_threads = 1;
+  gint   n_clients = 100;
 
   HyScanDB *db;
   HyScanDBServer *server;
@@ -50,7 +50,7 @@ main (int    argc,
         return -1;
       }
 
-    if (g_strv_length (args) != 2)
+    if (g_strv_length (args) != 2 || db_path == NULL)
       {
         g_print ("%s", g_option_context_get_help (context, FALSE, NULL));
         return 0;

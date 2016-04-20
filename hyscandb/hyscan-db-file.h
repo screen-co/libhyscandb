@@ -1,4 +1,4 @@
-/**
+/*
  * \file hyscan-db-file.h
  *
  * \brief Заголовочный файл класса файловой базы данных HyScan
@@ -6,10 +6,10 @@
  * \date 2015
  * \license Проприетарная лицензия ООО "Экран"
  *
- * \defgroup HyScanDBFile HyScanDBFile класс хранения данных в формате HyScan 5
+ * HyScanDBFile класс хранения данных в формате HyScan 5
  *
- * Класс реализует интерфейс \link HyScanDB \endlink и хранит данные с использованием
- * \link HyScanDBChannelFile \endlink и \link HyScanDBParamFile \endlink.
+ * Класс реализует интерфейс HyScanDB и хранит данные с использованием
+ * HyScanDBChannelFile и HyScanDBParamFile.
  *
  */
 
@@ -28,7 +28,15 @@ G_BEGIN_DECLS
 #define HYSCAN_DB_FILE_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_DB_FILE, HyScanDBFileClass))
 
 typedef struct _HyScanDBFile HyScanDBFile;
+typedef struct _HyScanDBFilePrivate HyScanDBFilePrivate;
 typedef struct _HyScanDBFileClass HyScanDBFileClass;
+
+struct _HyScanDBFile
+{
+  GObject parent_instance;
+
+  HyScanDBFilePrivate *priv;
+};
 
 struct _HyScanDBFileClass
 {

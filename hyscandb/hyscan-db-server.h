@@ -9,17 +9,14 @@
  * \defgroup HyScanDBServer HyScanDBServer RPC сервер базы данных HyScan
  *
  * Класс реализует сервер базы данных HyScan. Для работы с сервером необходимо использовать
- * клиентскую реализацию интерфейса \link HyScanDB\endlink - \link HyScanDBClient \endlink.
+ * функцию \link hyscan_db_new \endlink, которая автоматически выбирает реализацию системы
+ * хранения данных HyScan в зависимости от указанного адреса.
  *
- * Рекомендуется использовать функцию \link hyscan_db_new \endlink, которая автоматически
- * выбирает реализацию системы хранения данных HyScan в зависимости от указанного адреса.
- *
- * Сервер базы данных транслирует все вызовы интерфейса \link HyScanDB \endlink от клиента
- * \link HyScanDBClient \endlink в объект db, указанный при создании сервера. Дополнительно
- * можно указать функцию, которая будет вызываться перед исполнением запроса от клиента
- * #hyscan_db_server_acl. Если функция вернёт TRUE сервер продолжит выполнения запроса,
- * иначе возвратит клиенту ошибку. Данная функция может использоваться для разграничения
- * доступа к базе данных.
+ * Сервер базы данных транслирует все вызовы интерфейса \link HyScanDB \endlink в объект db,
+ * указанный при создании сервера. Дополнительно можно указать функцию, которая будет вызываться
+ * перед исполнением запроса от клиента #hyscan_db_server_acl. Если функция вернёт TRUE сервер
+ * продолжит выполнения запроса, иначе возвратит клиенту ошибку. Данная функция может использоваться
+ * для разграничения доступа к базе данных.
  *
  * После создания сервера его необходимо запустить функцией #hyscan_db_server_start.
  *
@@ -33,13 +30,6 @@
 #include <hyscan-db.h>
 
 G_BEGIN_DECLS
-
-#define HYSCAN_TYPE_DB_SERVER             (hyscan_db_server_get_type ())
-#define HYSCAN_DB_SERVER(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_DB_SERVER, HyScanDBServer))
-#define HYSCAN_IS_DB_SERVER(obj )         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_DB_SERVER))
-#define HYSCAN_DB_SERVER_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_DB_SERVER, HyScanDBServerClass))
-#define HYSCAN_IS_DB_SERVER_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_DB_SERVER))
-#define HYSCAN_DB_SERVER_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_DB_SERVER, HyScanDBServerClass))
 
 /**
  *
@@ -57,8 +47,23 @@ G_BEGIN_DECLS
 typedef gboolean       (*hyscan_db_server_acl)         (const gchar           *function_name,
                                                         gpointer               key_data);
 
+#define HYSCAN_TYPE_DB_SERVER             (hyscan_db_server_get_type ())
+#define HYSCAN_DB_SERVER(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_DB_SERVER, HyScanDBServer))
+#define HYSCAN_IS_DB_SERVER(obj )         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_DB_SERVER))
+#define HYSCAN_DB_SERVER_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), HYSCAN_TYPE_DB_SERVER, HyScanDBServerClass))
+#define HYSCAN_IS_DB_SERVER_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), HYSCAN_TYPE_DB_SERVER))
+#define HYSCAN_DB_SERVER_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_DB_SERVER, HyScanDBServerClass))
+
 typedef struct _HyScanDBServer HyScanDBServer;
+typedef struct _HyScanDBServerPrivate HyScanDBServerPrivate;
 typedef struct _HyScanDBServerClass HyScanDBServerClass;
+
+struct _HyScanDBServer
+{
+  GObject parent_instance;
+
+  HyScanDBServerPrivate *priv;
+};
 
 struct _HyScanDBServerClass
 {

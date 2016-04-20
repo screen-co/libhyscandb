@@ -1,4 +1,4 @@
-/**
+/*
  * \file hyscan-db-param-file.c
  *
  * \brief Исходный файл класса хранения параметров в файловой системе
@@ -21,10 +21,8 @@ enum
 };
 
 /* Внутренние данные объекта. */
-struct _HyScanDBParamFile
+struct _HyScanDBParamFilePrivate
 {
-  GObject              parent_instance;
-
   gchar               *path;           /* Путь к каталогу с файлом параметров. */
   gchar               *name;           /* Название файла параметров. */
   gchar               *file;           /* Полное имя файла параметров. */
@@ -38,18 +36,18 @@ struct _HyScanDBParamFile
   GOutputStream       *ofd;            /* Поток записи файла параметров. */
 };
 
-static void     hyscan_db_param_file_set_property       (GObject          *object,
-                                                         guint             prop_id,
-                                                         const GValue     *value,
-                                                         GParamSpec       *pspec);
-static void     hyscan_db_param_file_object_constructed (GObject          *object);
-static void     hyscan_db_param_file_object_finalize    (GObject          *object);
+static void            hyscan_db_param_file_set_property       (GObject          *object,
+                                                                guint             prop_id,
+                                                                const GValue     *value,
+                                                                GParamSpec       *pspec);
+static void            hyscan_db_param_file_object_constructed (GObject          *object);
+static void            hyscan_db_param_file_object_finalize    (GObject          *object);
 
-static gboolean hyscan_db_param_file_parse_name         (const gchar      *name,
-                                                         gchar           **group,
-                                                         gchar           **key);
+static gboolean        hyscan_db_param_file_parse_name         (const gchar      *name,
+                                                                gchar           **group,
+                                                                gchar           **key);
 
-G_DEFINE_TYPE (HyScanDBParamFile, hyscan_db_param_file, G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_PRIVATE (HyScanDBParamFile, hyscan_db_param_file, G_TYPE_OBJECT)
 
 static void
 hyscan_db_param_file_class_init (HyScanDBParamFileClass *klass)
@@ -73,6 +71,7 @@ hyscan_db_param_file_class_init (HyScanDBParamFileClass *klass)
 static void
 hyscan_db_param_file_init (HyScanDBParamFile *param)
 {
+  param->priv = hyscan_db_param_file_get_instance_private (param);
 }
 
 static void
@@ -82,15 +81,16 @@ hyscan_db_param_file_set_property (GObject          *object,
                                    GParamSpec       *pspec)
 {
   HyScanDBParamFile *param = HYSCAN_DB_PARAM_FILE (object);
+  HyScanDBParamFilePrivate *priv = param->priv;
 
   switch (prop_id)
     {
     case PROP_NAME:
-      param->name = g_value_dup_string (value);
+      priv->name = g_value_dup_string (value);
       break;
 
     case PROP_PATH:
-      param->path = g_value_dup_string (value);
+      priv->path = g_value_dup_string (value);
       break;
 
     default:
@@ -103,58 +103,60 @@ static void
 hyscan_db_param_file_object_constructed (GObject *object)
 {
   HyScanDBParamFile *param = HYSCAN_DB_PARAM_FILE (object);
+  HyScanDBParamFilePrivate *priv = param->priv;
 
   GError *error;
 
   /* Начальные значения. */
-  param->fail = FALSE;
-  param->fd = NULL;
-  param->ofd = NULL;
+  priv->fail = FALSE;
+  priv->fd = NULL;
+  priv->ofd = NULL;
 
-  g_mutex_init (&param->lock);
+  g_mutex_init (&priv->lock);
 
   /* Параметры. */
-  param->params = g_key_file_new ();
+  priv->params = g_key_file_new ();
 
   /* Имя файла с параметрами. */
-  param->file = g_strdup_printf ("%s%s%s.ini", param->path, G_DIR_SEPARATOR_S, param->name);
+  priv->file = g_strdup_printf ("%s%s%s.ini", priv->path, G_DIR_SEPARATOR_S, priv->name);
 
   /* Если файл с параметрами существует, загружаем его. */
   error = NULL;
-  if (!g_key_file_load_from_file (param->params, param->file, G_KEY_FILE_NONE, &error))
+  if (!g_key_file_load_from_file (priv->params, priv->file, G_KEY_FILE_NONE, &error))
     {
       /* Если произошла ошибка при загрузке параметров не связанная с существованием файла,
          сигнализируем о ней. */
       if (error->code != G_FILE_ERROR_NOENT)
         {
-          g_critical ("hyscan_db_param_file_object_constructed: %s: %s", param->file, error->message);
-          param->fail = TRUE;
+          g_warning ("HyScanDBParamFile: %s: %s", priv->file, error->message);
+          priv->fail = TRUE;
         }
       g_error_free (error);
     }
 
   /* Объект для записи содержимого файла параметров. */
-  param->fd = g_file_new_for_path (param->file);
-  param->ofd = G_OUTPUT_STREAM (g_file_append_to (param->fd, G_FILE_CREATE_NONE, NULL, NULL));
+  priv->fd = g_file_new_for_path (priv->file);
+  priv->ofd = G_OUTPUT_STREAM (g_file_append_to (priv->fd, G_FILE_CREATE_NONE, NULL, NULL));
 }
 
 static void
 hyscan_db_param_file_object_finalize (GObject *object)
 {
   HyScanDBParamFile *param = HYSCAN_DB_PARAM_FILE (object);
+  HyScanDBParamFilePrivate *priv = param->priv;
 
-  g_free (param->file);
-  g_free (param->name);
-  g_free (param->path);
+  g_free (priv->file);
+  g_free (priv->name);
+  g_free (priv->path);
 
-  g_key_file_free (param->params);
+  g_key_file_free (priv->params);
 
-  if (param->ofd != NULL)
-    g_object_unref (param->ofd);
-  if (param->fd != NULL)
-    g_object_unref (param->fd);
+  if (priv->ofd != NULL)
+    g_object_unref (priv->ofd);
+  if (priv->fd != NULL)
+    g_object_unref (priv->fd);
 
-  g_mutex_clear (&param->lock);
+  g_mutex_clear (&priv->lock);
 
   G_OBJECT_CLASS (hyscan_db_param_file_parent_class)->finalize (G_OBJECT (object));
 }
@@ -176,7 +178,7 @@ hyscan_db_param_file_parse_name (const gchar *name,
   /* Проверяем, что имя представленно в виде 'группа.ключ'. */
   else if (g_strv_length (path) != 2 || strlen (path[0]) + strlen (path[1]) != strlen (name) - 1)
     {
-      g_critical ("hyscan_db_param_file_parse_name: syntax error in key name %s", name);
+      g_warning ("HyScanDBParamFile: syntax error in key name %s", name);
       g_strfreev (path);
       return FALSE;
     }
@@ -205,7 +207,7 @@ hyscan_db_param_file_flush_params (GKeyFile      *params,
   error = NULL;
   if (!g_seekable_truncate (G_SEEKABLE (ofd), 0, NULL, &error))
     {
-      g_critical ("hyscan_db_param_file_flush_params: %s", error->message);
+      g_warning ("HyScanDBParamFile: %s", error->message);
       goto exit;
     }
 
@@ -214,9 +216,9 @@ hyscan_db_param_file_flush_params (GKeyFile      *params,
   if (g_output_stream_write (ofd, data, dsize, NULL, &error) != dsize)
     {
       if (error != NULL)
-        g_critical ("hyscan_db_param_file_flush_params: %s", error->message);
+        g_warning ("HyScanDBParamFile: %s", error->message);
       else
-        g_critical ("hyscan_db_param_file_flush_params: can't flush parameters");
+        g_warning ("HyScanDBParamFile: can't flush parameters");
       goto exit;
     }
 
@@ -224,7 +226,7 @@ hyscan_db_param_file_flush_params (GKeyFile      *params,
   error = NULL;
   if (!g_output_stream_flush (ofd, NULL, &error))
     {
-      g_critical ("hyscan_db_param_file_flush_params: %s", error->message);
+      g_warning ("HyScanDBParamFile: %s", error->message);
       goto exit;
     }
 
@@ -250,22 +252,29 @@ hyscan_db_param_file_new (const gchar *path,
 gchar **
 hyscan_db_param_file_get_param_list (HyScanDBParamFile *param)
 {
+  HyScanDBParamFilePrivate *priv;
+
   gchar **names = NULL;
   gchar **groups;
   gchar **keys;
+
   gint i, j, k;
 
-  if (param->fail)
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), NULL);
+
+  priv = param->priv;
+
+  if (priv->fail)
     return NULL;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Группы параметров. */
-  groups = g_key_file_get_groups (param->params, NULL);
+  groups = g_key_file_get_groups (priv->params, NULL);
   for (i = 0, k = 0; groups != NULL && groups[i] != NULL; i++)
     {
       /* Параметры в группе. */
-      keys = g_key_file_get_keys (param->params, groups[i], NULL, NULL);
+      keys = g_key_file_get_keys (priv->params, groups[i], NULL, NULL);
       for (j = 0; keys != NULL && keys[j] != NULL; j++)
         {
           /* Список параметров. */
@@ -278,7 +287,7 @@ hyscan_db_param_file_get_param_list (HyScanDBParamFile *param)
     }
   g_strfreev (groups);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   return names;
 }
@@ -288,6 +297,8 @@ gboolean
 hyscan_db_param_file_remove_param (HyScanDBParamFile *param,
                                    const gchar       *mask)
 {
+  HyScanDBParamFilePrivate *priv;
+
   GPatternSpec *pattern;
   gchar **groups;
   gchar **keys;
@@ -295,21 +306,25 @@ hyscan_db_param_file_remove_param (HyScanDBParamFile *param,
   gboolean status;
   gint i, j;
 
-  if (param->fail)
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
+
+  priv = param->priv;
+
+  if (priv->fail)
     return FALSE;
 
   pattern = g_pattern_spec_new (mask);
   if (pattern == NULL)
     return FALSE;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Группы параметров. */
-  groups = g_key_file_get_groups (param->params, NULL);
+  groups = g_key_file_get_groups (priv->params, NULL);
   for (i = 0; groups != NULL && groups[i] != NULL; i++)
     {
       /* Параметры в группе. */
-      keys = g_key_file_get_keys (param->params, groups[i], NULL, NULL);
+      keys = g_key_file_get_keys (priv->params, groups[i], NULL, NULL);
       for (j = 0; keys != NULL && keys[j] != NULL; j++)
         {
           /* Проверяем имя параметра. */
@@ -317,23 +332,23 @@ hyscan_db_param_file_remove_param (HyScanDBParamFile *param,
 
           /* Удаляем если оно совпадает с шаблоном. */
           if (g_pattern_match (pattern, (guint)strlen (name), name, NULL))
-            g_key_file_remove_key (param->params, groups[i], keys[j], NULL);
+            g_key_file_remove_key (priv->params, groups[i], keys[j], NULL);
 
           g_free (name);
         }
       g_strfreev (keys);
 
       /* Если группа стала пустой - удаляем её. */
-      keys = g_key_file_get_keys (param->params, groups[i], NULL, NULL);
+      keys = g_key_file_get_keys (priv->params, groups[i], NULL, NULL);
       if (keys != NULL && g_strv_length (keys) == 0)
-        g_key_file_remove_group (param->params, groups[i], NULL);
+        g_key_file_remove_group (priv->params, groups[i], NULL);
       g_strfreev (keys);
     }
   g_strfreev (groups);
 
-  status = hyscan_db_param_file_flush_params (param->params, param->ofd);
+  status = hyscan_db_param_file_flush_params (priv->params, priv->ofd);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_pattern_spec_free (pattern);
 
@@ -345,19 +360,26 @@ gboolean
 hyscan_db_param_file_has_param (HyScanDBParamFile *param,
                                 const gchar       *name)
 {
+  HyScanDBParamFilePrivate *priv;
+
   gchar *group, *key;
   gboolean status = FALSE;
 
-  if (param->fail)
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
+
+  priv = param->priv;
+
+  if (priv->fail)
     return status;
+
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return status;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
-  status = g_key_file_has_key (param->params, group, key, NULL);
+  status = g_key_file_has_key (priv->params, group, key, NULL);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (group);
   g_free (key);
@@ -370,27 +392,33 @@ gint64
 hyscan_db_param_file_inc_integer (HyScanDBParamFile *param,
                                   const gchar       *name)
 {
-  gint64 value;
+  HyScanDBParamFilePrivate *priv;
+
   gchar *group, *key;
-  gboolean status;
+  gint64 value = 0;
 
-  if (param->fail)
-    return FALSE;
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), 0);
+
+  priv = param->priv;
+
+  if (priv->fail)
+    return value;
+
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
-    return FALSE;
+    return value;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
-  value = g_key_file_get_int64 (param->params, group, key, NULL) + 1;
-  g_key_file_set_int64 (param->params, group, key, value);
-  status = hyscan_db_param_file_flush_params (param->params, param->ofd);
+  value = g_key_file_get_int64 (priv->params, group, key, NULL) + 1;
+  g_key_file_set_int64 (priv->params, group, key, value);
+  hyscan_db_param_file_flush_params (priv->params, priv->ofd);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (group);
   g_free (key);
 
-  return status;
+  return value;
 }
 
 /* Функция устанавливает значение параметра типа integer. */
@@ -399,20 +427,27 @@ hyscan_db_param_file_set_integer (HyScanDBParamFile *param,
                                   const gchar       *name,
                                   gint64             value)
 {
+  HyScanDBParamFilePrivate *priv;
+
   gchar *group, *key;
   gboolean status;
 
-  if (param->fail)
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
+
+  priv = param->priv;
+
+  if (priv->fail)
     return FALSE;
+
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return FALSE;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
-  g_key_file_set_int64 (param->params, group, key, value);
-  status = hyscan_db_param_file_flush_params (param->params, param->ofd);
+  g_key_file_set_int64 (priv->params, group, key, value);
+  status = hyscan_db_param_file_flush_params (priv->params, priv->ofd);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (group);
   g_free (key);
@@ -426,20 +461,27 @@ hyscan_db_param_file_set_double (HyScanDBParamFile *param,
                                  const gchar       *name,
                                  gdouble            value)
 {
+  HyScanDBParamFilePrivate *priv;
+
   gchar *group, *key;
   gboolean status;
 
-  if (param->fail)
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
+
+  priv = param->priv;
+
+  if (priv->fail)
     return FALSE;
+
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return FALSE;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
-  g_key_file_set_double (param->params, group, key, value);
-  status = hyscan_db_param_file_flush_params (param->params, param->ofd);
+  g_key_file_set_double (priv->params, group, key, value);
+  status = hyscan_db_param_file_flush_params (priv->params, priv->ofd);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (group);
   g_free (key);
@@ -453,20 +495,27 @@ hyscan_db_param_file_set_boolean (HyScanDBParamFile *param,
                                   const gchar       *name,
                                   gboolean           value)
 {
+  HyScanDBParamFilePrivate *priv;
+
   gchar *group, *key;
   gboolean status;
 
-  if (param->fail)
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
+
+  priv = param->priv;
+
+  if (priv->fail)
     return FALSE;
+
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return FALSE;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
-  g_key_file_set_boolean (param->params, group, key, value);
-  status = hyscan_db_param_file_flush_params (param->params, param->ofd);
+  g_key_file_set_boolean (priv->params, group, key, value);
+  status = hyscan_db_param_file_flush_params (priv->params, priv->ofd);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (group);
   g_free (key);
@@ -480,20 +529,27 @@ hyscan_db_param_file_set_string (HyScanDBParamFile *param,
                                  const gchar       *name,
                                  const gchar       *value)
 {
+  HyScanDBParamFilePrivate *priv;
+
   gchar *group, *key;
   gboolean status;
 
-  if (param->fail)
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
+
+  priv = param->priv;
+
+  if (priv->fail)
     return FALSE;
+
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return FALSE;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
-  g_key_file_set_string (param->params, group, key, value);
-  status = hyscan_db_param_file_flush_params (param->params, param->ofd);
+  g_key_file_set_string (priv->params, group, key, value);
+  status = hyscan_db_param_file_flush_params (priv->params, priv->ofd);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (group);
   g_free (key);
@@ -506,19 +562,26 @@ gint64
 hyscan_db_param_file_get_integer (HyScanDBParamFile *param,
                                   const gchar       *name)
 {
+  HyScanDBParamFilePrivate *priv;
+
   gchar *group, *key;
   gint64 value = 0;
 
-  if (param->fail)
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), 0);
+
+  priv = param->priv;
+
+  if (priv->fail)
     return value;
+
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return value;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
-  value = g_key_file_get_int64 (param->params, group, key, NULL);
+  value = g_key_file_get_int64 (priv->params, group, key, NULL);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (group);
   g_free (key);
@@ -531,19 +594,26 @@ gdouble
 hyscan_db_param_file_get_double (HyScanDBParamFile *param,
                                  const gchar       *name)
 {
+  HyScanDBParamFilePrivate *priv;
+
   gchar *group, *key;
   gdouble value = 0.0;
 
-  if (param->fail)
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), 0.0);
+
+  priv = param->priv;
+
+  if (priv->fail)
     return value;
+
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return value;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
-  value = g_key_file_get_double (param->params, group, key, NULL);
+  value = g_key_file_get_double (priv->params, group, key, NULL);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (group);
   g_free (key);
@@ -557,19 +627,26 @@ gboolean
 hyscan_db_param_file_get_boolean (HyScanDBParamFile *param,
                                   const gchar       *name)
 {
+  HyScanDBParamFilePrivate *priv;
+
   gchar *group, *key;
   gboolean value = FALSE;
 
-  if (param->fail)
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
+
+  priv = param->priv;
+
+  if (priv->fail)
     return value;
+
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return value;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
-  value = g_key_file_get_boolean (param->params, group, key, NULL);
+  value = g_key_file_get_boolean (priv->params, group, key, NULL);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (group);
   g_free (key);
@@ -583,19 +660,26 @@ gchar *
 hyscan_db_param_file_get_string (HyScanDBParamFile *param,
                                  const gchar       *name)
 {
+  HyScanDBParamFilePrivate *priv;
+
   gchar *group, *key;
   gchar *value = NULL;
 
-  if (param->fail)
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), NULL);
+
+  priv = param->priv;
+
+  if (priv->fail)
     return value;
+
   if (!hyscan_db_param_file_parse_name (name, &group, &key))
     return value;
 
-  g_mutex_lock (&param->lock);
+  g_mutex_lock (&priv->lock);
 
-  value = g_key_file_get_string (param->params, group, key, NULL);
+  value = g_key_file_get_string (priv->params, group, key, NULL);
 
-  g_mutex_unlock (&param->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (group);
   g_free (key);

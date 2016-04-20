@@ -1,4 +1,4 @@
-/**
+/*
  * \file hyscan-db-client.h
  *
  * \brief Заголовочный файл RPC клиента базы данных HyScan
@@ -6,17 +6,14 @@
  * \date 2015
  * \license Проприетарная лицензия ООО "Экран"
  *
- * \defgroup HyScanDBClient HyScanDBClient RPC клиент базы данных HyScan
+ * HyScanDBClient RPC клиент базы данных HyScan
  *
- * Класс реализует интерфейс \link HyScanDB \endlink и обеспечивает взаимодействие с
- * сервером системы хранения HyScan через библиотеку uRPC. Для взаимодействия доступны
- * протоколы TCP и SHM из состава библиотеки uRPC.
+ * Класс реализует интерфейс HyScanDB и обеспечивает взаимодействие с сервером системы 
+ * хранения HyScan через библиотеку uRPC. Для взаимодействия доступны протоколы TCP и SHM
+ * из состава библиотеки uRPC.
  *
- * Функция #hyscan_db_client_new создаёт клиента базы данных и производит подключение по
+ * Функция hyscan_db_client_new создаёт клиента базы данных и производит подключение по
  * указанному адресу.
- *
- * Рекомендуется использовать функцию \link hyscan_db_new \endlink, которая автоматически
- * выбирает реализацию системы хранения данных HyScan в зависимости от указанного адреса.
  *
  */
 
@@ -35,28 +32,29 @@ G_BEGIN_DECLS
 #define HYSCAN_DB_CLIENT_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_DB_CLIENT, HyScanDBClientClass))
 
 typedef struct _HyScanDBClient HyScanDBClient;
+typedef struct _HyScanDBClientPrivate HyScanDBClientPrivate;
 typedef struct _HyScanDBClientClass HyScanDBClientClass;
+
+struct _HyScanDBClient
+{
+  GObject parent_instance;
+
+  HyScanDBClientPrivate *priv;
+};
 
 struct _HyScanDBClientClass
 {
   GObjectClass parent_class;
 };
 
-HYSCAN_DB_EXPORT
 GType                  hyscan_db_client_get_type       (void);
 
-/**
- *
- * Функция создаёт объект \link HyScanDBClient \endlink, совместимый с интерфейсом
- * \link HyScanDB \endlink, и производит подключение к серверу базы данных по указанному
- * адресу. Адрес указывается в формате uRPC. Поддерживаются протоколы TCP и SHM.
- *
- * \param uri адрес сервера базы данных.
- *
- * \return Указатель на объект \link HyScanDBClient \endlink.
+/*
+ * Функция создаёт объект HyScanDBClient, совместимый с интерфейсом HyScanDB,
+ * и производит подключение к серверу базы данных по указанному адресу.
+ * Адрес указывается в формате uRPC. Поддерживаются протоколы TCP и SHM.
  *
  */
-HYSCAN_DB_EXPORT
 HyScanDBClient        *hyscan_db_client_new            (const gchar           *uri);
 
 G_END_DECLS

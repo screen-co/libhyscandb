@@ -1,4 +1,4 @@
-/**
+/*
  * \file hyscan-db-param-file.h
  *
  * \brief Заголовочный файл класса хранения параметров в файловой системе
@@ -6,9 +6,9 @@
  * \date 2015
  * \license Проприетарная лицензия ООО "Экран"
  *
- * \defgroup HyScanDBParamFile HyScanDBParamFile класс для работы с группой параметров в INI фалах
+ * HyScanDBParamFile класс для работы с группой параметров в INI фалах
  *
- * Описание функций класса совпадает с соответствующими функциями интерфейса \link HyScanDB \endlink.
+ * Описание функций класса совпадает с соответствующими функциями интерфейса HyScanDB.
  *
  * Создание объекта класса осуществляется при помощи функции hyscan_db_param_file_new.
  *
@@ -34,7 +34,15 @@ G_BEGIN_DECLS
 #define HYSCAN_DB_PARAM_FILE_GET_CLASS(obj)   (G_TYPE_INSTANCE_GET_CLASS ((obj), HYSCAN_TYPE_DB_PARAM_FILE, HyScanDBParamFileClass))
 
 typedef struct _HyScanDBParamFile HyScanDBParamFile;
+typedef struct _HyScanDBParamFilePrivate HyScanDBParamFilePrivate;
 typedef struct _HyScanDBParamFileClass HyScanDBParamFileClass;
+
+struct _HyScanDBParamFile
+{
+  GObject parent_instance;
+
+  HyScanDBParamFilePrivate *priv;
+};
 
 struct _HyScanDBParamFileClass
 {
