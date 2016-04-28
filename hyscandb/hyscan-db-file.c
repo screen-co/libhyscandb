@@ -16,12 +16,19 @@
 #include <gio/gio.h>
 #include <string.h>
 
-#define DB_FILE_PROJECT_TYPE "HyScan5" /* Идентификатор типа проектов. */
+#define PROJECT_ID_FILE        "project.id"            /* Название файла идентификатора проекта. */
+#define PROJECT_SCHEMA_FILE    "project.sch"           /* Название файла со схемой данных проекта. */
+#define TRACK_ID_FILE          "track.id"              /* Название файла идентификатора галса. */
+#define TRACK_SCHEMA_FILE      "track.sch"             /* Название файла со схемой данных. */
+#define TRACK_PARAMETERS_FILE  "track.prm"             /* Название файла с параметрами галса. */
+#define TRACK_GROUP_ID         "parameters"            /* Название группы параметров галса. */
+#define TRACK_PARAMETERS_ID    "track"                 /* Название объекта с параметрами галса. */
+#define PARAMETERS_FILE_EXT    "prm"                   /* Расширения для файлов со значениями параметров. */
 
-#define HYSCAN_DB_FILE_API   20150700  /* Версия API файловой базы данных. */
+#define HYSCAN_DB_FILE_API     20160400                /* Версия API файловой базы данных. */
 
-#define MAX_CHANNEL_PARTS    999999    /* Максимальное число частей канала - число файлов,
-                                          должно совпадать с MAX_PARTS в файле hyscan-db-channel-file.c. */
+#define MAX_CHANNEL_PARTS      999999                  /* Максимальное число частей канала - число файлов,
+                                                          должно совпадать с MAX_PARTS в файле hyscan-db-channel-file.c. */
 
 /* Свойства HyScanDBFile. */
 enum
@@ -34,7 +41,7 @@ enum
 typedef struct
 {
   gint                 ref_count;              /* Число ссылок на объект. */
-  guint32              mod_count;              /* Номер изменения объекта. */
+  guint                mod_count;              /* Номер изменения объекта. */
 
   gchar               *project_name;           /* Название проекта. */
   gchar               *path;                   /* Путь к каталогу с проектом. */
@@ -46,12 +53,13 @@ typedef struct
 typedef struct
 {
   gint                 ref_count;              /* Число ссылок на объект. */
-  guint32              mod_count;              /* Номер изменения объекта. */
+  guint                mod_count;              /* Номер изменения объекта. */
 
   gchar               *project_name;           /* Название проекта. */
   gchar               *track_name;             /* Название галса. */
   gchar               *path;                   /* Путь к каталогу с галсом. */
 
+  gint32               wid;                    /* Дескриптор с правами на запись. */
   gint64               ctime;                  /* Время создания галса. */
 } HyScanDBFileTrackInfo;
 
@@ -59,7 +67,7 @@ typedef struct
 typedef struct
 {
   gint                 ref_count;              /* Число ссылок на объект. */
-  guint32              mod_count;              /* Номер изменения объекта. */
+  guint                mod_count;              /* Номер изменения объекта. */
 
   gchar               *project_name;           /* Название проекта. */
   gchar               *track_name;             /* Название галса. */
@@ -74,47 +82,40 @@ typedef struct
 typedef struct
 {
   gint                 ref_count;              /* Число ссылок на объект. */
-  guint32              mod_count;              /* Номер изменения объекта. */
+  guint                mod_count;              /* Номер изменения объекта. */
 
   gchar               *project_name;           /* Название проекта. */
   gchar               *track_name;             /* Название галса. */
   gchar               *group_name;             /* Название группы параметров. */
-  gchar               *path;                   /* Путь к каталогу с параметрами. */
+  gchar               *object_name;            /* Название объекта. */
 
-  gint32               wid;                    /* Дескриптор с правами на запись. */
+  gint32               track_object_wid;       /* Дескриптор с правами на запись параметров галса. */
+  gint32               channel_object_wid;     /* Дескриптор с правами на запись параметров канала данных. */
+
   HyScanDBParamFile   *param;                  /* Объект параметров. */
 } HyScanDBFileParamInfo;
 
 /* Информация об объекте базы данных. */
 typedef struct
 {
-  gchar               *project_name;           /* Название проекта. */
-  gchar               *track_name;             /* Название галса. */
-  gchar               *object_name;            /* Название объекта. */
-  gboolean             readonly;               /* Режим доступа к объекту. */
+  const gchar         *project_name;           /* Название проекта. */
+  const gchar         *track_name;             /* Название галса. */
+  const gchar         *group_name;             /* Название группы параметров. */
+  const gchar         *object_name;            /* Название объекта. */
 } HyScanDBFileObjectInfo;
 
 /* Внутренние данные объекта. */
 struct _HyScanDBFilePrivate
 {
   gchar               *path;                   /* Путь к каталогу с проектами. */
-  guint32              mod_count;              /* Номер изменения объекта. */
+  guint                mod_count;              /* Номер изменения объекта. */
 
   GHashTable          *projects;               /* Список открытых проектов. */
-  GMutex               projects_lock;          /* Блокировка многопоточных операций
-                                                  над списком проектов. */
-
   GHashTable          *tracks;                 /* Список открытых галсов. */
-  GMutex               tracks_lock;            /* Блокировка многопоточных операций
-                                                  над списком галсов. */
-
   GHashTable          *channels;               /* Список открытых каналов данных. */
-  GMutex               channels_lock;          /* Блокировка многопоточных операций
-                                                  над списком каналов данных. */
-
   GHashTable          *params;                 /* Список открытых групп параметров. */
-  GMutex               params_lock;            /* Блокировка многопоточных операций
-                                                  над списком групп параметров. */
+
+  GRWLock              lock;                   /* Блокировка многопоточного доступа. */
 };
 
 static void            hyscan_db_file_interface_init           (HyScanDBInterface     *iface);
@@ -124,11 +125,41 @@ static void            hyscan_db_file_set_property             (GObject         
                                                                 GParamSpec            *pspec);
 static void            hyscan_db_file_object_finalize          (GObject               *object);
 
+static gboolean        hyscan_db_file_check_name               (const gchar           *name,
+                                                                gboolean               allow_slash);
+
 static void            hyscan_db_remove_project_info           (gpointer               value);
 static void            hyscan_db_remove_track_info             (gpointer               value);
 static void            hyscan_db_remove_channel_info           (gpointer               value);
 static void            hyscan_db_remove_param_info             (gpointer               value);
+
 static gint32          hyscan_db_file_create_id                (HyScanDBFilePrivate   *priv);
+
+static gboolean        hyscan_db_check_project_by_object_name  (gpointer               key,
+                                                                gpointer               value,
+                                                                gpointer               data);
+static gboolean        hyscan_db_check_track_by_object_name    (gpointer               key,
+                                                                gpointer               value,
+                                                                gpointer               data);
+static gboolean        hyscan_db_check_channel_by_object_name  (gpointer               key,
+                                                                gpointer               value,
+                                                                gpointer               data);
+static gboolean        hyscan_db_check_param_by_object_name    (gpointer               key,
+                                                                gpointer               value,
+                                                                gpointer               data);
+
+static gboolean        hyscan_db_project_test                  (const gchar           *path,
+                                                                gint64                *ctime);
+static gboolean        hyscan_db_track_test                    (const gchar           *path,
+                                                                gint64                *ctime);
+static gboolean        hyscan_db_channel_test                  (const gchar           *path,
+                                                                const gchar           *name);
+
+static gchar         **hyscan_db_file_get_directory_param_list (const gchar           *path);
+
+static gboolean        hyscan_db_file_remove_directory         (const gchar           *path);
+static gboolean        hyscan_db_file_remove_channel_files     (const gchar           *path,
+                                                                const gchar           *name);
 
 G_DEFINE_TYPE_WITH_CODE (HyScanDBFile, hyscan_db_file, G_TYPE_OBJECT,
                          G_ADD_PRIVATE (HyScanDBFile)
@@ -160,10 +191,7 @@ hyscan_db_file_init (HyScanDBFile *dbf)
   priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_channel_info);
   priv->params = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_param_info);
 
-  g_mutex_init (&priv->projects_lock);
-  g_mutex_init (&priv->tracks_lock);
-  g_mutex_init (&priv->channels_lock);
-  g_mutex_init (&priv->params_lock);
+  g_rw_lock_init (&priv->lock);
 }
 
 static void
@@ -199,15 +227,40 @@ hyscan_db_file_object_finalize (GObject *object)
   g_hash_table_destroy (priv->tracks);
   g_hash_table_destroy (priv->projects);
 
-  /* Удаляем мьютексы доступа к спискам данных. */
-  g_mutex_clear (&priv->projects_lock);
-  g_mutex_clear (&priv->tracks_lock);
-  g_mutex_clear (&priv->channels_lock);
-  g_mutex_clear (&priv->params_lock);
+  g_rw_lock_clear (&priv->lock);
 
   g_free (priv->path);
 
   G_OBJECT_CLASS (hyscan_db_file_parent_class)->finalize (object);
+}
+
+/* Функция проверяет имя на валидность. */
+static gboolean
+hyscan_db_file_check_name (const gchar *name,
+                           gboolean     allow_slash)
+{
+  gint i;
+
+  for (i = 0; name[i] != '\0'; i++)
+    {
+      gboolean match = FALSE;
+
+      if (name[i] >= 'a' && name[i] <= 'z')
+        match = TRUE;
+      if (name[i] >= 'A' && name[i] <= 'Z')
+        match = TRUE;
+      if (name[i] >= '0' && name[i] <= '9')
+        match = TRUE;
+      if (name[i] == '-' || name[i] == '.')
+        match = TRUE;
+      if (name[i] == '/' && allow_slash)
+        match = TRUE;
+
+      if (!match)
+        return FALSE;
+    }
+
+  return TRUE;
 }
 
 /* Вспомогательная функция для удаления структуры HyScanDBFileProjectInfo. */
@@ -215,6 +268,10 @@ static void
 hyscan_db_remove_project_info (gpointer value)
 {
   HyScanDBFileProjectInfo *project_info = value;
+
+  project_info->ref_count -= 1;
+  if (project_info->ref_count > 0)
+    return;
 
   g_free (project_info->project_name);
   g_free (project_info->path);
@@ -228,6 +285,10 @@ hyscan_db_remove_track_info (gpointer value)
 {
   HyScanDBFileTrackInfo *track_info = value;
 
+  track_info->ref_count -= 1;
+  if (track_info->ref_count > 0)
+    return;
+
   g_free (track_info->project_name);
   g_free (track_info->track_name);
   g_free (track_info->path);
@@ -240,6 +301,10 @@ static void
 hyscan_db_remove_channel_info (gpointer value)
 {
   HyScanDBFileChannelInfo *channel_info = value;
+
+  channel_info->ref_count -= 1;
+  if (channel_info->ref_count > 0)
+    return;
 
   g_object_unref (channel_info->channel);
 
@@ -257,12 +322,16 @@ hyscan_db_remove_param_info (gpointer value)
 {
   HyScanDBFileParamInfo *param_info = value;
 
+  param_info->ref_count -= 1;
+  if (param_info->ref_count > 0)
+    return;
+
   g_object_unref (param_info->param);
 
   g_free (param_info->project_name);
   g_free (param_info->track_name);
   g_free (param_info->group_name);
-  g_free (param_info->path);
+  g_free (param_info->object_name);
 
   g_free (param_info);
 }
@@ -342,7 +411,7 @@ hyscan_db_check_channel_by_object_name (gpointer key,
     return FALSE;
   if (!g_pattern_match_simple (object_info->track_name, channel_info->track_name))
     return FALSE;
-  if (!g_pattern_match_simple (object_info->object_name, channel_info->channel_name))
+  if (!g_pattern_match_simple (object_info->group_name, channel_info->channel_name))
     return FALSE;
 
   return TRUE;
@@ -361,7 +430,9 @@ hyscan_db_check_param_by_object_name (gpointer key,
     return FALSE;
   if (!g_pattern_match_simple (object_info->track_name, param_info->track_name))
     return FALSE;
-  if (!g_pattern_match_simple (object_info->object_name, param_info->group_name))
+  if (!g_pattern_match_simple (object_info->group_name, param_info->group_name))
+    return FALSE;
+  if (!g_pattern_match_simple (object_info->object_name, param_info->object_name))
     return FALSE;
 
   return TRUE;
@@ -375,7 +446,7 @@ hyscan_db_project_test (const gchar *path,
   gboolean status = FALSE;
 
   GKeyFile *project_param = g_key_file_new ();
-  gchar *project_param_file = g_strdup_printf ("%s%sproject.ini", path, G_DIR_SEPARATOR_S);
+  gchar *project_param_file = g_build_filename (path, PROJECT_ID_FILE, NULL);
 
   /* Загружаем файл с информацией о проекте. */
   if (!g_key_file_load_from_file (project_param, project_param_file, G_KEY_FILE_NONE, NULL))
@@ -407,7 +478,7 @@ hyscan_db_track_test (const gchar *path,
   gboolean status = FALSE;
 
   GKeyFile *track_param = g_key_file_new ();
-  gchar *track_param_file = g_strdup_printf ("%s%strack.ini", path, G_DIR_SEPARATOR_S);
+  gchar *track_param_file = g_build_filename (path, TRACK_ID_FILE, NULL);
 
   /* Загружаем файл с информацией о галсе. */
   if (!g_key_file_load_from_file (track_param, track_param_file, G_KEY_FILE_NONE, NULL))
@@ -456,8 +527,7 @@ hyscan_db_channel_test (const gchar *path,
 
 /* Функция возвращает список доступных групп параметров в указанном каталоге. */
 static gchar **
-hyscan_db_file_get_directory_param_list (const gchar *path,
-                                         const gchar *reserved_name)
+hyscan_db_file_get_directory_param_list (const gchar *path)
 {
   GDir *dir;
   const gchar *name;
@@ -475,17 +545,18 @@ hyscan_db_file_get_directory_param_list (const gchar *path,
       return NULL;
     }
 
-  /* Проверяем все найденые ini файлы. Если имя файла без расширения
-     совпадает с reserved_name или имеется канал данных с таким именем,
-     то исключаем это имя из списка групп параметров. */
+  /* Выбираем все файлы с расширением PARAMETERS_FILE_EXT. */
   while ((name = g_dir_read_name (dir)) != NULL)
     {
-
       gchar *sub_path;
       gchar **group_name;
 
+      /* Пропускаем все файлы с расширением не PARAMETERS_FILE_EXT. */
+      if (!g_str_has_suffix (name, PARAMETERS_FILE_EXT))
+        continue;
+
       /* Пропускаем все каталоги. */
-      sub_path = g_strdup_printf ("%s%s%s", path, G_DIR_SEPARATOR_S, name);
+      sub_path = g_build_filename (path, name, NULL);
       if (g_file_test (sub_path, G_FILE_TEST_IS_DIR))
         {
           g_free (sub_path);
@@ -493,27 +564,9 @@ hyscan_db_file_get_directory_param_list (const gchar *path,
         }
       g_free (sub_path);
 
-      /* Пропускаем все файлы с расширением не '.ini'. */
-      if (!g_str_has_suffix (name, ".ini"))
-        continue;
-
       /* Название группы параметров. */
       group_name = g_strsplit (name, ".", 2);
       if (g_strv_length (group_name) != 2 || strlen (group_name[0]) + strlen (group_name[1]) != strlen (name) - 1)
-        {
-          g_strfreev (group_name);
-          continue;
-        }
-
-      /* Проверяем, что имя не совпадает с зарезервированным. */
-      if (g_strcmp0 (group_name[0], reserved_name) == 0)
-        {
-          g_strfreev (group_name);
-          continue;
-        }
-
-      /* Проверяем, что нет канала данных с таким именем. */
-      if (hyscan_db_channel_test (path, group_name[0]))
         {
           g_strfreev (group_name);
           continue;
@@ -526,7 +579,6 @@ hyscan_db_file_get_directory_param_list (const gchar *path,
       params[i] = NULL;
 
       g_strfreev (group_name);
-
     }
 
   g_dir_close (dir);
@@ -550,7 +602,7 @@ hyscan_db_file_remove_directory (const gchar *path)
   while ((name = g_dir_read_name (dir)) != NULL)
     {
 
-      gchar *sub_path = g_strdup_printf ("%s%s%s", path, G_DIR_SEPARATOR_S, name);
+      gchar *sub_path = g_build_filename (path, name, NULL);
 
       /* Если это каталог - рекурсивно удаляем его. */
       if (g_file_test (sub_path, G_FILE_TEST_IS_DIR))
@@ -590,23 +642,9 @@ hyscan_db_file_remove_channel_files (const gchar *path,
   gchar *channel_file = NULL;
   gint i;
 
-  /* Удаляем файл с параметрами, если он есть. */
-  channel_file = g_strdup_printf ("%s%s%s.ini", path, G_DIR_SEPARATOR_S, name);
-  if (g_file_test (channel_file, G_FILE_TEST_IS_REGULAR))
-    if (g_unlink (channel_file) != 0)
-      {
-        g_warning ("HyScanDBFile: can't remove file %s", channel_file);
-        status = FALSE;
-      }
-  g_free (channel_file);
-
-  if (!status)
-    return status;
-
   /* Удаляем файлы индексов. */
   for (i = 0; i < MAX_CHANNEL_PARTS; i++)
     {
-
       channel_file = g_strdup_printf ("%s%s%s.%06d.i", path, G_DIR_SEPARATOR_S, name, i);
 
       /* Если файлы закончились - выходим. */
@@ -625,13 +663,11 @@ hyscan_db_file_remove_channel_files (const gchar *path,
 
       if (!status)
         return status;
-
     }
 
   /* Удаляем файлы данных. */
   for (i = 0; i < MAX_CHANNEL_PARTS; i++)
     {
-
       channel_file = g_strdup_printf ("%s%s%s.%06d.d", path, G_DIR_SEPARATOR_S, name, i);
 
       /* Если файлы закончились - выходим. */
@@ -650,14 +686,13 @@ hyscan_db_file_remove_channel_files (const gchar *path,
 
       if (!status)
         return status;
-
     }
 
   return status;
 }
 
 /* Функция возвращает путь к базе данных. */
-gchar *
+static gchar *
 hyscan_db_file_get_uri (HyScanDB *db)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
@@ -672,7 +707,7 @@ hyscan_db_file_get_uri (HyScanDB *db)
 }
 
 /* Функция возвращает номер изменения в объекте. */
-guint32
+static guint64
 hyscan_db_file_get_mod_count (HyScanDB *db,
                               gint32    id)
 {
@@ -684,30 +719,52 @@ hyscan_db_file_get_mod_count (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   HyScanDBFileParamInfo *param_info;
 
-  if (id ==0)
-    return priv->mod_count;
+  guint64 mod_count = 0;
+
+  g_rw_lock_reader_lock (&priv->lock);
+
+  if (id == 0)
+    {
+      mod_count = g_atomic_int_get (&priv->mod_count);
+      goto exit;
+    }
 
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (id));
   if (project_info != NULL)
-    return project_info->mod_count;
+    {
+      mod_count = g_atomic_int_get (&project_info->mod_count);
+      goto exit;
+    }
 
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (id));
   if (track_info != NULL)
-    return track_info->mod_count;
+    {
+      mod_count = g_atomic_int_get (&track_info->mod_count);
+      goto exit;
+    }
 
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (id));
   if (channel_info != NULL)
-    return channel_info->mod_count;
+    {
+      mod_count = g_atomic_int_get (&channel_info->mod_count);
+      goto exit;
+    }
 
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (id));
   if (param_info != NULL)
-    return param_info->mod_count;
+    {
+      mod_count = g_atomic_int_get (&param_info->mod_count);
+      goto exit;
+    }
 
-  return 0;
+exit:
+  g_rw_lock_reader_unlock (&priv->lock);
+
+  return mod_count;
 }
 
 /* Функция возвращает список доступных проектов. */
-gchar **
+static gchar **
 hyscan_db_file_get_project_list (HyScanDB *db)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
@@ -720,25 +777,25 @@ hyscan_db_file_get_project_list (HyScanDB *db)
   GError *error = NULL;
   gint i = 0;
 
-  g_mutex_lock (&priv->projects_lock);
-
   /* Открываем каталог с проектами. */
   db_dir = g_dir_open (priv->path, 0, &error);
   if (db_dir == NULL)
     {
       g_warning ("HyScanDBFile: %s", error->message);
-      goto exit;
+      return NULL;
     }
+
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Проверяем все найденые каталоги - содержат они проект или нет. */
   while ((project_name = g_dir_read_name (db_dir)) != NULL)
     {
 
       gboolean status = FALSE;
-      gchar *project_path = g_strdup_printf ("%s%s%s", priv->path, G_DIR_SEPARATOR_S,
-                                             project_name);
+      gchar *project_path;
 
       /* Проверяем содержит каталог проект или нет. */
+      project_path = g_build_filename (priv->path, project_name, NULL);
       status = hyscan_db_project_test (project_path, NULL);
       g_free (project_path);
 
@@ -753,17 +810,15 @@ hyscan_db_file_get_project_list (HyScanDB *db)
 
     }
 
-exit:
-  g_mutex_unlock (&priv->projects_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
-  if (db_dir != NULL)
-    g_dir_close (db_dir);
+  g_clear_pointer (&db_dir, g_dir_close);
 
   return projects;
 }
 
 /* Функция открывает проект для работы. */
-gint32
+static gint32
 hyscan_db_file_open_project (HyScanDB    *db,
                              const gchar *project_name)
 {
@@ -772,12 +827,14 @@ hyscan_db_file_open_project (HyScanDB    *db,
 
   gint32 nid;
   gint32 id = -1;
+
   gchar *project_path = NULL;
   HyScanDBFileProjectInfo *project_info = NULL;
   HyScanDBFileObjectInfo object_info;
+
   gint64 ctime;
 
-  g_mutex_lock (&priv->projects_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Генерация нового идентификатора открываемого объекта. */
   nid = hyscan_db_file_create_id (priv);
@@ -787,12 +844,10 @@ hyscan_db_file_open_project (HyScanDB    *db,
       goto exit;
     }
 
-  /* Полное имя проекта. */
-  object_info.project_name = (gchar *) project_name;
-  object_info.track_name = "";
-  object_info.object_name = "";
-
   /* Ищем проект в списке открытых. */
+  object_info.project_name = project_name;
+  object_info.track_name = "";
+  object_info.group_name = "";
   project_info = g_hash_table_find (priv->projects, hyscan_db_check_project_by_object_name, &object_info);
 
   /* Проект уже открыт. */
@@ -806,10 +861,10 @@ hyscan_db_file_open_project (HyScanDB    *db,
   else
     {
       /* Проверяем, что каталог содержит проект. */
-      project_path = g_strdup_printf ("%s%s%s", priv->path, G_DIR_SEPARATOR_S, project_name);
+      project_path = g_build_filename (priv->path, project_name, NULL);
       if (!hyscan_db_project_test (project_path, &ctime))
         {
-          g_warning ("HyScanDBFile: '%s' not a project", project_name);
+          g_info ("HyScanDBFile: '%s' not a project", project_name);
           goto exit;
         }
 
@@ -826,7 +881,7 @@ hyscan_db_file_open_project (HyScanDB    *db,
   g_hash_table_insert (priv->projects, GINT_TO_POINTER (id), project_info);
 
 exit:
-  g_mutex_unlock (&priv->projects_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
 
   g_free (project_path);
 
@@ -834,10 +889,10 @@ exit:
 }
 
 /* Функция создаёт новый проект и открывает его для работы. */
-gint32
+static gint32
 hyscan_db_file_create_project (HyScanDB    *db,
                                const gchar *project_name,
-                               const gchar *project_type)
+                               const gchar *project_schema)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -847,30 +902,24 @@ hyscan_db_file_create_project (HyScanDB    *db,
   GKeyFile *project_param = NULL;
   gchar *project_path = NULL;
   gchar *project_param_file = NULL;
+  gchar *project_schema_file = NULL;
   gchar *param_data = NULL;
 
-  /* Проверяем запрошенный формат хранения. */
-  if (project_type != NULL && g_strcmp0 (project_type, DB_FILE_PROJECT_TYPE) != 0)
-    {
-      g_warning ("HyScanDBFile: wrong project type %s", project_type);
-      return FALSE;
-    }
+  /* Проверяем название проекта. */
+  if (!hyscan_db_file_check_name (project_name, FALSE))
+    return -1;
 
-  g_mutex_lock (&priv->projects_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
   project_param = g_key_file_new ();
-  project_path = g_strdup_printf ("%s%s%s", priv->path,
-                                            G_DIR_SEPARATOR_S,
-                                            project_name);
-  project_param_file = g_strdup_printf ("%s%s%s%sproject.ini", priv->path,
-                                                               G_DIR_SEPARATOR_S,
-                                                               project_name,
-                                                               G_DIR_SEPARATOR_S);
+  project_path = g_build_filename (priv->path, project_name, NULL);
+  project_param_file = g_build_filename (priv->path, project_name, PROJECT_ID_FILE, NULL);
+  project_schema_file = g_build_filename (priv->path,project_name, PROJECT_SCHEMA_FILE, NULL);
 
   /* Проверяем, что каталога с названием проекта нет. */
   if (g_file_test (project_path, G_FILE_TEST_IS_DIR))
     {
-      g_warning ("HyScanDBFile: project '%s' already exists", project_name);
+      g_info ("HyScanDBFile: project '%s' already exists", project_name);
       goto exit;
     }
 
@@ -881,23 +930,34 @@ hyscan_db_file_create_project (HyScanDB    *db,
       goto exit;
     }
 
-  /* Файл параметров проекта. */
+  /* Файл идентификации проекта. */
   g_key_file_set_integer (project_param, "project", "version", HYSCAN_DB_FILE_API);
   g_key_file_set_int64 (project_param, "project", "ctime", g_get_real_time () / G_USEC_PER_SEC);
   param_data = g_key_file_to_data (project_param, NULL, NULL);
   if (!g_file_set_contents (project_param_file, param_data, -1, NULL))
     {
-      g_warning ("HyScanDBFile: can't save project '%s' parameters", project_name);
+      g_warning ("HyScanDBFile: can't save project '%s' identification file", project_name);
       goto exit;
     }
 
-  priv->mod_count += 1;
+  /* Схема параметров проекта. */
+  if (project_schema != NULL)
+    {
+      if (!g_file_set_contents (project_schema_file, project_schema, -1, NULL))
+        {
+          g_warning ("HyScanDBFile: can't save project '%s' schema", project_name);
+          goto exit;
+        }
+    }
+
+  g_atomic_int_inc (&priv->mod_count);
   status = TRUE;
 
 exit:
-  g_mutex_unlock (&priv->projects_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
 
   g_key_file_free (project_param);
+  g_free (project_schema_file);
   g_free (project_param_file);
   g_free (project_path);
   g_free (param_data);
@@ -909,7 +969,7 @@ exit:
 }
 
 /* Функция удаляет проект. */
-gboolean
+static gboolean
 hyscan_db_file_remove_project (HyScanDB    *db,
                                const gchar *project_name)
 {
@@ -924,80 +984,55 @@ hyscan_db_file_remove_project (HyScanDB    *db,
   GHashTableIter iter;
   gpointer key, value;
 
-  g_mutex_lock (&priv->projects_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
-  /* Полное имя проекта. */
-  object_info.project_name = (gchar *) project_name;
+  object_info.project_name = project_name;
   object_info.track_name = "*";
+  object_info.group_name = "*";
   object_info.object_name = "*";
 
   /* Ищем все открытые группы параметров этого проекта и закрываем их. */
   g_hash_table_iter_init (&iter, priv->params);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      HyScanDBFileParamInfo *param_info = value;
-
       if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
         continue;
 
-      param_info->ref_count -= 1;
-      if (param_info->ref_count > 0)
-        g_hash_table_iter_steal (&iter);
-      else
-        g_hash_table_iter_remove (&iter);
+      g_hash_table_iter_remove (&iter);
     }
 
   /* Ищем все открытые каналы данных этого проекта и закрываем их. */
   g_hash_table_iter_init (&iter, priv->channels);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      HyScanDBFileChannelInfo *channel_info = value;
-
       if (!hyscan_db_check_channel_by_object_name (key, value, &object_info))
         continue;
 
-      channel_info->ref_count -= 1;
-      if (channel_info->ref_count > 0)
-        g_hash_table_iter_steal (&iter);
-      else
-        g_hash_table_iter_remove (&iter);
+      g_hash_table_iter_remove (&iter);
     }
 
   /* Ищем все открытые галсы этого проекта и закрываем их. */
   g_hash_table_iter_init (&iter, priv->tracks);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      HyScanDBFileTrackInfo *track_info = value;
-
       if (!hyscan_db_check_track_by_object_name (key, value, &object_info))
         continue;
 
-      track_info->ref_count -= 1;
-      if (track_info->ref_count > 0)
-        g_hash_table_iter_steal (&iter);
-      else
-        g_hash_table_iter_remove (&iter);
+      g_hash_table_iter_remove (&iter);
     }
 
   /* Если проект открыт закрываем его. */
   g_hash_table_iter_init (&iter, priv->projects);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      HyScanDBFileProjectInfo *project_info = value;
-
       if (!hyscan_db_check_project_by_object_name (key, value, &object_info))
         continue;
 
-      project_info->ref_count -= 1;
-      if (project_info->ref_count > 0)
-        g_hash_table_iter_steal (&iter);
-      else
-        g_hash_table_iter_remove (&iter);
+      g_hash_table_iter_remove (&iter);
     }
 
-  project_path = g_strdup_printf ("%s%s%s", priv->path, G_DIR_SEPARATOR_S, project_name);
-
   /* Проверяем, что каталог содержит проект. */
+  project_path = g_build_filename (priv->path, project_name, NULL);
   if (!(status = hyscan_db_project_test (project_path, NULL)))
     {
       g_warning ("HyScanDBFile: '%s' not a project", project_name);
@@ -1006,10 +1041,10 @@ hyscan_db_file_remove_project (HyScanDB    *db,
 
   /* Удаляем каталог с проектом. */
   status = hyscan_db_file_remove_directory (project_path);
-  priv->mod_count += 1;
+  g_atomic_int_inc (&priv->mod_count);
 
 exit:
-  g_mutex_unlock (&priv->projects_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
 
   g_free (project_path);
 
@@ -1017,7 +1052,7 @@ exit:
 }
 
 /* Функция закрывает проект. */
-void
+static void
 hyscan_db_file_close_project (HyScanDB *db,
                               gint32    project_id)
 {
@@ -1026,26 +1061,18 @@ hyscan_db_file_close_project (HyScanDB *db,
 
   HyScanDBFileProjectInfo *project_info;
 
-  g_mutex_lock (&priv->projects_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
-  if (project_info == NULL)
-    goto exit;
-
-  /* Уменьшили счётчик ссылок, если счётчик станет равным нулю - удаляем объект. */
-  project_info->ref_count -= 1;
-  if (project_info->ref_count > 0)
-    g_hash_table_steal (priv->projects, GINT_TO_POINTER (project_id));
-  else
+  if (project_info != NULL)
     g_hash_table_remove (priv->projects, GINT_TO_POINTER (project_id));
 
-exit:
-  g_mutex_unlock (&priv->projects_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
 }
 
 /* Функция возвращает информацию о дате и времени создания проекта. */
-GDateTime *
+static GDateTime *
 hyscan_db_file_get_project_ctime (HyScanDB *db,
                                   gint32    project_id)
 {
@@ -1055,23 +1082,20 @@ hyscan_db_file_get_project_ctime (HyScanDB *db,
   HyScanDBFileProjectInfo *project_info;
   GDateTime *ctime = NULL;
 
-  g_mutex_lock (&priv->projects_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
-  if (project_info == NULL)
-    goto exit;
+  if (project_info != NULL)
+    ctime = g_date_time_new_from_unix_local (project_info->ctime);
 
-  ctime = g_date_time_new_from_unix_local (project_info->ctime);
-
-exit:
-  g_mutex_unlock (&priv->projects_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return ctime;
 }
 
 /* Функция возвращает список доступных галсов проекта. */
-gchar **
+static gchar **
 hyscan_db_file_get_track_list (HyScanDB *db,
                                gint32    project_id)
 {
@@ -1087,10 +1111,8 @@ hyscan_db_file_get_track_list (HyScanDB *db,
   GError *error;
   gint i = 0;
 
-  g_mutex_lock (&priv->projects_lock);
-  g_mutex_lock (&priv->tracks_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
-  /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
   if (project_info == NULL)
     goto exit;
@@ -1107,12 +1129,11 @@ hyscan_db_file_get_track_list (HyScanDB *db,
   /* Проверяем все найденые каталоги - содержат они галс или нет. */
   while ((track_name = g_dir_read_name (db_dir)) != NULL)
     {
-
       gboolean status = FALSE;
-      gchar *track_path = g_strdup_printf ("%s%s%s", project_info->path, G_DIR_SEPARATOR_S,
-                                           track_name);
+      gchar *track_path;
 
       /* Проверяем содержит каталог галс или нет. */
+      track_path = g_build_filename (project_info->path, track_name, NULL);
       status = hyscan_db_track_test (track_path, NULL);
       g_free (track_path);
 
@@ -1124,64 +1145,56 @@ hyscan_db_file_get_track_list (HyScanDB *db,
       tracks[i] = g_strdup (track_name);
       i++;
       tracks[i] = NULL;
-
     }
 
 exit:
-  g_mutex_unlock (&priv->tracks_lock);
-  g_mutex_unlock (&priv->projects_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
-  if (db_dir != NULL)
-    g_dir_close (db_dir);
+  g_clear_pointer (&db_dir, g_dir_close);
 
   return tracks;
 }
 
-/* Функция открывает галс для работы. */
-gint32
-hyscan_db_file_open_track (HyScanDB    *db,
-                           gint32       project_id,
-                           const gchar *track_name)
+/* Внутренняя функция открытия галса. */
+static gint32
+hyscan_db_file_open_track_int (HyScanDB    *db,
+                               gint32       project_id,
+                               const gchar *track_name,
+                               gboolean     readonly)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
 
-  gint32 nid;
-  gint32 id = -1;
+  gint32 id;
   gchar *track_path = NULL;
+
   HyScanDBFileProjectInfo *project_info = NULL;
   HyScanDBFileTrackInfo *track_info = NULL;
   HyScanDBFileObjectInfo object_info;
-  gint64 ctime;
 
-  g_mutex_lock (&priv->projects_lock);
-  g_mutex_lock (&priv->tracks_lock);
+  gint64 ctime;
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
   if (project_info == NULL)
-    goto exit;
+    return -1;
 
   /* Генерация нового идентификатора открываемого объекта. */
-  nid = hyscan_db_file_create_id (priv);
-  if (nid < 0)
+  id = hyscan_db_file_create_id (priv);
+  if (id < 0)
     {
       g_warning ("HyScanDBFile: too many open objects");
-      goto exit;
+      return -1;
     }
 
-  /* Полное имя галса. */
   object_info.project_name = project_info->project_name;
-  object_info.track_name = (gchar *) track_name;
-  object_info.object_name = "";
-
-  /* Ищем галс в списке открытых. */
+  object_info.track_name = track_name;
+  object_info.group_name = "";
   track_info = g_hash_table_find (priv->tracks, hyscan_db_check_track_by_object_name, &object_info);
 
   /* Галс уже открыт. */
   if (track_info != NULL)
     {
-      id = nid;
       track_info->ref_count += 1;
     }
 
@@ -1189,11 +1202,12 @@ hyscan_db_file_open_track (HyScanDB    *db,
   else
     {
       /* Проверяем, что каталог содержит галс. */
-      track_path = g_strdup_printf ("%s%s%s", project_info->path, G_DIR_SEPARATOR_S, track_name);
+      track_path = g_build_filename (project_info->path, track_name, NULL);
       if (!hyscan_db_track_test (track_path, &ctime))
         {
-          g_warning ("HyScanDBFile: '%s.%s' not a track", project_info->project_name, track_name);
-          goto exit;
+          g_info ("HyScanDBFile: '%s.%s' not a track", project_info->project_name, track_name);
+          g_free (track_path);
+          return -1;
         }
 
       track_info = g_malloc (sizeof (HyScanDBFileTrackInfo));
@@ -1202,57 +1216,83 @@ hyscan_db_file_open_track (HyScanDB    *db,
       track_info->track_name = g_strdup (track_name);
       track_info->path = track_path;
       track_info->ctime = ctime;
+      if (readonly)
+        track_info->wid = -1;
+      else
+        track_info->wid = id;
       track_path = NULL;
-      id = nid;
+
+      g_free (track_path);
     }
 
   g_hash_table_insert (priv->tracks, GINT_TO_POINTER (id), track_info);
 
-exit:
-  g_mutex_unlock (&priv->tracks_lock);
-  g_mutex_unlock (&priv->projects_lock);
+  return id;
+}
 
-  g_free (track_path);
+/* Функция открывает галс для работы. */
+static gint32
+hyscan_db_file_open_track (HyScanDB    *db,
+                           gint32       project_id,
+                           const gchar *track_name)
+{
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
+  HyScanDBFilePrivate *priv = dbf->priv;
+
+  gint32 id;
+
+  g_rw_lock_writer_lock (&priv->lock);
+  id = hyscan_db_file_open_track_int (db, project_id, track_name, TRUE);
+  g_rw_lock_writer_unlock (&priv->lock);
 
   return id;
 }
 
 /* Функция создаёт новый галс и открывает его для работы. */
-gint32
+static gint32
 hyscan_db_file_create_track (HyScanDB    *db,
                              gint32       project_id,
-                             const gchar *track_name)
+                             const gchar *track_name,
+                             const gchar *track_schema,
+                             const gchar *schema_id)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
 
   HyScanDBFileProjectInfo *project_info;
+  HyScanDBParamFile *params;
 
-  gboolean status = FALSE;
+  gint32 id = -1;
 
-  GKeyFile *track_param = NULL;
+  GKeyFile *track_id = NULL;
   gchar *track_path = NULL;
+  gchar *track_id_file = NULL;
   gchar *track_param_file = NULL;
+  gchar *track_schema_file = NULL;
   gchar *param_data = NULL;
 
-  g_mutex_lock (&priv->projects_lock);
-  g_mutex_lock (&priv->tracks_lock);
+  /* Проверяем название галса. */
+  if (!hyscan_db_file_check_name (track_name, FALSE))
+    return -1;
+
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
   if (project_info == NULL)
     goto exit;
 
-  track_param = g_key_file_new ();
-  track_path = g_strdup_printf ("%s%s%s", project_info->path, G_DIR_SEPARATOR_S, track_name);
-  track_param_file = g_strdup_printf ("%s%s%s%strack.ini", project_info->path,
-                                      G_DIR_SEPARATOR_S, track_name, G_DIR_SEPARATOR_S);
+  track_id = g_key_file_new ();
+  track_path = g_build_filename (project_info->path, track_name, NULL);
+  track_id_file = g_build_filename (project_info->path, track_name, TRACK_ID_FILE, NULL);
+  track_param_file = g_build_filename (project_info->path, track_name, TRACK_PARAMETERS_FILE, NULL);
+  track_schema_file = g_build_filename (project_info->path, track_name, TRACK_SCHEMA_FILE, NULL);
 
   /* Проверяем, что каталога с названием проекта нет. */
   if (g_file_test (track_path, G_FILE_TEST_IS_DIR))
     {
-      g_warning ("HyScanDBFile: track '%s.%s' already exists",
-                  project_info->project_name, track_name);
+      g_info ("HyScanDBFile: track '%s.%s' already exists",
+              project_info->project_name, track_name);
       goto exit;
     }
 
@@ -1264,37 +1304,53 @@ hyscan_db_file_create_track (HyScanDB    *db,
       goto exit;
     }
 
-  /* Файл параметров проекта. */
-  g_key_file_set_integer (track_param, "track", "version", HYSCAN_DB_FILE_API);
-  g_key_file_set_int64 (track_param, "track", "ctime", g_get_real_time () / G_USEC_PER_SEC);
-  param_data = g_key_file_to_data (track_param, NULL, NULL);
-  if (!g_file_set_contents (track_param_file, param_data, -1, NULL))
+  /* Файл идентификатор галса. */
+  g_key_file_set_integer (track_id, "track", "version", HYSCAN_DB_FILE_API);
+  g_key_file_set_int64 (track_id, "track", "ctime", g_get_real_time () / G_USEC_PER_SEC);
+  param_data = g_key_file_to_data (track_id, NULL, NULL);
+  if (!g_file_set_contents (track_id_file, param_data, -1, NULL))
     {
-      g_warning ("HyScanDBFile: can't save track '%s.%s' parameters",
+      g_warning ("HyScanDBFile: can't save track '%s.%s' identification file",
                   project_info->project_name, track_name);
       goto exit;
     }
 
-  project_info->mod_count += 1;
-  status = TRUE;
+  /* Файл схемы параметров галса. */
+  if (track_schema != NULL)
+    {
+      if (!g_file_set_contents (track_schema_file, track_schema, -1, NULL))
+        {
+          g_warning ("HyScanDBFile: can't save track '%s.%s' schema",
+                      project_info->project_name, track_name);
+          goto exit;
+        }
+    }
+
+  /* Файл параметров галса. */
+  params = hyscan_db_param_file_new (track_param_file, track_schema_file);
+  hyscan_db_param_file_object_create (params, TRACK_PARAMETERS_ID, schema_id);
+  g_object_unref (params);
+
+  /* Открываем галс. */
+  id = hyscan_db_file_open_track_int (db, project_id, track_name, FALSE);
+
+  g_atomic_int_inc (&project_info->mod_count);
 
 exit:
-  g_mutex_unlock (&priv->tracks_lock);
-  g_mutex_unlock (&priv->projects_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
 
-  if (track_param != NULL)
-    g_key_file_free (track_param);
+  g_clear_pointer (&track_id, g_key_file_free);
+  g_free (track_schema_file);
   g_free (track_param_file);
+  g_free (track_id_file);
   g_free (track_path);
   g_free (param_data);
 
-  if (status)
-    return hyscan_db_file_open_track (db, project_id, track_name);
-  return -1;
+  return id;
 }
 
 /* Функция удаляет галс. */
-gboolean
+static gboolean
 hyscan_db_file_remove_track (HyScanDB    *db,
                              gint32       project_id,
                              const gchar *track_name)
@@ -1311,70 +1367,50 @@ hyscan_db_file_remove_track (HyScanDB    *db,
   GHashTableIter iter;
   gpointer key, value;
 
-  g_mutex_lock (&priv->projects_lock);
-  g_mutex_lock (&priv->tracks_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
   if (project_info == NULL)
     goto exit;
 
-  /* Полное имя галса. */
   object_info.project_name = project_info->project_name;
-  object_info.track_name = (gchar *) track_name;
+  object_info.track_name = track_name;
+  object_info.group_name = "*";
   object_info.object_name = "*";
 
   /* Ищем все открытые группы параметров этого галса и закрываем их. */
   g_hash_table_iter_init (&iter, priv->params);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      HyScanDBFileParamInfo *param_info = value;
-
       if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
         continue;
 
-      param_info->ref_count -= 1;
-      if (param_info->ref_count > 0)
-        g_hash_table_iter_steal (&iter);
-      else
-        g_hash_table_iter_remove (&iter);
+      g_hash_table_iter_remove (&iter);
     }
 
   /* Ищем все открытые каналы данных этого галса и закрываем их. */
   g_hash_table_iter_init (&iter, priv->channels);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      HyScanDBFileChannelInfo *channel_info = value;
-
       if (!hyscan_db_check_channel_by_object_name (key, value, &object_info))
         continue;
 
-      channel_info->ref_count -= 1;
-      if (channel_info->ref_count > 0)
-        g_hash_table_iter_steal (&iter);
-      else
-        g_hash_table_iter_remove (&iter);
+      g_hash_table_iter_remove (&iter);
     }
 
   /* Если галс открыт закрываем его. */
   g_hash_table_iter_init (&iter, priv->tracks);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      HyScanDBFileTrackInfo *track_info = value;
-
       if (!hyscan_db_check_track_by_object_name (key, value, &object_info))
         continue;
 
-      track_info->ref_count -= 1;
-      if (track_info->ref_count > 0)
-        g_hash_table_iter_steal (&iter);
-      else
-        g_hash_table_iter_remove (&iter);
+      g_hash_table_iter_remove (&iter);
     }
 
-  track_path = g_strdup_printf ("%s%s%s", project_info->path, G_DIR_SEPARATOR_S, track_name);
-
   /* Проверяем, что каталог содержит галс. */
+  track_path = g_build_filename (project_info->path, track_name, NULL);
   if (!(status = hyscan_db_track_test (track_path, NULL)))
     {
       g_warning ("HyScanDBFile: '%s.%s' not a track", project_info->project_name, track_name);
@@ -1383,11 +1419,10 @@ hyscan_db_file_remove_track (HyScanDB    *db,
 
   /* Удаляем каталог с галсом. */
   status = hyscan_db_file_remove_directory (track_path);
-  project_info->mod_count += 1;
+  g_atomic_int_inc (&project_info->mod_count);
 
 exit:
-  g_mutex_unlock (&priv->tracks_lock);
-  g_mutex_unlock (&priv->projects_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
 
   g_free (track_path);
 
@@ -1395,7 +1430,7 @@ exit:
 }
 
 /* Функция закрывает галс. */
-void
+static void
 hyscan_db_file_close_track (HyScanDB *db,
                             gint32    track_id)
 {
@@ -1404,26 +1439,18 @@ hyscan_db_file_close_track (HyScanDB *db,
 
   HyScanDBFileTrackInfo *track_info;
 
-  g_mutex_lock (&priv->tracks_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем галс в списке открытых. */
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
-  if (track_info == NULL)
-    goto exit;
-
-  /* Уменьшили счётчик ссылок, если счётчик станет равным нулю - удаляем объект. */
-  track_info->ref_count -= 1;
-  if (track_info->ref_count > 0)
-    g_hash_table_steal (priv->tracks, GINT_TO_POINTER (track_id));
-  else
+  if (track_info != NULL)
     g_hash_table_remove (priv->tracks, GINT_TO_POINTER (track_id));
 
-exit:
-  g_mutex_unlock (&priv->tracks_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 }
 
 /* Функция возвращает информацию о дате и времени создания галса. */
-GDateTime *
+static GDateTime *
 hyscan_db_file_get_track_ctime (HyScanDB *db,
                                 gint32    project_id)
 {
@@ -1433,23 +1460,20 @@ hyscan_db_file_get_track_ctime (HyScanDB *db,
   HyScanDBFileTrackInfo *track_info;
   GDateTime *ctime = NULL;
 
-  g_mutex_lock (&priv->tracks_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем галс в списке открытых. */
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (project_id));
-  if (track_info == NULL)
-    goto exit;
+  if (track_info != NULL)
+    ctime = g_date_time_new_from_unix_local (track_info->ctime);
 
-  ctime = g_date_time_new_from_unix_local (track_info->ctime);
-
-exit:
-  g_mutex_unlock (&priv->tracks_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return ctime;
 }
 
 /* Функция возвращает список доступных каналов данных галса. */
-gchar **
+static gchar **
 hyscan_db_file_get_channel_list (HyScanDB *db,
                                  gint32    track_id)
 {
@@ -1465,8 +1489,7 @@ hyscan_db_file_get_channel_list (HyScanDB *db,
   GError *error;
   gint i = 0;
 
-  g_mutex_lock (&priv->tracks_lock);
-  g_mutex_lock (&priv->channels_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем галс в списке открытых. */
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
@@ -1516,20 +1539,19 @@ hyscan_db_file_get_channel_list (HyScanDB *db,
     }
 
 exit:
-  g_mutex_unlock (&priv->channels_lock);
-  g_mutex_unlock (&priv->tracks_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
-  if (db_dir != NULL)
-    g_dir_close (db_dir);
+  g_clear_pointer (&db_dir, g_dir_close);
 
   return channels;
 }
 
 /* Функция создаёт или открывает существующий канал данных. */
-gint32
+static gint32
 hyscan_db_file_open_channel_int (HyScanDB    *db,
                                  gint32       track_id,
                                  const gchar *channel_name,
+                                 const gchar *schema_id,
                                  gboolean     readonly)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
@@ -1542,8 +1564,7 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
   HyScanDBFileChannelInfo *channel_info;
   HyScanDBFileObjectInfo object_info;
 
-  g_mutex_lock (&priv->tracks_lock);
-  g_mutex_lock (&priv->channels_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем галс в списке открытых. */
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
@@ -1561,8 +1582,7 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
   /* Полное имя канала данных. */
   object_info.project_name = track_info->project_name;
   object_info.track_name = track_info->track_name;
-  object_info.object_name = (gchar *) channel_name;
-  object_info.readonly = FALSE;
+  object_info.group_name = channel_name;
 
   /* Ищем канал в списке открытых для записи. */
   channel_info = g_hash_table_find (priv->channels, hyscan_db_check_channel_by_object_name, &object_info);
@@ -1578,8 +1598,8 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
       else
         {
           /* Если канал уже открыт и находится в режиме записи - возвращаем ошибку. */
-          g_warning ("HyScanDBFile: channel '%s.%s.%s' already exists",
-                      track_info->project_name, track_info->track_name, channel_name);
+          g_info ("HyScanDBFile: channel '%s.%s.%s' already exists",
+                  track_info->project_name, track_info->track_name, channel_name);
           goto exit;
         }
     }
@@ -1592,11 +1612,11 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
       if (hyscan_db_channel_test (track_info->path, channel_name) != readonly)
         {
           if (readonly)
-            g_warning ("HyScanDBFile: '%s.%s.%s' - no such channel",
-                        track_info->project_name, track_info->track_name, channel_name);
+            g_info ("HyScanDBFile: '%s.%s.%s' - no such channel",
+                    track_info->project_name, track_info->track_name, channel_name);
           else
-            g_warning ("HyScanDBFile: channel '%s.%s.%s' already exists",
-                        track_info->project_name, track_info->track_name, channel_name);
+            g_info ("HyScanDBFile: channel '%s.%s.%s' already exists",
+                    track_info->project_name, track_info->track_name, channel_name);
           goto exit;
         }
 
@@ -1617,40 +1637,83 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
       else
         {
           channel_info->wid = nid;
-          track_info->mod_count += 1;
+          g_atomic_int_inc (&track_info->mod_count);
         }
+
+      /* Создаём объект с параметрами канала данных. */
+      if (!readonly)
+        {
+          HyScanDBFileParamInfo *param_info;
+          HyScanDBParamFile *param;
+
+          gchar *track_param_file;
+          gchar *track_schema_file;
+
+          track_param_file = g_build_filename (track_info->path, TRACK_PARAMETERS_FILE, NULL);
+          track_schema_file = g_build_filename (track_info->path, TRACK_SCHEMA_FILE, NULL);
+
+          /* Полное имя параметров канала данных. */
+          object_info.project_name = track_info->project_name;
+          object_info.track_name = track_info->track_name;
+          object_info.group_name = TRACK_GROUP_ID;
+
+          /* Ищем группу параметров в списке открытых. */
+          param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
+          if (param_info != NULL)
+            param = g_object_ref (param_info->param);
+          else
+            param = hyscan_db_param_file_new (track_param_file, track_schema_file);
+
+          /* Создаём объект в группе параметров с именем канала данных и указанной схемой. */
+          hyscan_db_param_file_object_create (param, channel_name, schema_id);
+
+          g_free (track_schema_file);
+          g_free (track_param_file);
+
+          g_object_unref (param);
+        }
+
       id = nid;
     }
 
   g_hash_table_insert (priv->channels, GINT_TO_POINTER (id), channel_info);
 
 exit:
-  g_mutex_unlock (&priv->channels_lock);
-  g_mutex_unlock (&priv->tracks_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
 
   return id;
 }
 
 /* Функция открывает существующий канал данных. */
-gint32
+static gint32
 hyscan_db_file_open_channel (HyScanDB    *db,
                              gint32       track_id,
                              const gchar *channel_name)
 {
-  return hyscan_db_file_open_channel_int (db, track_id, channel_name, TRUE);
+  return hyscan_db_file_open_channel_int (db, track_id, channel_name, NULL, TRUE);
 }
 
 /* Функция создаёт канал данных. */
-gint32
+static gint32
 hyscan_db_file_create_channel (HyScanDB    *db,
                                gint32       track_id,
-                               const gchar *channel_name)
+                               const gchar *channel_name,
+                               const gchar *schema_id)
 {
-  return hyscan_db_file_open_channel_int (db, track_id, channel_name, FALSE);
+  /* Проверяем название канала данных. */
+  if (g_strcmp0 (channel_name, TRACK_PARAMETERS_ID) == 0)
+    {
+      g_warning ("HyScanDBFile: can't use reserved name 'track'");
+      return -1;
+    }
+  if (!hyscan_db_file_check_name (channel_name, FALSE))
+    return -1;
+
+  return hyscan_db_file_open_channel_int (db, track_id, channel_name, schema_id, FALSE);
 }
 
 /* Функция удаляет канал данных. */
-gboolean
+static gboolean
 hyscan_db_file_remove_channel (HyScanDB    *db,
                                gint32       track_id,
                                const gchar *channel_name)
@@ -1661,69 +1724,83 @@ hyscan_db_file_remove_channel (HyScanDB    *db,
   HyScanDBFileTrackInfo *track_info;
   HyScanDBFileObjectInfo object_info;
 
+  HyScanDBParamFile *param = NULL;
+  gchar *track_param_file;
+  gchar *track_schema_file;
+
   gboolean status = FALSE;
 
   GHashTableIter iter;
   gpointer key, value;
 
-  g_mutex_lock (&priv->tracks_lock);
-  g_mutex_lock (&priv->channels_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем галс в списке открытых. */
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
   if (track_info == NULL)
     goto exit;
 
-  /* Полное имя канала данных. */
   object_info.project_name = track_info->project_name;
   object_info.track_name = track_info->track_name;
-  object_info.object_name = (gchar *) channel_name;
-
-  /* Ищем параметры канала в списке открытых, при необходимости закрываем. */
-  g_hash_table_iter_init (&iter, priv->params);
-  while (g_hash_table_iter_next (&iter, &key, &value))
-    {
-      HyScanDBFileParamInfo *param_info = value;
-
-      if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
-        continue;
-
-      param_info->ref_count -= 1;
-      if (param_info->ref_count > 0)
-        g_hash_table_iter_steal (&iter);
-      else
-        g_hash_table_iter_remove (&iter);
-    }
+  object_info.group_name = channel_name;
 
   /* Ищем канал в списке открытых, при необходимости закрываем. */
   g_hash_table_iter_init (&iter, priv->channels);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      HyScanDBFileChannelInfo *channel_info = value;
-
       if (!hyscan_db_check_channel_by_object_name (key, value, &object_info))
         continue;
 
-      channel_info->ref_count -= 1;
-      if (channel_info->ref_count > 0)
-        g_hash_table_iter_steal (&iter);
-      else
-        g_hash_table_iter_remove (&iter);
+      g_hash_table_iter_remove (&iter);
     }
+
+  /* Полное имя параметров канала данных. */
+  object_info.project_name = track_info->project_name;
+  object_info.track_name = track_info->track_name;
+  object_info.group_name = TRACK_GROUP_ID;
+  object_info.object_name = channel_name;
+
+  /* Ищем параметры канала данных в списке открытых, при необходимости закрываем. */
+  g_hash_table_iter_init (&iter, priv->params);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      HyScanDBFileParamInfo *param_info;
+
+      if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
+        continue;
+
+      /* Если параметры канала данных были открыты, используем их для удаления объекта. */
+      param_info = value;
+      param = g_object_ref (param_info->param);
+
+      g_hash_table_iter_remove (&iter);
+    }
+
+  /* Удаляем объект с параметрами канала данных. */
+  track_param_file = g_build_filename (track_info->path, TRACK_PARAMETERS_FILE, NULL);
+  track_schema_file = g_build_filename (track_info->path, TRACK_SCHEMA_FILE, NULL);
+  if (param == NULL)
+    param = hyscan_db_param_file_new (track_param_file, track_schema_file);
+
+  /* Удаляем объект в группе параметров с именем канала данных. */
+  hyscan_db_param_file_object_remove (param, channel_name);
+  g_object_unref (param);
+
+  g_free (track_schema_file);
+  g_free (track_param_file);
 
   /* Удаляем файлы канала данных. */
   status = hyscan_db_file_remove_channel_files (track_info->path, channel_name);
-  track_info->mod_count += 1;
+  g_atomic_int_inc (&track_info->mod_count);
 
 exit:
-  g_mutex_unlock (&priv->channels_lock);
-  g_mutex_unlock (&priv->tracks_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
 
   return status;
 }
 
 /* Функция закрывает канал данных. */
-void
+static void
 hyscan_db_file_close_channel (HyScanDB *db,
                               gint32    channel_id)
 {
@@ -1731,106 +1808,75 @@ hyscan_db_file_close_channel (HyScanDB *db,
   HyScanDBFilePrivate *priv = dbf->priv;
 
   HyScanDBFileChannelInfo *channel_info;
+  HyScanDBFileParamInfo *param_info;
+  HyScanDBFileObjectInfo object_info;
 
-  g_mutex_lock (&priv->channels_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
-  if (channel_info == NULL)
-    goto exit;
+  if (channel_info != NULL)
+    {
+      /* Закрыли дескриптор с правами на запись. */
+      if (channel_info->wid == channel_id)
+        {
+          object_info.project_name = channel_info->project_name;
+          object_info.track_name = channel_info->track_name;
+          object_info.group_name = TRACK_GROUP_ID;
+          object_info.object_name = channel_info->channel_name;
 
-  /* Закрыли дескриптор с правами на запись. */
-  if (channel_info->wid == channel_id)
-    channel_info->wid = -1;
+          param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
+          if (param_info != NULL)
+            param_info->channel_object_wid = -1;
 
-  /* Уменьшили счётчик ссылок, если счётчик станет равным нулю - удаляем объект. */
-  channel_info->ref_count -= 1;
-  if (channel_info->ref_count > 0)
-    g_hash_table_steal (priv->channels, GINT_TO_POINTER (channel_id));
-  else
-    g_hash_table_remove (priv->channels, GINT_TO_POINTER (channel_id));
+          channel_info->wid = -1;
+        }
 
-exit:
-  g_mutex_unlock (&priv->channels_lock);
+      /* Удаляем канал данных из списка. */
+      g_hash_table_remove (priv->channels, GINT_TO_POINTER (channel_id));
+    }
+
+  g_rw_lock_writer_unlock (&priv->lock);
 }
 
-/* Функция открывает группу параметров канала данных. */
-gint32
-hyscan_db_file_open_channel_param (HyScanDB *db,
-                                   gint32    channel_id)
+/* Функция завершает запись в канал данных. */
+static void
+hyscan_db_file_finalize_channel (HyScanDB *db,
+                                 gint32    channel_id)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
-
-  gint32 nid;
-  gint32 id = -1;
 
   HyScanDBFileChannelInfo *channel_info;
   HyScanDBFileParamInfo *param_info;
   HyScanDBFileObjectInfo object_info;
 
-  g_mutex_lock (&priv->channels_lock);
-  g_mutex_lock (&priv->params_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
-  if (channel_info == NULL)
-    goto exit;
 
-  /* Генерация нового идентификатора открываемого объекта. */
-  nid = hyscan_db_file_create_id (priv);
-  if (nid < 0)
+  /* Закрыли дескриптор с правами на запись. */
+  if (channel_info != NULL && channel_info->wid == channel_id)
     {
-      g_warning ("HyScanDBFile: too many open objects");
-      goto exit;
+      object_info.project_name = channel_info->project_name;
+      object_info.track_name = channel_info->track_name;
+      object_info.group_name = TRACK_GROUP_ID;
+      object_info.object_name = channel_info->channel_name;
+
+      param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
+      if (param_info != NULL)
+        param_info->channel_object_wid = -1;
+
+      hyscan_db_channel_file_finalize_channel (channel_info->channel);
+      channel_info->wid = -1;
     }
 
-  /* Полное имя группы параметров. */
-  object_info.project_name = channel_info->project_name;
-  object_info.track_name = channel_info->track_name;
-  object_info.object_name = channel_info->channel_name;
-
-  /* Ищем группу параметров в списке открытых. */
-  param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
-
-  /* Параметры уже открыты. */
-  if (param_info != NULL)
-    {
-      if (channel_info->wid == channel_id && param_info->wid == -1)
-        param_info->wid = nid;
-      param_info->ref_count += 1;
-      id = nid;
-    }
-
-  /* Открываем группу параметров для работы. */
-  else
-    {
-      param_info = g_malloc (sizeof (HyScanDBFileParamInfo));
-      param_info->ref_count = 1;
-      param_info->mod_count = 1;
-      param_info->project_name = g_strdup (channel_info->project_name);
-      param_info->track_name = g_strdup (channel_info->track_name);
-      param_info->group_name = g_strdup (channel_info->channel_name);
-      param_info->path = g_strdup (channel_info->path);
-      param_info->param = hyscan_db_param_file_new (param_info->path, param_info->group_name );
-      if (channel_info->wid == channel_id)
-        param_info->wid = nid;
-      else
-        param_info->wid = -1;
-      id = nid;
-    }
-
-  g_hash_table_insert (priv->params, GINT_TO_POINTER (id), param_info);
-
-exit:
-  g_mutex_unlock (&priv->params_lock);
-  g_mutex_unlock (&priv->channels_lock);
-
-  return id;
+  g_rw_lock_writer_unlock (&priv->lock);
 }
 
 /* Функция устанавливает максимальный размер файла данных канала. */
-gboolean
+static gboolean
 hyscan_db_file_set_channel_chunk_size (HyScanDB *db,
                                        gint32    channel_id,
                                        gint32    chunk_size)
@@ -1841,20 +1887,20 @@ hyscan_db_file_set_channel_chunk_size (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
 
-  g_mutex_lock (&priv->channels_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_set_channel_chunk_size (channel_info->channel, chunk_size);
 
-  g_mutex_unlock (&priv->channels_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return status;
 }
 
 /* Функция устанавливает интервал времени в микросекундах для которого хранятся записываемые данные. */
-gboolean
+static gboolean
 hyscan_db_file_set_channel_save_time (HyScanDB *db,
                                       gint32    channel_id,
                                       gint64    save_time)
@@ -1865,20 +1911,20 @@ hyscan_db_file_set_channel_save_time (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
 
-  g_mutex_lock (&priv->channels_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_set_channel_save_time (channel_info->channel, save_time);
 
-  g_mutex_unlock (&priv->channels_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return status;
 }
 
 /* Функция устанавливает максимальный объём сохраняемых данных. */
-gboolean
+static gboolean
 hyscan_db_file_set_channel_save_size (HyScanDB *db,
                                       gint32    channel_id,
                                       gint64    save_size)
@@ -1889,43 +1935,20 @@ hyscan_db_file_set_channel_save_size (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
 
-  g_mutex_lock (&priv->channels_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_set_channel_save_size (channel_info->channel, save_size);
 
-  g_mutex_unlock (&priv->channels_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return status;
 }
 
-/* Функция завершает запись в канал данных. */
-void
-hyscan_db_file_finalize_channel (HyScanDB *db,
-                                 gint32    channel_id)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  HyScanDBFileChannelInfo *channel_info;
-
-  g_mutex_lock (&priv->channels_lock);
-
-  /* Ищем канал данных в списке открытых. */
-  channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
-  if (channel_info != NULL && channel_info->wid == channel_id)
-    {
-      hyscan_db_channel_file_finalize_channel (channel_info->channel);
-      channel_info->wid = -1;
-    }
-
-  g_mutex_unlock (&priv->channels_lock);
-}
-
 /* Функция возвращает диапазон текущих значений индексов данных. */
-gboolean
+static gboolean
 hyscan_db_file_get_channel_data_range (HyScanDB *db,
                                        gint32    channel_id,
                                        gint32   *first_index,
@@ -1937,20 +1960,20 @@ hyscan_db_file_get_channel_data_range (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
 
-  g_mutex_lock (&priv->channels_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_get_channel_data_range (channel_info->channel, first_index, last_index);
 
-  g_mutex_unlock (&priv->channels_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return status;
 }
 
 /* Функция записывает новые данные канала. */
-gboolean
+static gboolean
 hyscan_db_file_add_channel_data (HyScanDB *db,
                                  gint32    channel_id,
                                  gint64    time,
@@ -1964,7 +1987,7 @@ hyscan_db_file_add_channel_data (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
 
-  g_mutex_lock (&priv->channels_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
@@ -1972,16 +1995,16 @@ hyscan_db_file_add_channel_data (HyScanDB *db,
     {
       status = hyscan_db_channel_file_add_channel_data (channel_info->channel, time, data, size, index);
       if (status)
-        channel_info->mod_count += 1;
+        g_atomic_int_inc (&channel_info->mod_count);
     }
 
-  g_mutex_unlock (&priv->channels_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return status;
 }
 
 /* Функция считывает данные. */
-gboolean
+static gboolean
 hyscan_db_file_get_channel_data (HyScanDB *db,
                                  gint32    channel_id,
                                  gint32    index,
@@ -1995,20 +2018,20 @@ hyscan_db_file_get_channel_data (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
 
-  g_mutex_lock (&priv->channels_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_get_channel_data (channel_info->channel, index, buffer, buffer_size, time);
 
-  g_mutex_unlock (&priv->channels_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return status;
 }
 
 /* Функция ищет данные по метке времени. */
-gboolean
+static gboolean
 hyscan_db_file_find_channel_data (HyScanDB *db,
                                   gint32    channel_id,
                                   gint64    time,
@@ -2023,70 +2046,63 @@ hyscan_db_file_find_channel_data (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
 
-  g_mutex_lock (&priv->channels_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_find_channel_data (channel_info->channel, time, lindex, rindex, ltime, rtime);
 
-  g_mutex_unlock (&priv->channels_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return status;
 }
 
-/* Функция возвращает список доступных групп параметров проекта. */
-gchar **
-hyscan_db_file_get_project_param_list (HyScanDB *db,
-                                       gint32    project_id)
+/* Функция возвращает список групп параметров в проекте. */
+static gchar **
+hyscan_db_file_project_param_list (HyScanDB *db,
+                                   gint32    project_id)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
 
   HyScanDBFileProjectInfo *project_info;
+  gchar **list = NULL;
 
-  gchar **params = NULL;
-
-  g_mutex_lock (&priv->projects_lock);
-  g_mutex_lock (&priv->params_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
-  if (project_info == NULL)
-    goto exit;
+  if (project_info != NULL)
+    list = hyscan_db_file_get_directory_param_list (project_info->path);
 
-  /* Список групп параметров в каталоге проекта. */
-  params = hyscan_db_file_get_directory_param_list (project_info->path, "project");
+  g_rw_lock_reader_unlock (&priv->lock);
 
-exit:
-  g_mutex_unlock (&priv->params_lock);
-  g_mutex_unlock (&priv->projects_lock);
-
-  return params;
+  return list;
 }
 
 /* Функция открывает группу параметров проекта. */
-gint32
-hyscan_db_file_open_project_param (HyScanDB    *db,
+static gint32
+hyscan_db_file_project_param_open (HyScanDB    *db,
                                    gint32       project_id,
                                    const gchar *group_name)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
 
-  gint32 nid;
-  gint32 id = -1;
-
   HyScanDBFileProjectInfo *project_info;
   HyScanDBFileParamInfo *param_info;
   HyScanDBFileObjectInfo object_info;
 
-  /* project - зарезервированное имя для проекта. */
-  if (g_strcmp0 (group_name, "project") == 0)
+  gchar *param_file = NULL;
+  gchar *schema_file = NULL;
+  gint32 id = -1;
+
+  /* Проверяем название группы параметров. */
+  if (!hyscan_db_file_check_name (group_name, FALSE))
     return id;
 
-  g_mutex_lock (&priv->projects_lock);
-  g_mutex_lock (&priv->params_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
@@ -2094,8 +2110,8 @@ hyscan_db_file_open_project_param (HyScanDB    *db,
     goto exit;
 
   /* Генерация нового идентификатора открываемого объекта. */
-  nid = hyscan_db_file_create_id (priv);
-  if (nid < 0)
+  id = hyscan_db_file_create_id (priv);
+  if (id < 0)
     {
       g_warning ("HyScanDBFile: too many open objects");
       goto exit;
@@ -2104,7 +2120,8 @@ hyscan_db_file_open_project_param (HyScanDB    *db,
   /* Полное имя группы параметров. */
   object_info.project_name = project_info->project_name;
   object_info.track_name = "";
-  object_info.object_name = (gchar *) group_name;
+  object_info.group_name = group_name;
+  object_info.object_name = "";
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
@@ -2113,37 +2130,40 @@ hyscan_db_file_open_project_param (HyScanDB    *db,
   if (param_info != NULL)
     {
       param_info->ref_count += 1;
-      id = nid;
     }
 
   /* Открываем группу параметров для работы. */
   else
     {
+      param_file = g_strdup_printf ("%s%s%s.%s", project_info->path, G_DIR_SEPARATOR_S,
+                                                 group_name, PARAMETERS_FILE_EXT);
+      schema_file = g_build_filename (project_info->path, PROJECT_SCHEMA_FILE, NULL);
       param_info = g_malloc (sizeof (HyScanDBFileParamInfo));
       param_info->ref_count = 1;
       param_info->mod_count = 1;
       param_info->project_name = g_strdup (project_info->project_name);
       param_info->track_name = g_strdup ("");
       param_info->group_name = g_strdup (group_name);
-      param_info->path = g_strdup (project_info->path);
-      param_info->wid = 0;
-      param_info->param = hyscan_db_param_file_new (param_info->path, param_info->group_name );
-      project_info->mod_count += 1;
-      id = nid;
+      param_info->object_name = g_strdup ("");
+      param_info->track_object_wid = -1;
+      param_info->channel_object_wid = -1;
+      param_info->param = hyscan_db_param_file_new (param_file, schema_file);
+      g_atomic_int_inc (&project_info->mod_count);
     }
 
   g_hash_table_insert (priv->params, GINT_TO_POINTER (id), param_info);
 
 exit:
-  g_mutex_unlock (&priv->params_lock);
-  g_mutex_unlock (&priv->projects_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
+  g_free (param_file);
+  g_free (schema_file);
 
   return id;
 }
 
 /* Функция удаляет группу параметров проекта. */
-gboolean
-hyscan_db_file_remove_project_param (HyScanDB    *db,
+static gboolean
+hyscan_db_file_project_param_remove (HyScanDB    *db,
                                      gint32       project_id,
                                      const gchar *group_name)
 {
@@ -2153,120 +2173,74 @@ hyscan_db_file_remove_project_param (HyScanDB    *db,
   HyScanDBFileProjectInfo *project_info;
   HyScanDBFileObjectInfo object_info;
 
-  gboolean status = FALSE;
-  gchar *param_path = NULL;
-
+  gchar *param_file = NULL;
   GHashTableIter iter;
   gpointer key, value;
 
-  /* project - зарезервированное имя для проекта. */
-  if (g_strcmp0 (group_name, "project") == 0)
-    return status;
+  gboolean status = FALSE;
 
-  g_mutex_lock (&priv->projects_lock);
-  g_mutex_lock (&priv->params_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
   if (project_info == NULL)
     goto exit;
 
-  /* Полное имя группы параметров. */
+  /* Полное имя проекта. */
   object_info.project_name = project_info->project_name;
   object_info.track_name = "";
-  object_info.object_name = (gchar *) group_name;
+  object_info.group_name = group_name;
+  object_info.object_name = "*";
 
-  /* Ищем группу параметров в списке открытых.  Если нашли закрываем. */
+  /* Ищем параметры канала в списке открытых, при необходимости закрываем. */
   g_hash_table_iter_init (&iter, priv->params);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      HyScanDBFileParamInfo *param_info = value;
-
       if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
         continue;
 
-      param_info->ref_count -= 1;
-      if (param_info->ref_count > 0)
-        g_hash_table_iter_steal (&iter);
-      else
-        g_hash_table_iter_remove (&iter);
+      g_hash_table_iter_remove (&iter);
     }
 
-  /* Путь к файлу с параметрами. */
-  param_path = g_strdup_printf ("%s%s%s.ini", project_info->path, G_DIR_SEPARATOR_S, group_name);
+  /* Удаляем файл с параметрами. */
+  param_file = g_strdup_printf ("%s%s%s.%s", project_info->path, G_DIR_SEPARATOR_S,
+                                group_name, PARAMETERS_FILE_EXT);
+  if (g_unlink (param_file) != 0)
+    {
+      g_warning ("HyScanDBFile: can't remove file %s", param_file);
+      goto exit;
+    }
+
+  g_atomic_int_inc (&project_info->mod_count);
 
   status = TRUE;
-  /* Удаляем файл с параметрами, если он существует. */
-  if (g_file_test (param_path, G_FILE_TEST_IS_REGULAR))
-    if (g_unlink (param_path) != 0)
-      {
-        g_warning ("HyScanDBFile: can't remove file: %s", param_path);
-        status = FALSE;
-      }
-
-  project_info->mod_count += 1;
-
-  g_free (param_path);
 
 exit:
-  g_mutex_unlock (&priv->params_lock);
-  g_mutex_unlock (&priv->projects_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
+  g_free (param_file);
 
   return status;
 }
 
-/* Функция возвращает список доступных групп параметров галса. */
-gchar **
-hyscan_db_file_get_track_param_list (HyScanDB *db,
-                                     gint32    track_id)
+/* Функция открывает параметры галса. */
+static gint32
+hyscan_db_file_track_param_open (HyScanDB    *db,
+                                 gint32       track_id)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
-
-  HyScanDBFileTrackInfo *track_info;
-
-  gchar **params = NULL;
-
-  g_mutex_lock (&priv->tracks_lock);
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем галс в списке открытых. */
-  track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
-  if (track_info == NULL)
-    goto exit;
-
-  /* Список групп параметров в каталоге галса. */
-  params = hyscan_db_file_get_directory_param_list (track_info->path, "track");
-
-exit:
-  g_mutex_unlock (&priv->params_lock);
-  g_mutex_unlock (&priv->tracks_lock);
-
-  return params;
-}
-
-/* Функция открывает группу параметров галса. */
-gint32
-hyscan_db_file_open_track_param (HyScanDB    *db,
-                                 gint32       track_id,
-                                 const gchar *group_name)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  gint32 nid;
-  gint32 id = -1;
 
   HyScanDBFileTrackInfo *track_info;
   HyScanDBFileParamInfo *param_info;
   HyScanDBFileObjectInfo object_info;
 
-  /* track - зарезервированное имя для галса. */
-  if (g_strcmp0 (group_name, "track") == 0)
-    return id;
+  HyScanDBParamFile *params = NULL;
 
-  g_mutex_lock (&priv->tracks_lock);
-  g_mutex_lock (&priv->params_lock);
+  gchar *param_file = NULL;
+  gchar *schema_file = NULL;
+  gint32 id = -1;
+
+  g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем галс в списке открытых. */
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
@@ -2274,247 +2248,155 @@ hyscan_db_file_open_track_param (HyScanDB    *db,
     goto exit;
 
   /* Генерация нового идентификатора открываемого объекта. */
-  nid = hyscan_db_file_create_id (priv);
-  if (nid < 0)
+  id = hyscan_db_file_create_id (priv);
+  if (id < 0)
     {
       g_warning ("HyScanDBFile: too many open objects");
       goto exit;
     }
 
-  /*Полное имя группы параметров. */
+  /* Ищем галс в списке открытых параметров.  Если нашли - используем один объект доступа к параметрам. */
   object_info.project_name = track_info->project_name;
   object_info.track_name = track_info->track_name;
-  object_info.object_name = (gchar *) group_name;
-
-  /*Ищем группу параметров в списке открытых.  Если нашли - используем. */
+  object_info.group_name = TRACK_GROUP_ID;
+  object_info.object_name = "*";
   param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
-  /* Параметры уже открыты. */
+  if (param_info != NULL)
+    params = g_object_ref (param_info->param);
+
+  /* Полное имя параметров галса. */
+  object_info.project_name = track_info->project_name;
+  object_info.track_name = track_info->track_name;
+  object_info.group_name = TRACK_GROUP_ID;
+  object_info.object_name = TRACK_PARAMETERS_ID;
+
+  /* Ищем группу параметров в списке открытых.  Если нашли - используем. */
+  param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
   if (param_info != NULL)
     {
       param_info->ref_count += 1;
-      id = nid;
     }
 
   /* Открываем группу параметров для работы. */
   else
     {
+      param_file = g_build_filename (track_info->path, TRACK_PARAMETERS_FILE, NULL);
+      schema_file = g_build_filename (track_info->path, TRACK_SCHEMA_FILE, NULL);
       param_info = g_malloc (sizeof (HyScanDBFileParamInfo));
       param_info->ref_count = 1;
       param_info->mod_count = 1;
       param_info->project_name = g_strdup (track_info->project_name);
       param_info->track_name = g_strdup (track_info->track_name);
-      param_info->group_name = g_strdup (group_name);
-      param_info->path = g_strdup (track_info->path);
-      param_info->wid = 0;
-      param_info->param = hyscan_db_param_file_new (param_info->path, param_info->group_name );
-      track_info->mod_count += 1;
-      id = nid;
+      param_info->group_name = g_strdup (TRACK_GROUP_ID);
+      param_info->object_name = g_strdup (TRACK_PARAMETERS_ID);
+      if (track_info->wid == track_id)
+        param_info->track_object_wid = id;
+      else
+        param_info->track_object_wid = -1;
+      param_info->channel_object_wid = -1;
+      if (params == NULL)
+        param_info->param = hyscan_db_param_file_new (param_file, schema_file);
+      else
+        param_info->param = params;
     }
 
   g_hash_table_insert (priv->params, GINT_TO_POINTER (id), param_info);
 
 exit:
-  g_mutex_unlock (&priv->params_lock);
-  g_mutex_unlock (&priv->tracks_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
 
   return id;
 }
 
-/* Функция удаляет группу параметров галса. */
-gboolean
-hyscan_db_file_remove_track_param (HyScanDB    *db,
-                                   gint32       track_id,
-                                   const gchar *group_name)
+/* Функция открывает параметры канала данных. */
+static gint32
+hyscan_db_file_channel_param_open (HyScanDB    *db,
+                                   gint32       channel_id)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
 
-  HyScanDBFileTrackInfo *track_info;
+  HyScanDBFileChannelInfo *channel_info;
+  HyScanDBFileParamInfo *param_info;
   HyScanDBFileObjectInfo object_info;
 
-  gboolean status = FALSE;
-  gchar *param_path = NULL;
+  HyScanDBParamFile *params = NULL;
 
-  GHashTableIter iter;
-  gpointer key, value;
+  gchar *param_file = NULL;
+  gchar *schema_file = NULL;
+  gint32 id = -1;
 
-  /* track - зарезервированное имя для галса. */
-  if (g_strcmp0 (group_name, "track") == 0)
-    return status;
+  g_rw_lock_writer_lock (&priv->lock);
 
-  g_mutex_lock (&priv->tracks_lock);
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем галс в списке открытых. */
-  track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
-  if (track_info == NULL)
+  /* Ищем канал данных в списке открытых. */
+  channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
+  if (channel_info == NULL)
     goto exit;
 
-  /* Полное имя группы параметров. */
-  object_info.project_name = track_info->project_name;
-  object_info.track_name = track_info->track_name;
-  object_info.object_name = (gchar *) group_name;
-
-  /*  Ищем группу параметров в списке открытых.  Если нашли закрываем. */
-  g_hash_table_iter_init (&iter, priv->params);
-  while (g_hash_table_iter_next (&iter, &key, &value))
+  /* Генерация нового идентификатора открываемого объекта. */
+  id = hyscan_db_file_create_id (priv);
+  if (id < 0)
     {
-      HyScanDBFileParamInfo *param_info = value;
-
-      if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
-        continue;
-
-      param_info->ref_count -= 1;
-      if (param_info->ref_count > 0)
-        g_hash_table_iter_steal (&iter);
-      else
-        g_hash_table_iter_remove (&iter);
+      g_warning ("HyScanDBFile: too many open objects");
+      goto exit;
     }
 
-  /* Путь к файлу с параметрами. */
-  param_path = g_strdup_printf ("%s%s%s.ini", track_info->path, G_DIR_SEPARATOR_S, group_name);
-
-  status = TRUE;
-  /* Удаляем файл с параметрами, если он существует. */
-  if (g_file_test (param_path, G_FILE_TEST_IS_REGULAR))
-    if (g_unlink (param_path) != 0)
-      {
-        g_warning ("HyScanDBFile: can't remove file: %s", param_path);
-        status = FALSE;
-      }
-
-  track_info->mod_count += 1;
-
-  g_free (param_path);
-
-exit:
-  g_mutex_unlock (&priv->params_lock);
-  g_mutex_unlock (&priv->tracks_lock);
-
-  return status;
-}
-
-/* Функция возвращает список названий параметров в открытой группе. */
-gchar **
-hyscan_db_file_get_param_list (HyScanDB *db,
-                               gint32    param_id)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  HyScanDBFileParamInfo *param_info;
-  gchar **list = NULL;
-
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем группу параметров в списке открытых. */
-  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
+  /* Ищем галс в списке открытых параметров.  Если нашли - используем один объект доступа к параметрам. */
+  object_info.project_name = channel_info->project_name;
+  object_info.track_name = channel_info->track_name;
+  object_info.group_name = TRACK_GROUP_ID;
+  object_info.object_name = "*";
+  param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
   if (param_info != NULL)
-    list = hyscan_db_param_file_get_param_list (param_info->param);
+    params = g_object_ref (param_info->param);
 
-  g_mutex_unlock (&priv->params_lock);
+  /* Полное имя параметров канала данных. */
+  object_info.project_name = channel_info->project_name;
+  object_info.track_name = channel_info->track_name;
+  object_info.group_name = TRACK_GROUP_ID;
+  object_info.object_name = channel_info->channel_name;
 
-  return list;
-}
-
-/* Функция копирует параметры из одной открытой группы в другую. */
-gboolean
-hyscan_db_file_copy_param (HyScanDB    *db,
-                           gint32       src_param_id,
-                           gint32       dst_param_id,
-                           const gchar *mask)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  gboolean status = FALSE;
-
-  GPatternSpec *pattern;
-  HyScanDBFileParamInfo *src_param_info;
-  HyScanDBFileParamInfo *dst_param_info;
-  gchar **src_list = NULL;
-  gint i;
-
-  if (src_param_id == dst_param_id)
-    return FALSE;
-
-  pattern = g_pattern_spec_new (mask);
-  if (pattern == NULL)
-    return FALSE;
-
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем группы параметров в списке открытых. */
-  src_param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (src_param_id));
-  dst_param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (dst_param_id));
-  if (src_param_info == NULL || dst_param_info == NULL)
-    goto exit;
-
-  /* Целевая группа параметров открыта только для чтения. */
-  if (dst_param_info->wid > 0 && dst_param_info->wid != dst_param_id)
-    goto exit;
-
-  /* Список параметров источника. */
-  src_list = hyscan_db_param_file_get_param_list (src_param_info->param);
-  for (i = 0; src_list != NULL && src_list[i] != NULL; i++)
+  /* Ищем группу параметров в списке открытых.  Если нашли - используем. */
+  param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
+  if (param_info != NULL)
     {
-
-      /* Копируем параметры совпадающие с маской. */
-      if (g_pattern_match (pattern, (guint)strlen (src_list[i]), src_list[i], NULL))
-        {
-          gchar *value = hyscan_db_param_file_get_string (src_param_info->param,
-                                                          src_list[i]);
-          hyscan_db_param_file_set_string (dst_param_info->param, src_list[i], value);
-          dst_param_info->mod_count += 1;
-          g_free (value);
-        }
-
+      param_info->ref_count += 1;
     }
 
-  g_strfreev (src_list);
+  /* Открываем группу параметров для работы. */
+  else
+    {
+      param_file = g_build_filename (channel_info->path, TRACK_PARAMETERS_FILE, NULL);
+      schema_file = g_build_filename (channel_info->path, TRACK_SCHEMA_FILE, NULL);
+      param_info = g_malloc (sizeof (HyScanDBFileParamInfo));
+      param_info->ref_count = 1;
+      param_info->mod_count = 1;
+      param_info->project_name = g_strdup (channel_info->project_name);
+      param_info->track_name = g_strdup (channel_info->track_name);
+      param_info->group_name = g_strdup (TRACK_GROUP_ID);
+      param_info->object_name = g_strdup (channel_info->channel_name);
+      param_info->track_object_wid = -1;
+      if (channel_info->wid == channel_id)
+        param_info->channel_object_wid = id;
+      else
+        param_info->channel_object_wid = -1;
+      if (params == NULL)
+        param_info->param = hyscan_db_param_file_new (param_file, schema_file);
+      else
+        param_info->param = params;
+    }
 
-  status = TRUE;
+  g_hash_table_insert (priv->params, GINT_TO_POINTER (id), param_info);
 
 exit:
-  g_mutex_unlock (&priv->params_lock);
+  g_rw_lock_writer_unlock (&priv->lock);
 
-  g_pattern_spec_free (pattern);
-
-  return status;
-}
-
-
-/* Функция удалаяет параметры в открытой группе. */
-gboolean
-hyscan_db_file_remove_param (HyScanDB    *db,
-                             gint32       param_id,
-                             const gchar *mask)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  HyScanDBFileParamInfo *param_info;
-  gboolean status = FALSE;
-
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем группу параметров в списке открытых. */
-  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
-    {
-      status = hyscan_db_param_file_remove_param (param_info->param, mask);
-      if (status)
-        param_info->mod_count += 1;
-    }
-
-  g_mutex_unlock (&priv->params_lock);
-
-  return status;
+  return id;
 }
 
 /* Функция закрывает группу параметров. */
-void
-hyscan_db_file_close_param (HyScanDB *db,
+static void
+hyscan_db_file_param_close (HyScanDB *db,
                             gint32    param_id)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
@@ -2522,85 +2404,89 @@ hyscan_db_file_close_param (HyScanDB *db,
 
   HyScanDBFileParamInfo *param_info;
 
-  g_mutex_lock (&priv->params_lock);
+  g_rw_lock_writer_lock (&priv->lock);
 
-  /* Ищем канал данных в списке открытых. */
+  /* Ищем группу параметров в списке открытых. */
+  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
+  if (param_info != NULL)
+    {
+      /* Запрещаем запись. */
+      if (param_info->track_object_wid == param_id)
+        param_info->track_object_wid = -1;
+
+      /* Удаляем группу параметров из списка. */
+      g_hash_table_remove (priv->params, GINT_TO_POINTER (param_id));
+    }
+
+  g_rw_lock_writer_unlock (&priv->lock);
+}
+
+/* Функция возвращает список объектов в группе параметров. */
+static gchar **
+hyscan_db_file_param_object_list (HyScanDB *db,
+                                  gint32    param_id)
+{
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
+  HyScanDBFilePrivate *priv = dbf->priv;
+
+  HyScanDBFileParamInfo *param_info;
+  gchar **list = NULL;
+
+  g_rw_lock_reader_lock (&priv->lock);
+
+  /* Ищем группу параметров в списке открытых. */
+  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
+  if (param_info != NULL)
+    list = hyscan_db_param_file_object_list (param_info->param);
+
+  g_rw_lock_reader_unlock (&priv->lock);
+
+  return list;
+}
+
+/* Функция создаёт объект в группе параметров. */
+static gboolean
+hyscan_db_file_param_object_create (HyScanDB    *db,
+                                    gint32       param_id,
+                                    const gchar *object_name,
+                                    const gchar *schema_id)
+{
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
+  HyScanDBFilePrivate *priv = dbf->priv;
+
+  HyScanDBFileParamInfo *param_info;
+  gboolean status = FALSE;
+
+  /* Проверяем название объекта. */
+  if (!hyscan_db_file_check_name (object_name, TRUE))
+    return status;
+
+  g_rw_lock_reader_lock (&priv->lock);
+
+  /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
   if (param_info == NULL)
     goto exit;
 
-  /* Закрыли дескриптор с правами на запись. */
-  if (param_info->wid == param_id)
-    param_info->wid = -1;
+  /* Создавать объекты в группе параметров галса нельзя. */
+  if (g_strcmp0 (param_info->track_name, "") != 0)
+    goto exit;
 
-  /* Уменьшили счётчик ссылок, если счётчик станет равным нулю - удаляем объект. */
-  param_info->ref_count -= 1;
-  if (param_info->ref_count > 0)
-    g_hash_table_steal (priv->params, GINT_TO_POINTER (param_id));
-  else
-    g_hash_table_remove (priv->params, GINT_TO_POINTER (param_id));
+  status = hyscan_db_param_file_object_create (param_info->param, object_name, schema_id);
+  if (status)
+    g_atomic_int_inc (&param_info->mod_count);
 
 exit:
-  g_mutex_unlock (&priv->params_lock);
+  g_rw_lock_reader_unlock (&priv->lock);
+
+  return status;
 }
 
-/* Функция проверяет существование указанного параметра. */
-gboolean
-hyscan_db_file_has_param (HyScanDB    *db,
-                          gint32       param_id,
-                          const gchar *name)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  HyScanDBFileParamInfo *param_info;
-  gboolean value = FALSE;
-
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем группу параметров в списке открытых. */
-  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL)
-    value = hyscan_db_param_file_has_param (param_info->param, name);
-
-  g_mutex_unlock (&priv->params_lock);
-
-  return value;
-}
-
-/* Функция увеличивает значение параметра типа integer на единицу. */
-gint64
-hyscan_db_file_inc_integer_param (HyScanDB    *db,
-                                  gint32       param_id,
-                                  const gchar *name)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  HyScanDBFileParamInfo *param_info;
-  gint64 value = 0;
-
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем группу параметров в списке открытых. */
-  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
-    {
-      value = hyscan_db_param_file_inc_integer (param_info->param, name);
-      param_info->mod_count += 1;
-    }
-
-  g_mutex_unlock (&priv->params_lock);
-
-  return value;
-}
-
-/* Функция устанавливает значение параметра типа integer. */
-gboolean
-hyscan_db_file_set_integer_param (HyScanDB    *db,
-                                  gint32       param_id,
-                                  const gchar *name,
-                                  gint64       value)
+/* Функция переименовывает объект в группе параметров. */
+static gboolean
+hyscan_db_file_param_object_remove (HyScanDB    *db,
+                                    gint32       param_id,
+                                    const gchar *object_name)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -2608,28 +2494,77 @@ hyscan_db_file_set_integer_param (HyScanDB    *db,
   HyScanDBFileParamInfo *param_info;
   gboolean status = FALSE;
 
-  g_mutex_lock (&priv->params_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
-    {
-      status = hyscan_db_param_file_set_integer (param_info->param, name, value);
-      if (status)
-        param_info->mod_count += 1;
-    }
+  if (param_info != NULL)
+    goto exit;
 
-  g_mutex_unlock (&priv->params_lock);
+  /* Удалять объекты в группе параметров галса нельзя. */
+  if (g_strcmp0 (param_info->track_name, "") != 0)
+    goto exit;
+
+  status = hyscan_db_param_file_object_remove (param_info->param, object_name);
+  if (status)
+    g_atomic_int_inc (&param_info->mod_count);
+
+exit:
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return status;
 }
 
-/* Функция устанавливает значение параметра типа double. */
-gboolean
-hyscan_db_file_set_double_param (HyScanDB    *db,
-                                 gint32       param_id,
-                                 const gchar *name,
-                                 gdouble      value)
+/* Функция возвращает список объектов в группе параметров. */
+static HyScanDataSchema *
+hyscan_db_file_param_object_get_schema (HyScanDB    *db,
+                                        gint32       param_id,
+                                        const gchar *object_name)
+{
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
+  HyScanDBFilePrivate *priv = dbf->priv;
+
+  HyScanDBFileParamInfo *param_info;
+  HyScanDataSchema *schema = NULL;
+
+  g_rw_lock_reader_lock (&priv->lock);
+
+  /* Ищем группу параметров в списке открытых. */
+  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
+  if (param_info == NULL)
+    goto exit;
+
+  /* Проверки для параметров объектов галса - если название галса не пустое. */
+  if (param_info->track_name[0] != 0)
+    {
+      /* Имена объектов в параметрах галсов и каналов данных выбираются автоматически. */
+      if (object_name != NULL)
+        goto exit;
+
+      /* Все параметры галсов хранятся в группе параметров TRACK_GROUP_ID. */
+      if (g_strcmp0 (param_info->group_name, TRACK_GROUP_ID) != 0)
+        goto exit;
+
+      /* Имя объекта с параметрами. */
+      object_name = param_info->object_name;
+    }
+
+  schema = hyscan_db_param_file_object_get_schema (param_info->param, object_name);
+
+exit:
+  g_rw_lock_reader_unlock (&priv->lock);
+
+  return schema;
+}
+
+static gboolean
+hyscan_db_file_param_set (HyScanDB             *db,
+                          gint32                param_id,
+                          const gchar          *object_name,
+                          const gchar          *param_name,
+                          HyScanDataSchemaType  param_type,
+                          gconstpointer         param_value,
+                          gint32                param_size)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -2637,28 +2572,62 @@ hyscan_db_file_set_double_param (HyScanDB    *db,
   HyScanDBFileParamInfo *param_info;
   gboolean status = FALSE;
 
-  g_mutex_lock (&priv->params_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
+  if (param_info == NULL)
+    goto exit;
+
+  /* Проверки для параметров объектов галса - если название галса не пустое. */
+  if (param_info->track_name[0] != 0)
     {
-      status = hyscan_db_param_file_set_double (param_info->param, name, value);
-      if (status)
-        param_info->mod_count += 1;
+      /* Имена объектов в параметрах галсов и каналов данных выбираются автоматически. */
+      if (object_name != NULL)
+        goto exit;
+
+      /* Все параметры галсов хранятся в группе параметров TRACK_GROUP_ID. */
+      if (g_strcmp0 (param_info->group_name, TRACK_GROUP_ID) != 0)
+        goto exit;
+
+      /* Параметры объекта галса. */
+      if (g_strcmp0 (param_info->object_name, TRACK_PARAMETERS_ID) == 0)
+        {
+          /* Проверяем права на изменение параметров объекта галса. */
+          if (param_info->track_object_wid != param_id)
+            goto exit;
+        }
+
+      /* Параметры объектов каналов данных. */
+      else
+        {
+          /* Проверяем права на изменение параметров объекта канала данных. */
+          if (param_info->channel_object_wid != param_id)
+            goto exit;
+        }
+
+      /* Имя объекта с параметрами. */
+      object_name = param_info->object_name;
     }
 
-  g_mutex_unlock (&priv->params_lock);
+  status = hyscan_db_param_file_set (param_info->param, object_name, param_name, param_type, param_value, param_size);
+  if (status)
+    g_atomic_int_inc (&param_info->mod_count);
+
+exit:
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return status;
 }
 
-/* Функция устанавливает значение параметра типа double. */
-gboolean
-hyscan_db_file_set_boolean_param (HyScanDB    *db,
-                                  gint32       param_id,
-                                  const gchar *name,
-                                  gboolean     value)
+static gboolean
+hyscan_db_file_param_get (HyScanDB              *db,
+                          gint32                 param_id,
+                          const gchar           *object_name,
+                          const gchar           *param_name,
+                          HyScanDataSchemaType   param_type,
+                          gpointer               buffer,
+                          gint32                *buffer_size)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -2666,153 +2635,42 @@ hyscan_db_file_set_boolean_param (HyScanDB    *db,
   HyScanDBFileParamInfo *param_info;
   gboolean status = FALSE;
 
-  g_mutex_lock (&priv->params_lock);
+  g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
+  if (param_info == NULL)
+    goto exit;
+
+  /* Проверки для параметров объектов галса - если название галса не пустое. */
+  if (param_info->track_name[0] != 0)
     {
-      status = hyscan_db_param_file_set_boolean (param_info->param, name, value);
-      if (status)
-        param_info->mod_count += 1;
+      /* Имена объектов в параметрах галсов и каналов данных выбираются автоматически. */
+      if (object_name != NULL)
+        goto exit;
+
+      /* Все параметры галсов хранятся в группе параметров TRACK_GROUP_ID. */
+      if (g_strcmp0 (param_info->group_name, TRACK_GROUP_ID) != 0)
+        goto exit;
+
+      /* Имя объекта с параметрами. */
+      object_name = param_info->object_name;
     }
 
-  g_mutex_unlock (&priv->params_lock);
+  status = hyscan_db_param_file_get (param_info->param, object_name, param_name, param_type, buffer, buffer_size);
+
+exit:
+  g_rw_lock_reader_unlock (&priv->lock);
 
   return status;
-}
-
-/* Функция устанавливает значение параметра типа string. */
-gboolean
-hyscan_db_file_set_string_param (HyScanDB    *db,
-                                 gint32       param_id,
-                                 const gchar *name,
-                                 const gchar *value)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  HyScanDBFileParamInfo *param_info;
-  gboolean status = FALSE;
-
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем группу параметров в списке открытых. */
-  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL && (param_info->wid == param_id || param_info->wid == 0))
-    {
-      status = hyscan_db_param_file_set_string (param_info->param, name, value);
-      if (status)
-        param_info->mod_count += 1;
-    }
-
-  g_mutex_unlock (&priv->params_lock);
-
-  return status;
-}
-
-/* Функция возвращает значение параметра типа integer. */
-gint64
-hyscan_db_file_get_integer_param (HyScanDB    *db,
-                                  gint32       param_id,
-                                  const gchar *name)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  HyScanDBFileParamInfo *param_info;
-  gint64 value = 0;
-
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем группу параметров в списке открытых. */
-  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL)
-    value = hyscan_db_param_file_get_integer (param_info->param, name);
-
-  g_mutex_unlock (&priv->params_lock);
-
-  return value;
-}
-
-/* Функция возвращает значение параметра типа double. */
-gdouble
-hyscan_db_file_get_double_param (HyScanDB    *db,
-                                 gint32       param_id,
-                                 const gchar *name)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  HyScanDBFileParamInfo *param_info;
-  gdouble value = 0.0;
-
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем группу параметров в списке открытых. */
-  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL)
-    value = hyscan_db_param_file_get_double (param_info->param, name);
-
-  g_mutex_unlock (&priv->params_lock);
-
-  return value;
-}
-
-/* Функция возвращает значение параметра типа boolean. */
-gboolean
-hyscan_db_file_get_boolean_param (HyScanDB    *db,
-                                  gint32       param_id,
-                                  const gchar *name)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  HyScanDBFileParamInfo *param_info;
-  gboolean value = FALSE;
-
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем группу параметров в списке открытых. */
-  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL)
-    value = hyscan_db_param_file_get_boolean (param_info->param, name);
-
-  g_mutex_unlock (&priv->params_lock);
-
-  return value;
-}
-
-/* Функция возвращает значение параметра типа string. */
-gchar *
-hyscan_db_file_get_string_param (HyScanDB    *db,
-                                 gint32       param_id,
-                                 const gchar *name)
-{
-  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
-  HyScanDBFilePrivate *priv = dbf->priv;
-
-  HyScanDBFileParamInfo *param_info;
-  gchar *value = NULL;
-
-  g_mutex_lock (&priv->params_lock);
-
-  /* Ищем группу параметров в списке открытых. */
-  param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL)
-    value = hyscan_db_param_file_get_string (param_info->param, name);
-
-  g_mutex_unlock (&priv->params_lock);
-
-  return value;
 }
 
 static void
 hyscan_db_file_interface_init (HyScanDBInterface *iface)
 {
-  iface->get_project_type_list = NULL;
   iface->get_uri = hyscan_db_file_get_uri;
   iface->get_mod_count = hyscan_db_file_get_mod_count;
+
   iface->get_project_list = hyscan_db_file_get_project_list;
   iface->open_project = hyscan_db_file_open_project;
   iface->create_project = hyscan_db_file_create_project;
@@ -2832,39 +2690,29 @@ hyscan_db_file_interface_init (HyScanDBInterface *iface)
   iface->create_channel = hyscan_db_file_create_channel;
   iface->remove_channel = hyscan_db_file_remove_channel;
   iface->close_channel = hyscan_db_file_close_channel;
-  iface->open_channel_param = hyscan_db_file_open_channel_param;
+  iface->finalize_channel = hyscan_db_file_finalize_channel;
 
   iface->set_channel_chunk_size = hyscan_db_file_set_channel_chunk_size;
   iface->set_channel_save_time = hyscan_db_file_set_channel_save_time;
   iface->set_channel_save_size = hyscan_db_file_set_channel_save_size;
-  iface->finalize_channel = hyscan_db_file_finalize_channel;
 
   iface->get_channel_data_range = hyscan_db_file_get_channel_data_range;
   iface->add_channel_data = hyscan_db_file_add_channel_data;
   iface->get_channel_data = hyscan_db_file_get_channel_data;
   iface->find_channel_data = hyscan_db_file_find_channel_data;
 
-  iface->get_project_param_list = hyscan_db_file_get_project_param_list;
-  iface->open_project_param = hyscan_db_file_open_project_param;
-  iface->remove_project_param = hyscan_db_file_remove_project_param;
+  iface->project_param_list = hyscan_db_file_project_param_list;
+  iface->project_param_open = hyscan_db_file_project_param_open;
+  iface->project_param_remove = hyscan_db_file_project_param_remove;
+  iface->track_param_open = hyscan_db_file_track_param_open;
+  iface->channel_param_open = hyscan_db_file_channel_param_open;
+  iface->param_close = hyscan_db_file_param_close;
 
-  iface->get_track_param_list = hyscan_db_file_get_track_param_list;
-  iface->open_track_param = hyscan_db_file_open_track_param;
-  iface->remove_track_param = hyscan_db_file_remove_track_param;
+  iface->param_object_list = hyscan_db_file_param_object_list;
+  iface->param_object_create = hyscan_db_file_param_object_create;
+  iface->param_object_remove = hyscan_db_file_param_object_remove;
+  iface->param_object_get_schema = hyscan_db_file_param_object_get_schema;
 
-  iface->get_param_list = hyscan_db_file_get_param_list;
-  iface->copy_param = hyscan_db_file_copy_param;
-  iface->remove_param = hyscan_db_file_remove_param;
-  iface->close_param = hyscan_db_file_close_param;
-  iface->has_param = hyscan_db_file_has_param;
-
-  iface->inc_integer_param = hyscan_db_file_inc_integer_param;
-  iface->set_integer_param = hyscan_db_file_set_integer_param;
-  iface->set_double_param = hyscan_db_file_set_double_param;
-  iface->set_boolean_param = hyscan_db_file_set_boolean_param;
-  iface->set_string_param = hyscan_db_file_set_string_param;
-  iface->get_integer_param = hyscan_db_file_get_integer_param;
-  iface->get_double_param = hyscan_db_file_get_double_param;
-  iface->get_boolean_param = hyscan_db_file_get_boolean_param;
-  iface->get_string_param = hyscan_db_file_get_string_param;
+  iface->param_set = hyscan_db_file_param_set;
+  iface->param_get = hyscan_db_file_param_get;
 }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="db-logic-schema">
+
+  <schema id="complex">
+    <key id="boolean" name="Boolean" type="boolean">
+      <default>true</default>
+    </key>
+    <key id="integer" name="Integer" type="integer">
+      <default>2</default>
+    </key>
+    <key id="double" name="Double" type="double">
+      <default>0.2</default>
+    </key>
+    <key id="string" name="String" type="string">
+      <default>2</default>
+    </key>
+  </schema>
+
+</schemalist>
