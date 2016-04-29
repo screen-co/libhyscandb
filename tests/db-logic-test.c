@@ -9,6 +9,7 @@
 #define INTEGER_VALUE(value) (2 * value)
 #define DOUBLE_VALUE(value)  (0.2 * value)
 #define STRING_VALUE(value)  (g_strdup_printf ("%d", 2 * value))
+#define ENUM_VALUE(value)    (((2 * value) % 5) + 1)
 
 /* Функция сверяет два списка строк в произвольном порядке. */
 void
@@ -44,7 +45,7 @@ check_project_list (HyScanDB *db,
 {
   gchar **list;
 
-  list = hyscan_db_get_project_list (db);
+  list = hyscan_db_project_list (db);
   if (list == NULL)
     g_error ("%s: can't get projects list", error_prefix);
 
@@ -62,7 +63,7 @@ check_track_list (HyScanDB *db,
 {
   gchar **list;
 
-  list = hyscan_db_get_track_list (db, project_id);
+  list = hyscan_db_track_list (db, project_id);
   if (list == NULL)
     g_error ("%s: can't get tracks list", error_prefix);
 
@@ -80,7 +81,7 @@ check_channel_list (HyScanDB *db,
 {
   gchar **list;
 
-  list = hyscan_db_get_channel_list (db, track_id);
+  list = hyscan_db_channel_list (db, track_id);
   if (list == NULL)
     g_error ("%s: can't get channels list", error_prefix);
 
@@ -133,9 +134,19 @@ check_object_schema (HyScanDB         *db,
                      guint32           param_id,
                      gchar            *object_name)
 {
-  HyScanDataSchema *schema = hyscan_db_param_object_get_schema (db, param_id, object_name);
+  HyScanDataSchema *schema;
+  gchar **orig_list;
+  gchar **list;
 
-  #warning "Compare schemas"
+  schema = hyscan_db_param_object_get_schema (db, param_id, object_name);
+
+  orig_list = hyscan_data_schema_list_keys (orig_schema);
+  list = hyscan_data_schema_list_keys (schema);
+
+  check_list (error_prefix, orig_list, list);
+
+  g_strfreev (orig_list);
+  g_strfreev (list);
 }
 
 /* Функция значения 4-х разных параметров в группе в значения по умолчанию. */
@@ -149,6 +160,7 @@ clear_parameters (HyScanDB *db,
   hyscan_db_param_set (db, param_id, object_name, "/integer", HYSCAN_DATA_SCHEMA_TYPE_INTEGER, NULL, 0);
   hyscan_db_param_set (db, param_id, object_name, "/double", HYSCAN_DATA_SCHEMA_TYPE_DOUBLE, NULL, 0);
   hyscan_db_param_set (db, param_id, object_name, "/string", HYSCAN_DATA_SCHEMA_TYPE_STRING, NULL, 0);
+  hyscan_db_param_set (db, param_id, object_name, "/enum", HYSCAN_DATA_SCHEMA_TYPE_ENUM, NULL, 0);
 }
 
 /* Функция устанавливает значения 4-х разных параметров в группе. */
@@ -163,11 +175,13 @@ set_parameters (HyScanDB *db,
   gint64 ivalue = INTEGER_VALUE (value);
   gdouble dvalue = DOUBLE_VALUE (value);
   gchar *svalue = STRING_VALUE (value);
+  gint64 evalue = ENUM_VALUE (value);
 
   hyscan_db_param_set_boolean (db, param_id, object_name, "/boolean", bvalue);
   hyscan_db_param_set_integer (db, param_id, object_name, "/integer", ivalue);
   hyscan_db_param_set_double (db, param_id, object_name, "/double", dvalue);
   hyscan_db_param_set_string (db, param_id, object_name, "/string", svalue);
+  hyscan_db_param_set_enum (db, param_id, object_name, "/enum", evalue);
 
   g_free (svalue);
 }
@@ -180,15 +194,29 @@ check_parameters (HyScanDB *db,
                   guint32   param_id,
                   gchar    *object_name)
 {
-  gboolean orig_bvalue = BOOLEAN_VALUE (value);
-  gint64 orig_ivalue = INTEGER_VALUE (value);
-  gdouble orig_dvalue = DOUBLE_VALUE (value);
-  gchar *orig_svalue = STRING_VALUE (value);
+  gboolean orig_bvalue,  bvalue;
+  gint64   orig_ivalue,  ivalue;
+  gdouble  orig_dvalue,  dvalue;
+  gchar   *orig_svalue, *svalue;
+  gint64   orig_evalue,  evalue;
 
-  gboolean bvalue = hyscan_db_param_get_boolean (db, param_id, object_name, "/boolean");
-  gint64 ivalue = hyscan_db_param_get_integer (db, param_id, object_name, "/integer");
-  gdouble dvalue = hyscan_db_param_get_double (db, param_id, object_name, "/double");
-  gchar *svalue = hyscan_db_param_get_string (db, param_id, object_name, "/string");
+  orig_bvalue = BOOLEAN_VALUE (value);
+  orig_ivalue = INTEGER_VALUE (value);
+  orig_dvalue = DOUBLE_VALUE (value);
+  orig_svalue = STRING_VALUE (value);
+  orig_evalue = ENUM_VALUE (value);
+
+  if (!hyscan_db_param_get_boolean (db, param_id, object_name, "/boolean", &bvalue))
+    g_error ("%s: can't get /boolean parameter", error_prefix);
+  if (!hyscan_db_param_get_integer (db, param_id, object_name, "/integer", &ivalue))
+    g_error ("%s: can't get /integer parameter", error_prefix);
+  if (!hyscan_db_param_get_double (db, param_id, object_name, "/double", &dvalue))
+    g_error ("%s: can't get /double parameter", error_prefix);
+  svalue = hyscan_db_param_get_string (db, param_id, object_name, "/string");
+  if (svalue == NULL)
+    g_error ("%s: can't get /string parameter", error_prefix);
+  if (!hyscan_db_param_get_enum (db, param_id, object_name, "/enum", &evalue))
+    g_error ("%s: can't get /enum parameter", error_prefix);
 
   if (bvalue != orig_bvalue)
     g_error ("%s: error in boolean parameter", error_prefix);
@@ -198,6 +226,8 @@ check_parameters (HyScanDB *db,
     g_error ("%s: error in double parameter", error_prefix);
   if (g_strcmp0 (svalue, orig_svalue) != 0)
     g_error ("%s: error in string parameter (%s, %s)", error_prefix, orig_svalue, svalue);
+  if (evalue != orig_evalue)
+    g_error ("%s: error in enum parameter %ld, %ld", error_prefix, orig_evalue, evalue);
 
   g_free (orig_svalue);
   g_free (svalue);
@@ -392,7 +422,7 @@ main (int argc, char **argv)
 
   /* Проверяем, что список проектов изначально пустой. */
   g_message ("checking projects list is empty");
-  if (hyscan_db_get_project_list (db) != NULL)
+  if (hyscan_db_project_list (db) != NULL)
     g_error ("projects list must be empty");
 
   /* Создаём проекты. */
@@ -400,7 +430,7 @@ main (int argc, char **argv)
   mod_count = hyscan_db_get_mod_count (db, 0);
   for (i = 0; i < n_projects; i++)
     {
-    if ((project_id[i] = hyscan_db_create_project (db, projects[i], g_bytes_get_data (schema_data, NULL))) < 0)
+    if ((project_id[i] = hyscan_db_project_create (db, projects[i], g_bytes_get_data (schema_data, NULL))) < 0)
       g_error ("can't create '%s'", projects[i]);
     if (mod_count == hyscan_db_get_mod_count (db, 0))
       g_error ("modification counter fail on create '%s'", projects[i]);
@@ -414,7 +444,7 @@ main (int argc, char **argv)
   /* Проверяем, что нет возможности создать проект с именем уже существующего проекта. */
   g_message ("checking projects duplication");
   for (i = 0; i < n_projects; i++)
-    if (hyscan_db_create_project (db, projects[i], NULL) > 0)
+    if (hyscan_db_project_create (db, projects[i], NULL) > 0)
       g_error ("'%s' duplicated", projects[i]);
 
   /* Проверяем, что при открытии уже открытых проектов возвращаются уникальные идентификаторы. */
@@ -422,14 +452,14 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     {
       gint32 nid;
-      if ((nid = hyscan_db_open_project (db, projects[i])) < 0)
+      if ((nid = hyscan_db_project_open (db, projects[i])) < 0)
         g_error ("can't open '%s'", projects[i]);
       for (j=0; j < n_projects; j++)
         {
           if (nid == project_id[j])
             g_error ("duplicated '%s' id", projects[i]);
         }
-      hyscan_db_close_project (db, project_id[i]);
+      hyscan_db_close (db, project_id[i]);
       project_id[i] = nid;
     }
 
@@ -475,7 +505,7 @@ main (int argc, char **argv)
           for (l = 0; l < n_gparams; l++)
             if (nid == project_param_id[k][l])
               g_error ("duplicated '%s.%s' id", projects[i], gparams[j]);
-        hyscan_db_param_close (db, nid);
+        hyscan_db_close (db, nid);
       }
 
   /* Проверяем, что список объектов в каждой группе параметров изначально пустой. */
@@ -565,7 +595,7 @@ main (int argc, char **argv)
   g_message ("closing projects parameters");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_gparams; j++)
-      hyscan_db_param_close (db, project_param_id[i][j]);
+      hyscan_db_close (db, project_param_id[i][j]);
 
   /* Тесты уровня галсов. */
   g_message (" ");
@@ -574,7 +604,7 @@ main (int argc, char **argv)
   /* Проверяем, что список галсов в каждом проекте изначально пустой. */
   g_message ("checking project tracks list is empty");
   for (i = 0; i < n_projects; i++)
-    if (hyscan_db_get_track_list (db, project_id[i]) != NULL)
+    if (hyscan_db_track_list (db, project_id[i]) != NULL)
       g_error ("%s tracks list must be empty", projects[i]);
 
   /* Создаём галсы в каждом проекте. */
@@ -584,7 +614,7 @@ main (int argc, char **argv)
       mod_count = hyscan_db_get_mod_count (db, project_id[i]);
       for (j = 0; j < n_tracks; j++)
         {
-          track_id[i][j] = hyscan_db_create_track (db, project_id[i], tracks[j],
+          track_id[i][j] = hyscan_db_track_create (db, project_id[i], tracks[j],
                                                    g_bytes_get_data (schema_data, NULL), "complex");
           if (track_id[i][j] < 0)
             g_error ("can't create '%s.%s'", projects[i], tracks[j]);
@@ -607,7 +637,7 @@ main (int argc, char **argv)
   g_message ("checking tracks duplication");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      if (hyscan_db_create_track (db, project_id[i], tracks[j], NULL, NULL) > 0)
+      if (hyscan_db_track_create (db, project_id[i], tracks[j], NULL, NULL) > 0)
         g_error ("'%s.%s' duplicated", projects[i], tracks[j]);
 
   /* Тесты уровня каналов данных. */
@@ -618,7 +648,7 @@ main (int argc, char **argv)
   g_message ("checking track channels list is empty");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      if (hyscan_db_get_channel_list (db, track_id[i][j]) != NULL)
+      if (hyscan_db_channel_list (db, track_id[i][j]) != NULL)
         g_error ("'%s.%s' channels list must be empty", projects[i], tracks[j]);
 
   /* Создаём каналы данных в каждом галсе. */
@@ -629,9 +659,9 @@ main (int argc, char **argv)
         mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
         for (k = 0; k < n_channels; k++)
           {
-            if ((channel_id[i][j][k] = hyscan_db_create_channel (db, track_id[i][j], channels[k], "complex")) < 0)
+            if ((channel_id[i][j][k] = hyscan_db_channel_create (db, track_id[i][j], channels[k], "complex")) < 0)
               g_error ("can't create '%s.%s.%s'", projects[i], tracks[j], channels[k]);
-            if (mod_count == hyscan_db_get_mod_count (db, project_id[i]))
+            if (mod_count == hyscan_db_get_mod_count (db, track_id[i][j]))
               g_error ("modification counter fail on create '%s.%s.%s'", projects[i], tracks[j], channels[k]);
             mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
           }
@@ -644,7 +674,7 @@ main (int argc, char **argv)
       for (k = 0; k < n_channels; k++)
         {
           mod_count = hyscan_db_get_mod_count (db, channel_id[i][j][k]);
-          if (!hyscan_db_add_channel_data (db, channel_id[i][j][k], 0, sample1, sample_size, NULL))
+          if (!hyscan_db_channel_add_data (db, channel_id[i][j][k], 0, sample1, sample_size, NULL))
             g_error ("can't add data to '%s.%s.%s'", projects[i], tracks[j], channels[k]);
           if (mod_count == hyscan_db_get_mod_count (db, channel_id[i][j][k]))
             g_error ("modification counter fail on data add to '%s.%s.%s'", projects[i], tracks[j], channels[k]);
@@ -665,7 +695,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
-        if (hyscan_db_create_channel (db, track_id[i][j], channels[k], NULL) > 0)
+        if (hyscan_db_channel_create (db, track_id[i][j], channels[k], NULL) > 0)
           g_error ("'%s.%s.%s' duplicated", projects[i], tracks[j], channels[k]);
 
   /* Тесты уровня параметров галсов и каналов данных. */
@@ -766,14 +796,14 @@ main (int argc, char **argv)
   g_message ("closing tracks parameters");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      hyscan_db_param_close (db, track_param_id[i][j]);
+      hyscan_db_close (db, track_param_id[i][j]);
 
   /* Закрываем параметры каналов данных. */
   g_message ("closing channels parameters values");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
-        hyscan_db_param_close (db, channel_param_id[i][j][k]);
+        hyscan_db_close (db, channel_param_id[i][j][k]);
 
   /* Проверяем, что при открытии уже открытых галсов возвращаются уникальные идентификаторы. */
   g_message (" ");
@@ -782,13 +812,13 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       {
         gint32 nid;
-        if ((nid = hyscan_db_open_track (db, project_id[i], tracks[j])) < 0)
+        if ((nid = hyscan_db_track_open (db, project_id[i], tracks[j])) < 0)
           g_error ("can't open '%s.%s'", projects[i], tracks[j]);
         for (k = 0; k < n_projects; k++)
           for (l = 0; l < n_tracks; l++)
             if (nid == track_id[k][l])
               g_error ("duplicated '%s.%s' id", projects[i], tracks[j]);
-        hyscan_db_close_track (db, track_id[i][j]);
+        hyscan_db_close (db, track_id[i][j]);
         track_id[i][j] = nid;
       }
 
@@ -799,7 +829,7 @@ main (int argc, char **argv)
       for (k = 0; k < n_channels; k++)
         {
           gint32 nid;
-          nid = hyscan_db_open_channel (db, track_id[i][j], channels[k]);
+          nid = hyscan_db_channel_open (db, track_id[i][j], channels[k]);
           if(nid < 0)
             g_error ("can't open '%s.%s.%s'", projects[i], tracks[j], channels[k]);
           for (l = 0; l < n_projects; l++)
@@ -807,7 +837,7 @@ main (int argc, char **argv)
               for (n = 0; n < n_channels; n++)
                 if (nid == channel_id[l][m][n])
                   g_error ("duplicated '%s.%s.%s' id", projects[i], tracks[j], channels[k]);
-          hyscan_db_close_channel (db, channel_id[i][j][k]);
+          hyscan_db_close (db, channel_id[i][j][k]);
           channel_id[i][j][k] = nid;
         }
 
@@ -819,7 +849,7 @@ main (int argc, char **argv)
       for (k = 0; k < n_channels; k++)
         {
           gint32 readed_size = sample_size;
-          if (!hyscan_db_get_channel_data (db, channel_id[i][j][k], 0, buffer, &sample_size, NULL))
+          if (!hyscan_db_channel_get_data (db, channel_id[i][j][k], 0, buffer, &sample_size, NULL))
             g_error ("can't read data from 'Project %d.Track %d.Channel %d'", i + 1, j + 1, k + 1);
           if (readed_size != sample_size || g_strcmp0 (sample1, buffer) != 0)
             g_error ("wrong 'Project %d.Track %d.Channel %d' data", i + 1, j + 1, k + 1);
@@ -832,7 +862,7 @@ main (int argc, char **argv)
       for (k = 0; k < n_channels; k++)
         {
           mod_count = hyscan_db_get_mod_count (db, channel_id[i][j][k]);
-          if (hyscan_db_add_channel_data (db, channel_id[i][j][k], 1, sample1, sample_size, NULL))
+          if (hyscan_db_channel_add_data (db, channel_id[i][j][k], 1, sample1, sample_size, NULL))
             g_error ("'%s.%s.%s' must be read only", projects[i], tracks[j], channels[k]);
           if (mod_count != hyscan_db_get_mod_count (db, channel_id[i][j][k]))
             g_error ("modification counter fail on data add to '%s.%s.%s'", projects[i], tracks[j], channels[k]);
@@ -913,23 +943,23 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
-        hyscan_db_param_close (db, channel_param_id[i][j][k]);
+        hyscan_db_close (db, channel_param_id[i][j][k]);
 
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
-        hyscan_db_close_channel (db, channel_id[i][j][k]);
+        hyscan_db_close (db, channel_id[i][j][k]);
 
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      hyscan_db_param_close (db, track_param_id[i][j]);
+      hyscan_db_close (db, track_param_id[i][j]);
 
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      hyscan_db_close_track (db, track_id[i][j]);
+      hyscan_db_close (db, track_id[i][j]);
 
   for (i = 0; i < n_projects; i++)
-    hyscan_db_close_project (db, project_id[i]);
+    hyscan_db_close (db, project_id[i]);
 
   /* Удаляем объект базы данных. */
   g_object_unref (db);
@@ -953,7 +983,7 @@ main (int argc, char **argv)
   /* Открываем все проекты. */
   g_message ("opening projects");
   for (i = 0; i < n_projects; i++)
-    if ((project_id[i] = hyscan_db_open_project (db, projects[i])) < 0)
+    if ((project_id[i] = hyscan_db_project_open (db, projects[i])) < 0)
       g_error ("can't open '%s'", projects[i]);
 
   /* Проверяем названия групп параметров. */
@@ -1059,7 +1089,7 @@ main (int argc, char **argv)
   g_message ("opening tracks");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      if ((track_id[i][j] = hyscan_db_open_track (db, project_id[i], tracks[j])) < 0)
+      if ((track_id[i][j] = hyscan_db_track_open (db, project_id[i], tracks[j])) < 0)
         g_error ("can't open '%s.%s'", projects[i], tracks[j]);
 
   /* Открываем параметры галсов. */
@@ -1122,7 +1152,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
-        if ((channel_id[i][j][k] = hyscan_db_open_channel (db, track_id[i][j], channels[k])) < 0)
+        if ((channel_id[i][j][k] = hyscan_db_channel_open (db, track_id[i][j], channels[k])) < 0)
           g_error ("can't open '%s.%s.%s'", projects[i], tracks[j], channels[k]);
 
   /* Проверяем правильность записанных данных каналов. */
@@ -1132,7 +1162,7 @@ main (int argc, char **argv)
       for (k = 0; k < n_channels; k++)
         {
           gint32 readed_size = sample_size;
-          if (!hyscan_db_get_channel_data (db, channel_id[i][j][k], 0, buffer, &sample_size, NULL))
+          if (!hyscan_db_channel_get_data (db, channel_id[i][j][k], 0, buffer, &sample_size, NULL))
             g_error ("can't read data from '%s.%s.%s'", projects[i], tracks[j], channels[k]);
           if (readed_size != sample_size || g_strcmp0 (sample1, buffer) != 0)
             g_error ("wrong '%s.%s.%s' data", projects[i], tracks[j], channels[k]);
@@ -1145,7 +1175,7 @@ main (int argc, char **argv)
       for (k = 0; k < n_channels; k++)
         {
           mod_count = hyscan_db_get_mod_count (db, channel_id[i][j][k]);
-          if (hyscan_db_add_channel_data (db, channel_id[i][j][k], 1, sample1, sample_size, NULL))
+          if (hyscan_db_channel_add_data (db, channel_id[i][j][k], 1, sample1, sample_size, NULL))
             g_error ("'%s.%s.%s' must be read only", projects[i], tracks[j], channels[k]);
           if (mod_count != hyscan_db_get_mod_count (db, channel_id[i][j][k]))
             g_error ("modification counter fail on data add to '%s.%s.%s'", projects[i], tracks[j], channels[k]);
@@ -1208,7 +1238,7 @@ main (int argc, char **argv)
         mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
         for (k = 0; k < n_channels; k += 2)
           {
-            if (!hyscan_db_remove_channel (db, track_id[i][j], channels[k]))
+            if (!hyscan_db_channel_remove (db, track_id[i][j], channels[k]))
               g_error ("can't remove '%s.%s.%s'", projects[i], tracks[j], channels[k]);
             if (mod_count == hyscan_db_get_mod_count (db, track_id[i][j]))
               {
@@ -1234,7 +1264,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k += 2)
-        if (hyscan_db_get_channel_data_range (db, channel_id[i][j][k], NULL, NULL))
+        if (hyscan_db_channel_get_data_range (db, channel_id[i][j][k], NULL, NULL))
           g_error ("'%s.%s.%s' is still alive", projects[i], tracks[j], channels[i]);
 
   /* Проверяем, что идентификаторы параметров удалённых каналов данных не работоспсобны. */
@@ -1252,7 +1282,7 @@ main (int argc, char **argv)
       mod_count = hyscan_db_get_mod_count (db, project_id[i]);
       for (j = 0; j < n_tracks; j += 2)
         {
-          if (!hyscan_db_remove_track (db, project_id[i], tracks[j]))
+          if (!hyscan_db_track_remove (db, project_id[i], tracks[j]))
             g_error ("can't remove '%s.%s'", projects[i], tracks[j]);
           if (mod_count == hyscan_db_get_mod_count (db, project_id[i]))
             g_error ("modification counter fail on remove '%s.%s'", projects[i], tracks[j]);
@@ -1273,7 +1303,7 @@ main (int argc, char **argv)
   g_message ("checking tracks id validity");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j += 2)
-      if (hyscan_db_create_channel (db, track_id[i][j], "Channel", NULL) > 0)
+      if (hyscan_db_channel_create (db, track_id[i][j], "Channel", NULL) > 0)
         g_error ("'%s.%s' is still alive", projects[i], tracks[j]);
 
   /* Проверяем, что идентификаторы параметров удалённых галсов не работоспсобны. */
@@ -1285,16 +1315,18 @@ main (int argc, char **argv)
 
   /* Удаляем половину групп параметров проектов. */
   g_message ("removing half project parameters");
-  mod_count = hyscan_db_get_mod_count (db, project_id[i]);
   for (i = 0; i < n_projects; i++)
-    for (j = 0; j < n_gparams; j += 2)
-      {
-        if (!hyscan_db_project_param_remove (db, project_id[i], gparams[j]))
-          g_error ("can't remove '%s.%s'", projects[i], gparams[j]);
-        if (mod_count == hyscan_db_get_mod_count (db, project_id[i]))
-          g_error ("modification counter fail on remove '%s.%s'", projects[i], gparams[j]);
-        mod_count = hyscan_db_get_mod_count (db, project_id[i]);
-      }
+    {
+      mod_count = hyscan_db_get_mod_count (db, project_id[i]);
+      for (j = 0; j < n_gparams; j += 2)
+        {
+          if (!hyscan_db_project_param_remove (db, project_id[i], gparams[j]))
+            g_error ("can't remove '%s.%s'", projects[i], gparams[j]);
+          if (mod_count == hyscan_db_get_mod_count (db, project_id[i]))
+            g_error ("modification counter fail on remove '%s.%s'", projects[i], gparams[j]);
+          mod_count = hyscan_db_get_mod_count (db, project_id[i]);
+        }
+    }
 
   /* Проверяем изменившейся список. */
   g_message ("checking project parameters names");
@@ -1318,7 +1350,7 @@ main (int argc, char **argv)
   mod_count = hyscan_db_get_mod_count (db, 0);
   for (i = 0; i < n_projects; i += 2)
     {
-      if (!hyscan_db_remove_project (db, projects[i]))
+      if (!hyscan_db_project_remove (db, projects[i]))
         g_error ("can't remove '%s'", projects[i]);
       if (mod_count == hyscan_db_get_mod_count (db, 0))
         g_error ("modification counter fail on remove '%s'", projects[i]);
@@ -1333,7 +1365,7 @@ main (int argc, char **argv)
   mod_count = hyscan_db_get_mod_count (db, 0);
   for (i = 1; i < n_projects; i += 2)
     {
-      if (!hyscan_db_remove_project (db, projects[i]))
+      if (!hyscan_db_project_remove (db, projects[i]))
         g_error ("can't delete '%s'", projects[i]);
       if (mod_count == hyscan_db_get_mod_count (db, 0))
         g_error ("modification counter fail on remove '%s'", projects[i]);
@@ -1341,10 +1373,8 @@ main (int argc, char **argv)
 
   /* Проверяем, что список проектов пустой. */
   g_message ("checking db projects list is empty");
-  if (hyscan_db_get_project_list (db) != NULL)
+  if (hyscan_db_project_list (db) != NULL)
     g_error ("projects list must be empty");
-
-#warning "check validity on half removes"
 
   /* Проверяем, что все идентификаторы открытых объектов более не работоспособны. */
   g_message ("checking project parameters id validity");
@@ -1356,7 +1386,7 @@ main (int argc, char **argv)
 
   g_message ("checking projects id validity");
   for (i = 0; i < n_projects; i++)
-    if (hyscan_db_create_track (db, project_id[i], "Track", NULL, NULL) > 0)
+    if (hyscan_db_track_create (db, project_id[i], "Track", NULL, NULL) > 0)
       g_error ("'%s' still alive", projects[i]);
 
   g_message ("checking track parameters id validity");
@@ -1368,7 +1398,7 @@ main (int argc, char **argv)
   g_message ("checking tracks id validity");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      if (hyscan_db_create_channel (db, track_id[i][j], "Channel", NULL) > 0)
+      if (hyscan_db_channel_create (db, track_id[i][j], "Channel", NULL) > 0)
         g_error ("'%s.%s' is still alive", projects[i], tracks[j]);
 
   g_message ("checking channel parameters id validity");
@@ -1382,7 +1412,7 @@ main (int argc, char **argv)
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
-        if (hyscan_db_get_channel_data_range (db, channel_id[i][j][k], NULL, NULL))
+        if (hyscan_db_channel_get_data_range (db, channel_id[i][j][k], NULL, NULL))
           g_error ("'%s.%s.%s' is still alive", projects[i], tracks[j], channels[i]);
 
   /* Удаляем объект базы данных. */

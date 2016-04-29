@@ -48,21 +48,21 @@ hyscan_db_get_mod_count (HyScanDB *db,
 }
 
 gchar **
-hyscan_db_get_project_list (HyScanDB * db)
+hyscan_db_project_list (HyScanDB * db)
 {
   HyScanDBInterface *iface;
 
   g_return_val_if_fail (HYSCAN_IS_DB (db), NULL);
 
   iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->get_project_list != NULL)
-    return iface->get_project_list (db);
+  if (iface->project_list != NULL)
+    return iface->project_list (db);
 
   return NULL;
 }
 
 gint32
-hyscan_db_open_project (HyScanDB    *db,
+hyscan_db_project_open (HyScanDB    *db,
                         const gchar *project_name)
 {
   HyScanDBInterface *iface;
@@ -70,14 +70,14 @@ hyscan_db_open_project (HyScanDB    *db,
   g_return_val_if_fail (HYSCAN_IS_DB (db), -1);
 
   iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->open_project != NULL)
-    return iface->open_project (db, project_name);
+  if (iface->project_open != NULL)
+    return iface->project_open (db, project_name);
 
   return -1;
 }
 
 gint32
-hyscan_db_create_project (HyScanDB    *db,
+hyscan_db_project_create (HyScanDB    *db,
                           const gchar *project_name,
                           const gchar *project_schema)
 {
@@ -86,14 +86,14 @@ hyscan_db_create_project (HyScanDB    *db,
   g_return_val_if_fail (HYSCAN_IS_DB (db), -1);
 
   iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->create_project != NULL)
-    return iface->create_project (db, project_name, project_schema);
+  if (iface->project_create != NULL)
+    return iface->project_create (db, project_name, project_schema);
 
   return -1;
 }
 
 gboolean
-hyscan_db_remove_project (HyScanDB    *db,
+hyscan_db_project_remove (HyScanDB    *db,
                           const gchar *project_name)
 {
   HyScanDBInterface *iface;
@@ -101,27 +101,14 @@ hyscan_db_remove_project (HyScanDB    *db,
   g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
 
   iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->remove_project != NULL)
-    return iface->remove_project (db, project_name);
+  if (iface->project_remove != NULL)
+    return iface->project_remove (db, project_name);
 
   return FALSE;
 }
 
-void
-hyscan_db_close_project (HyScanDB *db,
-                         gint32    project_id)
-{
-  HyScanDBInterface *iface;
-
-  g_return_if_fail (HYSCAN_IS_DB (db));
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->close_project != NULL)
-    iface->close_project (db, project_id);
-}
-
 GDateTime *
-hyscan_db_get_project_ctime (HyScanDB *db,
+hyscan_db_project_get_ctime (HyScanDB *db,
                              gint32    project_id)
 {
   HyScanDBInterface *iface;
@@ -129,316 +116,10 @@ hyscan_db_get_project_ctime (HyScanDB *db,
   g_return_val_if_fail (HYSCAN_IS_DB (db), NULL);
 
   iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->get_project_ctime != NULL)
-    return iface->get_project_ctime (db, project_id);
+  if (iface->project_get_ctime != NULL)
+    return iface->project_get_ctime (db, project_id);
 
   return NULL;
-}
-
-gchar **
-hyscan_db_get_track_list (HyScanDB *db,
-                          gint32    project_id)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), NULL);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->get_track_list != NULL)
-    return iface->get_track_list (db, project_id);
-
-  return NULL;
-}
-
-gint32
-hyscan_db_open_track (HyScanDB    *db,
-                      gint32       project_id,
-                      const gchar *track_name)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), -1);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->open_track != NULL)
-    return iface->open_track (db, project_id, track_name);
-
-  return -1;
-}
-
-gint32
-hyscan_db_create_track (HyScanDB    *db,
-                        gint32       project_id,
-                        const gchar *track_name,
-                        const gchar *track_schema,
-                        const gchar *schema_id)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), -1);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->create_track != NULL)
-    return iface->create_track (db, project_id, track_name, track_schema, schema_id);
-
-  return -1;
-}
-
-gboolean
-hyscan_db_remove_track (HyScanDB    *db,
-                        gint32       project_id,
-                        const gchar *track_name)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->remove_track != NULL)
-    return iface->remove_track (db, project_id, track_name);
-
-  return FALSE;
-}
-
-void
-hyscan_db_close_track (HyScanDB *db,
-                       gint32    track_id)
-{
-  HyScanDBInterface *iface;
-
-  g_return_if_fail (HYSCAN_IS_DB (db));
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->close_track != NULL)
-    iface->close_track (db, track_id);
-}
-
-GDateTime *
-hyscan_db_get_track_ctime (HyScanDB *db,
-                           gint32    track_id)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), NULL);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->get_track_ctime != NULL)
-    return iface->get_track_ctime (db, track_id);
-
-  return NULL;
-}
-
-gchar **
-hyscan_db_get_channel_list (HyScanDB *db,
-                            gint32    track_id)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), NULL);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->get_channel_list != NULL)
-    return iface->get_channel_list (db, track_id);
-
-  return NULL;
-}
-
-gint32
-hyscan_db_open_channel (HyScanDB    *db,
-                        gint32       track_id,
-                        const gchar *channel_name)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), -1);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->open_channel != NULL)
-    return iface->open_channel (db, track_id, channel_name);
-
-  return -1;
-}
-
-gint32
-hyscan_db_create_channel (HyScanDB    *db,
-                          gint32       track_id,
-                          const gchar *channel_name,
-                          const gchar *schema_id)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), -1);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->create_channel != NULL)
-    return iface->create_channel (db, track_id, channel_name, schema_id);
-
-  return -1;
-}
-
-gboolean
-hyscan_db_remove_channel (HyScanDB    *db,
-                          gint32       track_id,
-                          const gchar *channel_name)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->remove_channel != NULL)
-    return iface->remove_channel (db, track_id, channel_name);
-
-  return FALSE;
-}
-
-void
-hyscan_db_close_channel (HyScanDB *db,
-                         gint32    channel_id)
-{
-  HyScanDBInterface *iface;
-
-  g_return_if_fail (HYSCAN_IS_DB (db));
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->close_channel != NULL)
-    iface->close_channel (db, channel_id);
-}
-
-void
-hyscan_db_finalize_channel (HyScanDB *db,
-                            gint32    channel_id)
-{
-  HyScanDBInterface *iface;
-
-  g_return_if_fail (HYSCAN_IS_DB (db));
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->finalize_channel != NULL)
-    iface->finalize_channel (db, channel_id);
-}
-
-gboolean
-hyscan_db_set_channel_chunk_size (HyScanDB *db,
-                                  gint32    channel_id,
-                                  gint32    chunk_size)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->set_channel_chunk_size != NULL)
-    return iface->set_channel_chunk_size (db, channel_id, chunk_size);
-
-  return FALSE;
-}
-
-gboolean
-hyscan_db_set_channel_save_time (HyScanDB *db,
-                                 gint32    channel_id,
-                                 gint64    save_time)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->set_channel_save_time != NULL)
-    return iface->set_channel_save_time (db, channel_id, save_time);
-
-  return FALSE;
-}
-
-gboolean
-hyscan_db_set_channel_save_size (HyScanDB *db,
-                                 gint32    channel_id,
-                                 gint64    save_size)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->set_channel_save_size != NULL)
-    return iface->set_channel_save_size (db, channel_id, save_size);
-
-  return FALSE;
-}
-
-gboolean
-hyscan_db_get_channel_data_range (HyScanDB *db,
-                                  gint32    channel_id,
-                                  gint32   *first_index,
-                                  gint32   *last_index)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->get_channel_data_range != NULL)
-    return iface->get_channel_data_range (db, channel_id, first_index, last_index);
-
-  return FALSE;
-}
-
-gboolean
-hyscan_db_add_channel_data (HyScanDB *db,
-                            gint32    channel_id,
-                            gint64    time,
-                            gpointer  data,
-                            gint32    size,
-                            gint32   *index)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->add_channel_data != NULL)
-    return iface->add_channel_data (db, channel_id, time, data, size, index);
-
-  return FALSE;
-}
-
-gboolean
-hyscan_db_get_channel_data (HyScanDB *db,
-                            gint32    channel_id,
-                            gint32    index,
-                            gpointer  buffer,
-                            gint32   *buffer_size,
-                            gint64   *time)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->get_channel_data != NULL)
-    return iface->get_channel_data (db, channel_id, index, buffer, buffer_size, time);
-
-  return FALSE;
-}
-
-gboolean
-hyscan_db_find_channel_data (HyScanDB *db,
-                             gint32    channel_id,
-                             gint64    time,
-                             gint32   *lindex,
-                             gint32   *rindex,
-                             gint64   *ltime,
-                             gint64   *rtime)
-{
-  HyScanDBInterface *iface;
-
-  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
-
-  iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->find_channel_data != NULL)
-    return iface->find_channel_data (db, channel_id, time, lindex, rindex, ltime, rtime);
-
-  return FALSE;
 }
 
 gchar **
@@ -488,6 +169,86 @@ hyscan_db_project_param_remove (HyScanDB    *db,
   return FALSE;
 }
 
+gchar **
+hyscan_db_track_list (HyScanDB *db,
+                      gint32    project_id)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), NULL);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->track_list != NULL)
+    return iface->track_list (db, project_id);
+
+  return NULL;
+}
+
+gint32
+hyscan_db_track_open (HyScanDB    *db,
+                      gint32       project_id,
+                      const gchar *track_name)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), -1);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->track_open != NULL)
+    return iface->track_open (db, project_id, track_name);
+
+  return -1;
+}
+
+gint32
+hyscan_db_track_create (HyScanDB    *db,
+                        gint32       project_id,
+                        const gchar *track_name,
+                        const gchar *track_schema,
+                        const gchar *schema_id)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), -1);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->track_create != NULL)
+    return iface->track_create (db, project_id, track_name, track_schema, schema_id);
+
+  return -1;
+}
+
+gboolean
+hyscan_db_track_remove (HyScanDB    *db,
+                        gint32       project_id,
+                        const gchar *track_name)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->track_remove != NULL)
+    return iface->track_remove (db, project_id, track_name);
+
+  return FALSE;
+}
+
+GDateTime *
+hyscan_db_track_get_ctime (HyScanDB *db,
+                           gint32    track_id)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), NULL);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->track_get_ctime != NULL)
+    return iface->track_get_ctime (db, track_id);
+
+  return NULL;
+}
+
 gint32
 hyscan_db_track_param_open (HyScanDB *db,
                             gint32    track_id)
@@ -501,6 +262,83 @@ hyscan_db_track_param_open (HyScanDB *db,
     return iface->track_param_open (db, track_id);
 
   return -1;
+}
+
+gchar **
+hyscan_db_channel_list (HyScanDB *db,
+                        gint32    track_id)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), NULL);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_list != NULL)
+    return iface->channel_list (db, track_id);
+
+  return NULL;
+}
+
+gint32
+hyscan_db_channel_open (HyScanDB    *db,
+                        gint32       track_id,
+                        const gchar *channel_name)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), -1);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_open != NULL)
+    return iface->channel_open (db, track_id, channel_name);
+
+  return -1;
+}
+
+gint32
+hyscan_db_channel_create (HyScanDB    *db,
+                          gint32       track_id,
+                          const gchar *channel_name,
+                          const gchar *schema_id)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), -1);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_create != NULL)
+    return iface->channel_create (db, track_id, channel_name, schema_id);
+
+  return -1;
+}
+
+gboolean
+hyscan_db_channel_remove (HyScanDB    *db,
+                          gint32       track_id,
+                          const gchar *channel_name)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_remove != NULL)
+    return iface->channel_remove (db, track_id, channel_name);
+
+  return FALSE;
+}
+
+void
+hyscan_db_channel_finalize (HyScanDB *db,
+                            gint32    channel_id)
+{
+  HyScanDBInterface *iface;
+
+  g_return_if_fail (HYSCAN_IS_DB (db));
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_finalize != NULL)
+    iface->channel_finalize (db, channel_id);
 }
 
 gint32
@@ -518,17 +356,127 @@ hyscan_db_channel_param_open (HyScanDB *db,
   return -1;
 }
 
-void
-hyscan_db_param_close (HyScanDB *db,
-                       gint32    param_id)
+gboolean
+hyscan_db_channel_set_chunk_size (HyScanDB *db,
+                                  gint32    channel_id,
+                                  gint32    chunk_size)
 {
   HyScanDBInterface *iface;
 
-  g_return_if_fail (HYSCAN_IS_DB (db));
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
 
   iface = HYSCAN_DB_GET_IFACE (db);
-  if (iface->param_close != NULL)
-    iface->param_close (db, param_id);
+  if (iface->channel_set_chunk_size != NULL)
+    return iface->channel_set_chunk_size (db, channel_id, chunk_size);
+
+  return FALSE;
+}
+
+gboolean
+hyscan_db_channel_set_save_time (HyScanDB *db,
+                                 gint32    channel_id,
+                                 gint64    save_time)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_set_save_time != NULL)
+    return iface->channel_set_save_time (db, channel_id, save_time);
+
+  return FALSE;
+}
+
+gboolean
+hyscan_db_channel_set_save_size (HyScanDB *db,
+                                 gint32    channel_id,
+                                 gint64    save_size)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_set_save_size != NULL)
+    return iface->channel_set_save_size (db, channel_id, save_size);
+
+  return FALSE;
+}
+
+gboolean
+hyscan_db_channel_get_data_range (HyScanDB *db,
+                                  gint32    channel_id,
+                                  gint32   *first_index,
+                                  gint32   *last_index)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_get_data_range != NULL)
+    return iface->channel_get_data_range (db, channel_id, first_index, last_index);
+
+  return FALSE;
+}
+
+gboolean
+hyscan_db_channel_add_data (HyScanDB *db,
+                            gint32    channel_id,
+                            gint64    time,
+                            gpointer  data,
+                            gint32    size,
+                            gint32   *index)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_add_data != NULL)
+    return iface->channel_add_data (db, channel_id, time, data, size, index);
+
+  return FALSE;
+}
+
+gboolean
+hyscan_db_channel_get_data (HyScanDB *db,
+                            gint32    channel_id,
+                            gint32    index,
+                            gpointer  buffer,
+                            gint32   *buffer_size,
+                            gint64   *time)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_get_data != NULL)
+    return iface->channel_get_data (db, channel_id, index, buffer, buffer_size, time);
+
+  return FALSE;
+}
+
+gboolean
+hyscan_db_channel_find_data (HyScanDB *db,
+                             gint32    channel_id,
+                             gint64    time,
+                             gint32   *lindex,
+                             gint32   *rindex,
+                             gint64   *ltime,
+                             gint64   *rtime)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_find_data != NULL)
+    return iface->channel_find_data (db, channel_id, time, lindex, rindex, ltime, rtime);
+
+  return FALSE;
 }
 
 gchar **
@@ -600,9 +548,9 @@ hyscan_db_param_set (HyScanDB             *db,
                      gint32                param_id,
                      const gchar          *object_name,
                      const gchar          *param_name,
-                     HyScanDataSchemaType  param_type,
-                     gconstpointer         param_value,
-                     gint32                param_size)
+                     HyScanDataSchemaType  type,
+                     gconstpointer         value,
+                     gint32                size)
 {
   HyScanDBInterface *iface;
 
@@ -610,7 +558,7 @@ hyscan_db_param_set (HyScanDB             *db,
 
   iface = HYSCAN_DB_GET_IFACE (db);
   if (iface->param_set != NULL)
-    return iface->param_set (db, param_id, object_name, param_name, param_type, param_value, param_size);
+    return iface->param_set (db, param_id, object_name, param_name, type, value, size);
 
   return FALSE;
 }
@@ -620,7 +568,7 @@ hyscan_db_param_get (HyScanDB             *db,
                      gint32                param_id,
                      const gchar          *object_name,
                      const gchar          *param_name,
-                     HyScanDataSchemaType  param_type,
+                     HyScanDataSchemaType  type,
                      gpointer              buffer,
                      gint32               *buffer_size)
 {
@@ -630,7 +578,7 @@ hyscan_db_param_get (HyScanDB             *db,
 
   iface = HYSCAN_DB_GET_IFACE (db);
   if (iface->param_get != NULL)
-    return iface->param_get (db, param_id, object_name, param_name, param_type, buffer, buffer_size);
+    return iface->param_get (db, param_id, object_name, param_name, type, buffer, buffer_size);
 
   return FALSE;
 }
@@ -642,8 +590,9 @@ hyscan_db_param_set_boolean (HyScanDB    *db,
                              const gchar *param_name,
                              gboolean     value)
 {
-  return hyscan_db_param_set (db, param_id, object_name, param_name,
-                              HYSCAN_DATA_SCHEMA_TYPE_BOOLEAN, &value, sizeof (value));
+  return hyscan_db_param_set (db, param_id, object_name,
+                              param_name, HYSCAN_DATA_SCHEMA_TYPE_BOOLEAN,
+                              &value, sizeof (gboolean));
 }
 
 gboolean
@@ -653,8 +602,9 @@ hyscan_db_param_set_integer (HyScanDB    *db,
                              const gchar *param_name,
                              gint64       value)
 {
-  return hyscan_db_param_set (db, param_id, object_name, param_name,
-                              HYSCAN_DATA_SCHEMA_TYPE_INTEGER, &value, sizeof (value));
+  return hyscan_db_param_set (db, param_id, object_name,
+                              param_name, HYSCAN_DATA_SCHEMA_TYPE_INTEGER,
+                              &value, sizeof (gint64));
 }
 
 gboolean
@@ -664,8 +614,9 @@ hyscan_db_param_set_double (HyScanDB    *db,
                             const gchar *param_name,
                             gdouble      value)
 {
-  return hyscan_db_param_set (db, param_id, object_name, param_name,
-                              HYSCAN_DATA_SCHEMA_TYPE_DOUBLE, &value, sizeof (value));
+  return hyscan_db_param_set (db, param_id, object_name,
+                              param_name, HYSCAN_DATA_SCHEMA_TYPE_DOUBLE,
+                              &value, sizeof (gdouble));
 }
 
 gboolean
@@ -675,65 +626,78 @@ hyscan_db_param_set_string (HyScanDB    *db,
                             const gchar *param_name,
                             const gchar *value)
 {
-  return hyscan_db_param_set (db, param_id, object_name, param_name,
-                              HYSCAN_DATA_SCHEMA_TYPE_STRING, value, strlen (value));
+  return hyscan_db_param_set (db, param_id, object_name,
+                              param_name, HYSCAN_DATA_SCHEMA_TYPE_STRING,
+                              value, value != NULL ? strlen (value) : 0);
+}
+
+gboolean
+hyscan_db_param_set_enum (HyScanDB    *db,
+                          gint32       param_id,
+                          const gchar *object_name,
+                          const gchar *param_name,
+                          gint64       value)
+{
+  return hyscan_db_param_set (db, param_id, object_name,
+                              param_name, HYSCAN_DATA_SCHEMA_TYPE_ENUM,
+                              &value, sizeof (gint64));
 }
 
 gboolean
 hyscan_db_param_get_boolean (HyScanDB    *db,
                              gint32       param_id,
                              const gchar *object_name,
-                             const gchar *param_name)
+                             const gchar *param_name,
+                             gboolean    *value)
 {
   gboolean status;
-  gboolean value;
   gint32 size;
 
-  size = sizeof (value);
+  size = sizeof (gboolean);
   status = hyscan_db_param_get (db, param_id, object_name, param_name,
-                                HYSCAN_DATA_SCHEMA_TYPE_BOOLEAN, &value, &size);
+                                HYSCAN_DATA_SCHEMA_TYPE_BOOLEAN, value, &size);
   if (!status)
     return FALSE;
 
-  return value;
+  return TRUE;
 }
 
-gint64
+gboolean
 hyscan_db_param_get_integer (HyScanDB    *db,
                              gint32       param_id,
                              const gchar *object_name,
-                             const gchar *param_name)
+                             const gchar *param_name,
+                             gint64      *value)
 {
   gboolean status;
-  gint64 value;
   gint32 size;
 
-  size = sizeof (value);
+  size = sizeof (gint64);
   status = hyscan_db_param_get (db, param_id, object_name, param_name,
-                                HYSCAN_DATA_SCHEMA_TYPE_INTEGER, &value, &size);
+                                HYSCAN_DATA_SCHEMA_TYPE_INTEGER, value, &size);
   if (!status)
-    return 0;
+    return FALSE;
 
-  return value;
+  return TRUE;
 }
 
-gdouble
+gboolean
 hyscan_db_param_get_double (HyScanDB    *db,
                             gint32       param_id,
                             const gchar *object_name,
-                            const gchar *param_name)
+                            const gchar *param_name,
+                            gdouble     *value)
 {
   gboolean status;
-  gdouble value;
   gint32 size;
 
-  size = sizeof (value);
+  size = sizeof (gdouble);
   status = hyscan_db_param_get (db, param_id, object_name, param_name,
-                                HYSCAN_DATA_SCHEMA_TYPE_DOUBLE, &value, &size);
+                                HYSCAN_DATA_SCHEMA_TYPE_DOUBLE, value, &size);
   if (!status)
-    return 0.0;
+    return FALSE;
 
-  return value;
+  return TRUE;
 }
 
 gchar *
@@ -761,4 +725,36 @@ hyscan_db_param_get_string (HyScanDB    *db,
     }
 
   return value;
+}
+
+gboolean
+hyscan_db_param_get_enum (HyScanDB    *db,
+                          gint32       param_id,
+                          const gchar *object_name,
+                          const gchar *param_name,
+                          gint64      *value)
+{
+  gboolean status;
+  gint32 size;
+
+  size = sizeof (gint64);
+  status = hyscan_db_param_get (db, param_id, object_name, param_name,
+                                HYSCAN_DATA_SCHEMA_TYPE_ENUM, value, &size);
+  if (!status)
+    return FALSE;
+
+  return TRUE;
+}
+
+void
+hyscan_db_close (HyScanDB *db,
+                 gint32    object_id)
+{
+  HyScanDBInterface *iface;
+
+  g_return_if_fail (HYSCAN_IS_DB (db));
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->close != NULL)
+    iface->close (db, object_id);
 }

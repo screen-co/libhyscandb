@@ -43,10 +43,6 @@ static void                    hyscan_db_param_file_set_property       (GObject 
 static void                    hyscan_db_param_file_object_constructed (GObject          *object);
 static void                    hyscan_db_param_file_object_finalize    (GObject          *object);
 
-static void                    hyscan_db_param_file_object_copy_int    (GKeyFile         *params,
-                                                                        const gchar      *src_object_name,
-                                                                        const gchar      *dst_object_name);
-
 static HyScanDataSchema       *hyscan_db_param_file_schema_lookup      (GHashTable       *schemas,
                                                                         const gchar      *schema_file,
                                                                         const gchar      *schema_id);
@@ -156,34 +152,6 @@ hyscan_db_param_file_object_finalize (GObject *object)
   g_mutex_clear (&priv->lock);
 
   G_OBJECT_CLASS (hyscan_db_param_file_parent_class)->finalize (G_OBJECT (object));
-}
-
-/* Внутренняя функция копирования объекта. */
-static void
-hyscan_db_param_file_object_copy_int (GKeyFile    *params,
-                                      const gchar *src_object_name,
-                                      const gchar *dst_object_name)
-{
-  gchar **keys;
-  gchar *value;
-  gint i;
-
-  keys = g_key_file_get_keys (params, src_object_name, NULL, NULL);
-  if (keys == NULL)
-    return;
-
-  g_key_file_remove_group (params, dst_object_name, NULL);
-
-  for (i = 0; keys[i] != NULL; i++)
-    {
-      value = g_key_file_get_value (params, src_object_name, keys[i], NULL);
-      if (value == NULL)
-        continue;
-      g_key_file_set_value (params, dst_object_name, keys[i], value);
-      g_free (value);
-    }
-
-  g_strfreev (keys);
 }
 
 /* Функция ищет схему данных schema_id и если не находит загружает её. */
