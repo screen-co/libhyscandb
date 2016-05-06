@@ -50,33 +50,33 @@ hyscan_db_new (const gchar *uri)
     }
 
   /* Протоколы shm:// и tcp:// */
-//  if (g_pattern_match_simple("shm://*", uri) || g_pattern_match_simple("tcp://*", uri))
-//    {
-//      const gchar *path;
-//      gchar *db_uri;
-//      HyScanDB *db;
-//
-//      /* Путь к RPC серверу. */
-//      path = uri + strlen ("xxx://");
-//
-//      /* Подключение с использовнием имени пользователя и пароля для
-//         протокола file невозможно. */
-//      if (g_pattern_match_simple("*@*", path))
-//        {
-//          g_warning ("HyScanDB: authenticated connection to server is not yet supported");
-//          return NULL;
-//        }
-//
-//      /* URI к RPC серверу. */
-//      if (g_pattern_match_simple("shm://*", uri))
-//        db_uri = g_strdup_printf ("shm://%s", path);
-//      else
-//        db_uri = g_strdup_printf ("tcp://%s", path);
-//
-//      db = HYSCAN_DB (hyscan_db_client_new (db_uri));
-//      g_free (db_uri);
-//      return db;
-//    }
+  if (g_pattern_match_simple("shm://*", uri) || g_pattern_match_simple("tcp://*", uri))
+    {
+      const gchar *path;
+      gchar *db_uri;
+      HyScanDB *db;
+
+      /* Путь к RPC серверу. */
+      path = uri + strlen ("xxx://");
+
+      /* Подключение с использовнием имени пользователя и пароля для
+         протокола file невозможно. */
+      if (g_pattern_match_simple("*@*", path))
+        {
+          g_warning ("HyScanDB: authenticated connection to server is not yet supported");
+          return NULL;
+        }
+
+      /* URI к RPC серверу. */
+      if (g_pattern_match_simple("shm://*", uri))
+        db_uri = g_strdup_printf ("shm://%s", path);
+      else
+        db_uri = g_strdup_printf ("tcp://%s", path);
+
+      db = HYSCAN_DB (hyscan_db_client_new (db_uri));
+      g_free (db_uri);
+      return db;
+    }
 
   g_warning ("HyScanDB: unsupported protocol");
   return NULL;

@@ -393,9 +393,9 @@ gboolean
 hyscan_db_param_file_set (HyScanDBParamFile    *param,
                           const gchar          *object_name,
                           const gchar          *param_name,
-                          HyScanDataSchemaType  param_type,
-                          gconstpointer         param_value,
-                          gint32                param_size)
+                          HyScanDataSchemaType  type,
+                          gconstpointer         value,
+                          gint32                size)
 {
   HyScanDBParamFilePrivate *priv;
 
@@ -421,7 +421,7 @@ hyscan_db_param_file_set (HyScanDBParamFile    *param,
     goto exit;
 
   /* Сверяем тип параметра. */
-  if (param_type != hyscan_data_schema_key_get_type (schema, param_name))
+  if (type != hyscan_data_schema_key_get_type (schema, param_name))
     goto exit;
 
   /* Доступность на запись. */
@@ -429,7 +429,7 @@ hyscan_db_param_file_set (HyScanDBParamFile    *param,
     goto exit;
 
   /* Сбрасываем значение параметра до состояния по умолчанию. */
-  if (param_value == NULL && param_size == 0)
+  if (value == NULL && size == 0)
     {
       g_key_file_remove_key (priv->params, object_name, param_name, NULL);
     }
@@ -437,42 +437,42 @@ hyscan_db_param_file_set (HyScanDBParamFile    *param,
   /* Устанавливаем значение параметра. */
   else
     {
-      switch (param_type)
+      switch (type)
         {
         case HYSCAN_DATA_SCHEMA_TYPE_BOOLEAN:
-          if (param_size != sizeof (gboolean))
+          if (size != sizeof (gboolean))
             goto exit;
-          g_key_file_set_boolean (priv->params, object_name, param_name, *((gboolean*)param_value));
+          g_key_file_set_boolean (priv->params, object_name, param_name, *((gboolean*)value));
           break;
 
         case HYSCAN_DATA_SCHEMA_TYPE_INTEGER:
-          if (param_size != sizeof (gint64))
+          if (size != sizeof (gint64))
             goto exit;
-          if (!hyscan_data_schema_key_check_integer (schema, param_name, *((gint64*)param_value)))
+          if (!hyscan_data_schema_key_check_integer (schema, param_name, *((gint64*)value)))
             goto exit;
-          g_key_file_set_int64 (priv->params, object_name, param_name, *((gint64*)param_value));
+          g_key_file_set_int64 (priv->params, object_name, param_name, *((gint64*)value));
           break;
 
         case HYSCAN_DATA_SCHEMA_TYPE_DOUBLE:
-          if (param_size != sizeof (gint64))
+          if (size != sizeof (gint64))
             goto exit;
-          if (!hyscan_data_schema_key_check_double (schema, param_name, *((gdouble*)param_value)))
+          if (!hyscan_data_schema_key_check_double (schema, param_name, *((gdouble*)value)))
             goto exit;
-          g_key_file_set_double (priv->params, object_name, param_name, *((gdouble*)param_value));
+          g_key_file_set_double (priv->params, object_name, param_name, *((gdouble*)value));
           break;
 
         case HYSCAN_DATA_SCHEMA_TYPE_STRING:
-          if (param_size != strlen (param_value))
+          if (size != strlen (value) + 1)
             goto exit;
-          g_key_file_set_string (priv->params, object_name, param_name, param_value);
+          g_key_file_set_string (priv->params, object_name, param_name, value);
           break;
 
         case HYSCAN_DATA_SCHEMA_TYPE_ENUM:
-          if (param_size != sizeof (gint64))
+          if (size != sizeof (gint64))
             goto exit;
-          if (!hyscan_data_schema_key_check_enum (schema, param_name, *((gint64*)param_value)))
+          if (!hyscan_data_schema_key_check_enum (schema, param_name, *((gint64*)value)))
             goto exit;
-          g_key_file_set_int64 (priv->params, object_name, param_name, *((gint64*)param_value));
+          g_key_file_set_int64 (priv->params, object_name, param_name, *((gint64*)value));
           break;
 
         default:
@@ -500,7 +500,7 @@ gboolean
 hyscan_db_param_file_get (HyScanDBParamFile     *param,
                           const gchar           *object_name,
                           const gchar           *param_name,
-                          HyScanDataSchemaType   param_type,
+                          HyScanDataSchemaType   type,
                           gpointer               buffer,
                           gint32                *buffer_size)
 {
@@ -533,7 +533,7 @@ hyscan_db_param_file_get (HyScanDBParamFile     *param,
     goto exit;
 
   /* Сверяем тип параметра. */
-  if (param_type != hyscan_data_schema_key_get_type (schema, param_name))
+  if (type != hyscan_data_schema_key_get_type (schema, param_name))
     goto exit;
 
   /* Проверяем наличие установленного значения. */
@@ -545,7 +545,7 @@ hyscan_db_param_file_get (HyScanDBParamFile     *param,
     use_default = TRUE;
 
   /* Считываем значение параметра. */
-  switch (param_type)
+  switch (type)
     {
     case HYSCAN_DATA_SCHEMA_TYPE_BOOLEAN:
       if (buffer == NULL)

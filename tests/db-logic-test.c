@@ -225,9 +225,9 @@ check_parameters (HyScanDB *db,
   if (ABS (dvalue - orig_dvalue) > 0.000001)
     g_error ("%s: error in double parameter", error_prefix);
   if (g_strcmp0 (svalue, orig_svalue) != 0)
-    g_error ("%s: error in string parameter (%s, %s)", error_prefix, orig_svalue, svalue);
+    g_error ("%s: error in string parameter", error_prefix);
   if (evalue != orig_evalue)
-    g_error ("%s: error in enum parameter %ld, %ld", error_prefix, orig_evalue, evalue);
+    g_error ("%s: error in enum parameter", error_prefix);
 
   g_free (orig_svalue);
   g_free (svalue);
@@ -1001,16 +1001,6 @@ main (int argc, char **argv)
     for (j = 0; j < n_gparams; j++)
       if ((project_param_id[i][j] = hyscan_db_project_param_open (db, project_id[i], gparams[j])) < 0)
         g_error ("can't open '%s.%s'", projects[i], gparams[j]);
-
-  /* Проверяем названия объектов. */
-  g_message ("checking objects names");
-  for (i = 0; i < n_projects; i++)
-    for (j = 0; j < n_gparams; j++)
-      {
-        gchar *error_prefix = g_strdup_printf ("check_object_list ('%s.%s')", projects[i], gparams[j]);
-        check_object_list (db, error_prefix, objects, project_param_id[i][j]);
-        g_free (error_prefix);
-      }
 
   /* Проверяем названия объектов. */
   g_message ("checking objects names");

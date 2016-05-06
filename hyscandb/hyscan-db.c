@@ -628,7 +628,7 @@ hyscan_db_param_set_string (HyScanDB    *db,
 {
   return hyscan_db_param_set (db, param_id, object_name,
                               param_name, HYSCAN_DATA_SCHEMA_TYPE_STRING,
-                              value, value != NULL ? strlen (value) : 0);
+                              value, value != NULL ? strlen (value) + 1 : 0);
 }
 
 gboolean
@@ -748,7 +748,7 @@ hyscan_db_param_get_enum (HyScanDB    *db,
 
 void
 hyscan_db_close (HyScanDB *db,
-                 gint32    object_id)
+                 gint32    id)
 {
   HyScanDBInterface *iface;
 
@@ -756,5 +756,5 @@ hyscan_db_close (HyScanDB *db,
 
   iface = HYSCAN_DB_GET_IFACE (db);
   if (iface->close != NULL)
-    iface->close (db, object_id);
+    iface->close (db, id);
 }

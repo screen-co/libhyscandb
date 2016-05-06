@@ -868,7 +868,7 @@ hyscan_db_file_project_open (HyScanDB    *db,
           goto exit;
         }
 
-      project_info = g_malloc (sizeof (HyScanDBFileProjectInfo));
+      project_info = g_new (HyScanDBFileProjectInfo, 1);
       project_info->ref_count = 1;
       project_info->mod_count = 1;
       project_info->project_name = g_strdup (project_name);
@@ -1190,7 +1190,7 @@ hyscan_db_file_open_track_int (HyScanDB    *db,
           return -1;
         }
 
-      track_info = g_malloc (sizeof (HyScanDBFileTrackInfo));
+      track_info = g_new (HyScanDBFileTrackInfo, 1);
       track_info->ref_count = 1;
       track_info->project_name = g_strdup (project_info->project_name);
       track_info->track_name = g_strdup (track_name);
@@ -1307,9 +1307,12 @@ hyscan_db_file_track_create (HyScanDB    *db,
     }
 
   /* Файл параметров галса. */
-  params = hyscan_db_param_file_new (track_param_file, track_schema_file);
-  hyscan_db_param_file_object_create (params, TRACK_PARAMETERS_ID, schema_id);
-  g_object_unref (params);
+  if (schema_id != NULL)
+    {
+      params = hyscan_db_param_file_new (track_param_file, track_schema_file);
+      hyscan_db_param_file_object_create (params, TRACK_PARAMETERS_ID, schema_id);
+      g_object_unref (params);
+    }
 
   /* Открываем галс. */
   id = hyscan_db_file_open_track_int (db, project_id, track_name, FALSE);
@@ -1580,7 +1583,7 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
           goto exit;
         }
 
-      channel_info = g_malloc (sizeof (HyScanDBFileChannelInfo));
+      channel_info = g_new (HyScanDBFileChannelInfo, 1);
       channel_info->ref_count = 1;
       channel_info->mod_count = 1;
       channel_info->project_name = g_strdup (track_info->project_name);
@@ -1601,7 +1604,7 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
         }
 
       /* Создаём объект с параметрами канала данных. */
-      if (!readonly)
+      if (!readonly && schema_id != NULL)
         {
           HyScanDBFileParamInfo *param_info;
           HyScanDBParamFile *param;
@@ -2058,7 +2061,7 @@ hyscan_db_file_project_param_open (HyScanDB    *db,
       param_file = g_strdup_printf ("%s%s%s.%s", project_info->path, G_DIR_SEPARATOR_S,
                                                  group_name, PARAMETERS_FILE_EXT);
       schema_file = g_build_filename (project_info->path, PROJECT_SCHEMA_FILE, NULL);
-      param_info = g_malloc (sizeof (HyScanDBFileParamInfo));
+      param_info = g_new (HyScanDBFileParamInfo, 1);
       param_info->ref_count = 1;
       param_info->mod_count = 1;
       param_info->project_name = g_strdup (project_info->project_name);
@@ -2202,7 +2205,7 @@ hyscan_db_file_track_param_open (HyScanDB    *db,
     {
       param_file = g_build_filename (track_info->path, TRACK_PARAMETERS_FILE, NULL);
       schema_file = g_build_filename (track_info->path, TRACK_SCHEMA_FILE, NULL);
-      param_info = g_malloc (sizeof (HyScanDBFileParamInfo));
+      param_info = g_new (HyScanDBFileParamInfo, 1);
       param_info->ref_count = 1;
       param_info->mod_count = 1;
       param_info->project_name = g_strdup (track_info->project_name);
@@ -2290,7 +2293,7 @@ hyscan_db_file_channel_param_open (HyScanDB    *db,
     {
       param_file = g_build_filename (channel_info->path, TRACK_PARAMETERS_FILE, NULL);
       schema_file = g_build_filename (channel_info->path, TRACK_SCHEMA_FILE, NULL);
-      param_info = g_malloc (sizeof (HyScanDBFileParamInfo));
+      param_info = g_new (HyScanDBFileParamInfo, 1);
       param_info->ref_count = 1;
       param_info->mod_count = 1;
       param_info->project_name = g_strdup (channel_info->project_name);
@@ -2447,6 +2450,7 @@ hyscan_db_file_param_object_get_schema (HyScanDB    *db,
     }
 
   schema = hyscan_db_param_file_object_get_schema (param_info->param, object_name);
+  g_object_ref (schema);
 
 exit:
   g_rw_lock_reader_unlock (&priv->lock);
@@ -2655,23 +2659,23 @@ hyscan_db_file_param_close (HyScanDBFilePrivate *priv,
 /* Функция закрывает объект базы данных. */
 static void
 hyscan_db_file_close (HyScanDB *db,
-                      gint32    object_id)
+                      gint32    id)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
 
   g_rw_lock_writer_lock (&priv->lock);
 
-  if (hyscan_db_file_project_close (priv, object_id))
+  if (hyscan_db_file_project_close (priv, id))
     goto exit;
 
-  if (hyscan_db_file_track_close (priv, object_id))
+  if (hyscan_db_file_track_close (priv, id))
     goto exit;
 
-  if (hyscan_db_file_channel_close (priv, object_id))
+  if (hyscan_db_file_channel_close (priv, id))
     goto exit;
 
-  if (hyscan_db_file_param_close (priv, object_id))
+  if (hyscan_db_file_param_close (priv, id))
     goto exit;
 
 exit:

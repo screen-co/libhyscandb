@@ -529,7 +529,7 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       priv->parts =
         g_realloc (priv->parts, 32 * (((priv->n_parts + 1) / 32) + 1) * sizeof (HyScanDBChannelFilePart *));
 
-      fpart = g_malloc (sizeof (HyScanDBChannelFilePart));
+      fpart = g_new (HyScanDBChannelFilePart, 1);
       priv->parts[priv->n_parts - 1] = fpart;
       priv->parts[priv->n_parts] = NULL;
 
@@ -661,7 +661,7 @@ hyscan_db_channel_file_add_part (HyScanDBChannelFilePrivate *priv)
   priv->parts =
     g_realloc (priv->parts, 32 * (((priv->n_parts + 1) / 32) + 1) * sizeof (HyScanDBChannelFilePart *));
 
-  fpart = g_malloc (sizeof (HyScanDBChannelFilePart));
+  fpart = g_new (HyScanDBChannelFilePart, 1);
   priv->parts[priv->n_parts - 1] = fpart;
   priv->parts[priv->n_parts] = NULL;
 

@@ -308,7 +308,7 @@ struct _HyScanDBInterface
                                                                 gint32                *buffer_size);
 
   void                 (*close)                                (HyScanDB              *db,
-                                                                gint32                 object_id);
+                                                                gint32                 id);
 };
 
 HYSCAN_DB_EXPORT
@@ -963,7 +963,8 @@ gboolean               hyscan_db_param_object_remove           (HyScanDB        
  * Функция возвращает описание схемы данных для объекта группы параметров.
  *
  * Для описание схемы данных используется класс \link HyScanDataSchema \endlink.
- * Владельцем, возвращаемого этой функцией объекта, является HyScanDB.
+ * По окончании использования пользователь должен освободить возвращаемый
+ * объект функцией g_object_unref.
  *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор группы параметров;
@@ -1241,14 +1242,14 @@ gboolean               hyscan_db_param_get_enum                (HyScanDB        
  * любых объектов системы хранения, открытых ранее.
  *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
- * \param object_id идентификатор объекта.
+ * \param id идентификатор объекта.
  *
  * \return Функция не возвращает значений.
  *
  */
 HYSCAN_DB_EXPORT
 void                   hyscan_db_close                         (HyScanDB              *db,
-                                                                gint32                 object_id);
+                                                                gint32                 id);
 
 G_END_DECLS
 
