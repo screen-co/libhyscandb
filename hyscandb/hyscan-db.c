@@ -47,6 +47,23 @@ hyscan_db_get_mod_count (HyScanDB *db,
   return 0;
 }
 
+gboolean
+hyscan_db_is_exist (HyScanDB    *db,
+                    const gchar *project_name,
+                    const gchar *track_name,
+                    const gchar *channel_name)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->is_exist != NULL)
+    return iface->is_exist (db, project_name, track_name, channel_name);
+
+  return FALSE;
+}
+
 gchar **
 hyscan_db_project_list (HyScanDB * db)
 {
@@ -339,6 +356,21 @@ hyscan_db_channel_finalize (HyScanDB *db,
   iface = HYSCAN_DB_GET_IFACE (db);
   if (iface->channel_finalize != NULL)
     iface->channel_finalize (db, channel_id);
+}
+
+gboolean
+hyscan_db_channel_is_writable (HyScanDB *db,
+                               gint32    channel_id)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_is_writable != NULL)
+    return iface->channel_is_writable (db, channel_id);
+
+  return FALSE;
 }
 
 gint32

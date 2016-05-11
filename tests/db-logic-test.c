@@ -424,17 +424,23 @@ main (int argc, char **argv)
   g_message ("checking projects list is empty");
   if (hyscan_db_project_list (db) != NULL)
     g_error ("projects list must be empty");
+  for (i = 0; i < n_projects; i++)
+    if (hyscan_db_is_exist (db, projects[i], NULL, NULL))
+      g_error ("project '%s' exist", projects[i]);
 
   /* Создаём проекты. */
   g_message ("creating projects");
   mod_count = hyscan_db_get_mod_count (db, 0);
   for (i = 0; i < n_projects; i++)
     {
-    if ((project_id[i] = hyscan_db_project_create (db, projects[i], g_bytes_get_data (schema_data, NULL))) < 0)
-      g_error ("can't create '%s'", projects[i]);
-    if (mod_count == hyscan_db_get_mod_count (db, 0))
-      g_error ("modification counter fail on create '%s'", projects[i]);
-    mod_count = hyscan_db_get_mod_count (db, 0);
+      project_id[i] = hyscan_db_project_create (db, projects[i], g_bytes_get_data (schema_data, NULL));
+      if (project_id[i] < 0)
+        g_error ("can't create '%s'", projects[i]);
+      if (!hyscan_db_is_exist (db, projects[i], NULL, NULL))
+        g_error ("project '%s' does not exist", projects[i]);
+      if (mod_count == hyscan_db_get_mod_count (db, 0))
+        g_error ("modification counter fail on create '%s'", projects[i]);
+      mod_count = hyscan_db_get_mod_count (db, 0);
     }
 
   /* Проверяем названия созданных проектов. */
@@ -604,8 +610,13 @@ main (int argc, char **argv)
   /* Проверяем, что список галсов в каждом проекте изначально пустой. */
   g_message ("checking project tracks list is empty");
   for (i = 0; i < n_projects; i++)
-    if (hyscan_db_track_list (db, project_id[i]) != NULL)
-      g_error ("%s tracks list must be empty", projects[i]);
+    {
+      if (hyscan_db_track_list (db, project_id[i]) != NULL)
+        g_error ("%s tracks list must be empty", projects[i]);
+      for (j = 0; j < n_tracks; j++)
+        if (hyscan_db_is_exist (db, projects[i], tracks[j], NULL))
+          g_error ("track '%s.%s' exist", projects[i], tracks[j]);
+    }
 
   /* Создаём галсы в каждом проекте. */
   g_message ("creating tracks");
@@ -618,6 +629,8 @@ main (int argc, char **argv)
                                                    g_bytes_get_data (schema_data, NULL), "complex");
           if (track_id[i][j] < 0)
             g_error ("can't create '%s.%s'", projects[i], tracks[j]);
+          if (!hyscan_db_is_exist (db, projects[i], tracks[j], NULL))
+            g_error ("track '%s.%s' does not exist", projects[i], tracks[j]);
           if (mod_count == hyscan_db_get_mod_count (db, project_id[i]))
             g_error ("modification counter fail on create '%s.%s'", projects[i], tracks[j]);
           mod_count = hyscan_db_get_mod_count (db, project_id[i]);
@@ -648,8 +661,13 @@ main (int argc, char **argv)
   g_message ("checking track channels list is empty");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)
-      if (hyscan_db_channel_list (db, track_id[i][j]) != NULL)
-        g_error ("'%s.%s' channels list must be empty", projects[i], tracks[j]);
+      {
+        if (hyscan_db_channel_list (db, track_id[i][j]) != NULL)
+          g_error ("'%s.%s' channels list must be empty", projects[i], tracks[j]);
+        for (k = 0; k < n_channels; k++)
+          if (hyscan_db_is_exist (db, projects[i], tracks[j], channels[k]))
+            g_error ("channel '%s.%s.%s' exist", projects[i], tracks[j], channels[k]);
+      }
 
   /* Создаём каналы данных в каждом галсе. */
   g_message ("creating channels");
@@ -659,13 +677,24 @@ main (int argc, char **argv)
         mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
         for (k = 0; k < n_channels; k++)
           {
-            if ((channel_id[i][j][k] = hyscan_db_channel_create (db, track_id[i][j], channels[k], "complex")) < 0)
+            channel_id[i][j][k] = hyscan_db_channel_create (db, track_id[i][j], channels[k], "complex");
+            if (channel_id[i][j][k] < 0)
               g_error ("can't create '%s.%s.%s'", projects[i], tracks[j], channels[k]);
+            if (!hyscan_db_is_exist (db, projects[i], tracks[j], channels[k]))
+              g_error ("channel '%s.%s.%s' does not exist", projects[i], tracks[j], channels[k]);
             if (mod_count == hyscan_db_get_mod_count (db, track_id[i][j]))
               g_error ("modification counter fail on create '%s.%s.%s'", projects[i], tracks[j], channels[k]);
             mod_count = hyscan_db_get_mod_count (db, track_id[i][j]);
           }
       }
+
+  /* Проверяем режим доступа к каналам данных. */
+  g_message ("checking channels mode");
+  for (i = 0; i < n_projects; i++)
+    for (j = 0; j < n_tracks; j++)
+      for (k = 0; k < n_channels; k++)
+        if (!hyscan_db_channel_is_writable (db, channel_id[i][j][k]))
+          g_error ("channel is readonly '%s.%s.%s'", projects[i], tracks[j], channels[k]);
 
   /* Записываем контрольные данные в каналы. */
   g_message ("writing channels data");
@@ -788,6 +817,49 @@ main (int argc, char **argv)
           mod_count = hyscan_db_get_mod_count (db, channel_param_id[i][j][k]);
           set_parameters (db, error_prefix, k + 2, channel_param_id[i][j][k], NULL);
           if (mod_count == hyscan_db_get_mod_count (db, channel_param_id[i][j][k]))
+            g_error ("modification counter fail on %s", error_prefix);
+          g_free (error_prefix);
+        }
+
+  /* Завершаем запись в канал данных. */
+  g_message ("finalize channels");
+  for (i = 0; i < n_projects; i++)
+    for (j = 0; j < n_tracks; j++)
+      for (k = 0; k < n_channels; k++)
+        hyscan_db_channel_finalize (db, channel_id[i][j][k]);
+
+  /* Проверяем режим доступа к каналам данных. */
+  g_message ("checking channels mode");
+  for (i = 0; i < n_projects; i++)
+    for (j = 0; j < n_tracks; j++)
+      for (k = 0; k < n_channels; k++)
+        if (hyscan_db_channel_is_writable (db, channel_id[i][j][k]))
+          g_error ("channel is writable '%s.%s.%s'", projects[i], tracks[j], channels[k]);
+
+  /* Проверяем, что нет возможности записать данные в каналы. */
+  g_message ("trying add data to channels");
+  for (i = 0; i < n_projects; i++)
+    for (j = 0; j < n_tracks; j++)
+      for (k = 0; k < n_channels; k++)
+        {
+          mod_count = hyscan_db_get_mod_count (db, channel_id[i][j][k]);
+          if (hyscan_db_channel_add_data (db, channel_id[i][j][k], 1, sample1, sample_size, NULL))
+            g_error ("'%s.%s.%s' must be read only", projects[i], tracks[j], channels[k]);
+          if (mod_count != hyscan_db_get_mod_count (db, channel_id[i][j][k]))
+            g_error ("modification counter fail on data add to '%s.%s.%s'", projects[i], tracks[j], channels[k]);
+        }
+
+  /* Проверяем, что нет возможности изменить значения параметров каналов данных. */
+  g_message ("trying to change channels parameters");
+  for (i = 0; i < n_projects; i++)
+    for (j = 0; j < n_tracks; j++)
+      for (k = 0; k < n_channels; k++)
+        {
+          gchar *error_prefix = g_strdup_printf ("set_parameters ('%s.%s.%s')", projects[i], tracks[j], channels[k]);
+          mod_count = hyscan_db_get_mod_count (db, channel_param_id[i][j][k]);
+          set_parameters (db, error_prefix, k + 3, channel_param_id[i][j][k], NULL);
+          check_parameters (db, error_prefix, k + 2, channel_param_id[i][j][k], NULL);
+          if (mod_count != hyscan_db_get_mod_count (db, channel_param_id[i][j][k]))
             g_error ("modification counter fail on %s", error_prefix);
           g_free (error_prefix);
         }
@@ -924,7 +996,7 @@ main (int argc, char **argv)
           g_free (error_prefix);
         }
 
-  /* Проверяем, что нет возможности изменить значения параметров галсов. */
+  /* Проверяем, что нет возможности изменить значения параметров каналов данных. */
   g_message ("trying to change channels parameters");
   for (i = 0; i < n_projects; i++)
     for (j = 0; j < n_tracks; j++)

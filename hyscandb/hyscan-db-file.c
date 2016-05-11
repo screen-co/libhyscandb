@@ -763,6 +763,69 @@ exit:
   return mod_count;
 }
 
+/* Функция проверяет существование проекта, галса или канала данных в системе хранения. */
+static gboolean
+hyscan_db_file_is_exist (HyScanDB    *db,
+                         const gchar *project_name,
+                         const gchar *track_name,
+                         const gchar *channel_name)
+{
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
+  HyScanDBFilePrivate *priv = dbf->priv;
+
+  HyScanDBFileObjectInfo object_info;
+
+  gchar *project_path = NULL;
+  gchar *track_path = NULL;
+
+  gboolean exist = FALSE;
+
+  g_rw_lock_reader_lock (&priv->lock);
+
+  /* Проверяем существование проекта. */
+  project_path = g_build_filename (priv->path, project_name, NULL);
+  if (!hyscan_db_project_test (project_path, NULL))
+    goto exit;
+
+  if (track_name == NULL && channel_name == NULL)
+    {
+      exist = TRUE;
+      goto exit;
+    }
+
+  /* Проверяем существование галса. */
+  track_path = g_build_filename (project_path, track_name, NULL);
+  if (!hyscan_db_track_test (track_path, NULL))
+    goto exit;
+
+  if (channel_name == NULL)
+    {
+      exist = TRUE;
+      goto exit;
+    }
+
+  /* Проверяем существование канала данных. */
+  if (hyscan_db_channel_test (track_path, channel_name))
+    {
+      exist = TRUE;
+      goto exit;
+    }
+
+  /* Возможно в канал данных еще ничего не записали, но он создан. */
+  object_info.project_name = project_name;
+  object_info.track_name = track_name;
+  object_info.group_name = channel_name;
+  if (g_hash_table_find (priv->channels, hyscan_db_check_channel_by_object_name, &object_info))
+    exist = TRUE;
+
+exit:
+  g_rw_lock_reader_unlock (&priv->lock);
+  g_free (project_path);
+  g_free (track_path);
+
+  return exist;
+}
+
 /* Функция возвращает список доступных проектов. */
 static gchar **
 hyscan_db_file_project_list (HyScanDB *db)
@@ -864,7 +927,7 @@ hyscan_db_file_project_open (HyScanDB    *db,
       project_path = g_build_filename (priv->path, project_name, NULL);
       if (!hyscan_db_project_test (project_path, &ctime))
         {
-          g_warning ("HyScanDBFile: '%s' not a project", project_name);
+          g_warning ("HyScanDBFile: '%s' no such project", project_name);
           goto exit;
         }
 
@@ -1185,7 +1248,7 @@ hyscan_db_file_open_track_int (HyScanDB    *db,
       track_path = g_build_filename (project_info->path, track_name, NULL);
       if (!hyscan_db_track_test (track_path, &ctime))
         {
-          g_warning ("HyScanDBFile: '%s.%s' not a track", project_info->project_name, track_name);
+          g_warning ("HyScanDBFile: '%s.%s' - no such track", project_info->project_name, track_name);
           g_free (track_path);
           return -1;
         }
@@ -1272,7 +1335,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
   if (g_file_test (track_path, G_FILE_TEST_IS_DIR))
     {
       g_warning ("HyScanDBFile: track '%s.%s' already exists",
-              project_info->project_name, track_name);
+                 project_info->project_name, track_name);
       goto exit;
     }
 
@@ -1280,7 +1343,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
   if (g_mkdir_with_parents (track_path, 0777) != 0)
     {
       g_warning ("HyScanDBFile: can't create track '%s.s%s' directory",
-                  project_info->project_name, track_name);
+                 project_info->project_name, track_name);
       goto exit;
     }
 
@@ -1291,7 +1354,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
   if (!g_file_set_contents (track_id_file, param_data, -1, NULL))
     {
       g_warning ("HyScanDBFile: can't save track '%s.%s' identification file",
-                  project_info->project_name, track_name);
+                 project_info->project_name, track_name);
       goto exit;
     }
 
@@ -1301,7 +1364,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
       if (!g_file_set_contents (track_schema_file, track_schema, -1, NULL))
         {
           g_warning ("HyScanDBFile: can't save track '%s.%s' schema",
-                      project_info->project_name, track_name);
+                     project_info->project_name, track_name);
           goto exit;
         }
     }
@@ -1562,7 +1625,7 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
         {
           /* Если канал уже открыт и находится в режиме записи - возвращаем ошибку. */
           g_warning ("HyScanDBFile: channel '%s.%s.%s' already exists",
-                  track_info->project_name, track_info->track_name, channel_name);
+                     track_info->project_name, track_info->track_name, channel_name);
           goto exit;
         }
     }
@@ -1576,10 +1639,10 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
         {
           if (readonly)
             g_warning ("HyScanDBFile: '%s.%s.%s' - no such channel",
-                    track_info->project_name, track_info->track_name, channel_name);
+                       track_info->project_name, track_info->track_name, channel_name);
           else
             g_warning ("HyScanDBFile: channel '%s.%s.%s' already exists",
-                    track_info->project_name, track_info->track_name, channel_name);
+                       track_info->project_name, track_info->track_name, channel_name);
           goto exit;
         }
 
@@ -1796,6 +1859,31 @@ hyscan_db_file_channel_finalize (HyScanDB *db,
     }
 
   g_rw_lock_writer_unlock (&priv->lock);
+}
+
+/* Функция возвращает режим доступа к каналу данных. */
+static gboolean
+hyscan_db_file_channel_is_writable (HyScanDB *db,
+                                    gint32    channel_id)
+{
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
+  HyScanDBFilePrivate *priv = dbf->priv;
+
+  HyScanDBFileChannelInfo *channel_info;
+  gboolean writable = FALSE;
+
+  g_rw_lock_writer_lock (&priv->lock);
+
+  /* Ищем канал данных в списке открытых. */
+  channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
+
+  /* Проверяем режим доступа. */
+  if (channel_info->wid > 0)
+    writable = TRUE;
+
+  g_rw_lock_writer_unlock (&priv->lock);
+
+  return writable;
 }
 
 /* Функция устанавливает максимальный размер файла данных канала. */
@@ -2687,6 +2775,7 @@ hyscan_db_file_interface_init (HyScanDBInterface *iface)
 {
   iface->get_uri = hyscan_db_file_get_uri;
   iface->get_mod_count = hyscan_db_file_get_mod_count;
+  iface->is_exist = hyscan_db_file_is_exist;
 
   iface->project_list = hyscan_db_file_project_list;
   iface->project_open = hyscan_db_file_project_open;
@@ -2709,6 +2798,7 @@ hyscan_db_file_interface_init (HyScanDBInterface *iface)
   iface->channel_create = hyscan_db_file_channel_create;
   iface->channel_remove = hyscan_db_file_channel_remove;
   iface->channel_finalize = hyscan_db_file_channel_finalize;
+  iface->channel_is_writable = hyscan_db_file_channel_is_writable;
   iface->channel_param_open = hyscan_db_file_channel_param_open;
 
   iface->channel_set_chunk_size = hyscan_db_file_channel_set_chunk_size;

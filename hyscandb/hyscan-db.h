@@ -58,6 +58,8 @@
  * - закрытие объектов системы хранения - #hyscan_db_close
  * - отключение от системы хранения данных осуществляется при удалении объекта функцией g_object_unref
  *
+ * Проверить существование проекта, галса или канала данных можно функцией #hyscan_db_is_exist.
+ *
  * При изменении объектов в базе данных меняются внутренние счётчики состояния объектов. Эти счётчики
  * можно использовать для слежения за изменениями в базе без создания на неё дополнительной нагрузки.
  * Для этого используется функция #hyscan_db_get_mod_count.
@@ -100,6 +102,8 @@
  * установка значений параметров, возможна ТОЛЬКО для вновь созданного канала и только если параметры открыты
  * из дескриптора имеющего права на запись данных. Функция #hyscan_db_channel_finalize принудительно переводит
  * канал данных в режим только чтения. После вызова этой функции запись новых данных и изменение параметров невозможно.
+ *
+ * Узнать в каком режиме находится канал данных (чтение или запись) можно функцией #hyscan_db_channel_is_writable.
  *
  * Записываемые в канал данные обычно сохраняются на диске в виде файлов. Слишком большой размер файлов создаёт
  * проблемы с их копированием и хранением в некоторых файловых системах. Функция #hyscan_db_channel_set_chunk_size
@@ -164,6 +168,11 @@ struct _HyScanDBInterface
 
   guint64              (*get_mod_count)                        (HyScanDB              *db,
                                                                 gint32                 id);
+
+  gboolean             (*is_exist)                             (HyScanDB              *db,
+                                                                const gchar           *project_name,
+                                                                const gchar           *track_name,
+                                                                const gchar           *channel_name);
 
   gchar              **(*project_list)                         (HyScanDB              *db);
 
@@ -231,6 +240,9 @@ struct _HyScanDBInterface
                                                                 const gchar           *channel_name);
 
   void                 (*channel_finalize)                     (HyScanDB              *db,
+                                                                gint32                 channel_id);
+
+  gboolean             (*channel_is_writable)                  (HyScanDB              *db,
                                                                 gint32                 channel_id);
 
   gint32               (*channel_param_open)                   (HyScanDB              *db,
@@ -374,6 +386,29 @@ gchar                 *hyscan_db_get_uri                       (HyScanDB        
 HYSCAN_DB_EXPORT
 guint64                hyscan_db_get_mod_count                 (HyScanDB              *db,
                                                                 gint32                 id);
+
+/**
+ *
+ * Функция проверяет существование проекта, галса или канала данных в системе хранения.
+ *
+ * Если необходимо проверить существование проекта, в project_name нужно передать название проекта,
+ * а track_name и channel_name нужно установить в NULL. Если необходимо проверить существования галса,
+ * в дополнение к project_name в track_name нужно передать название галса, а channel_name нужно
+ * установить в NULL. Для проверки существования канала данных необходимо передать все параметры.
+ *
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
+ * \param project_name название проекта;
+ * \param track_name название проекта или NULL;
+ * \param channel_name название проекта или NULL.
+ *
+ * \return TRUE - если объект существует, FALSE - если объекта нет.
+ *
+ */
+HYSCAN_DB_EXPORT
+gboolean               hyscan_db_is_exist                      (HyScanDB              *db,
+                                                                const gchar           *project_name,
+                                                                const gchar           *track_name,
+                                                                const gchar           *channel_name);
 
 /* Функции работы с проектами. */
 
@@ -724,6 +759,21 @@ gboolean               hyscan_db_channel_remove                (HyScanDB        
  */
 HYSCAN_DB_EXPORT
 void                   hyscan_db_channel_finalize              (HyScanDB              *db,
+                                                                gint32                 channel_id);
+
+/**
+ *
+ * Функция возвращает режим доступа к каналу данных. Функция проверяет режим
+ * доступа глобально в рамках системы хранения, а не для идентификатора канала данных.
+ *
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
+ * \param channel_id идентификатор канала данных.
+ *
+ * \return TRUE - если возможна запись данных, FALSE - если канал в режиме только чтения.
+ *
+ */
+HYSCAN_DB_EXPORT
+gboolean               hyscan_db_channel_is_writable           (HyScanDB              *db,
                                                                 gint32                 channel_id);
 
 /**

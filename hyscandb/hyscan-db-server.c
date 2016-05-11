@@ -221,6 +221,37 @@ exit:
 }
 
 static gint
+hyscan_db_server_rpc_proc_is_exist (guint32   session,
+                                    uRpcData *urpc_data,
+                                    void     *proc_data,
+                                    void     *key_data)
+{
+  HyScanDBServerPrivate *priv = proc_data;
+  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
+  const gchar *project_name;
+  const gchar *track_name;
+  const gchar *channel_name;
+
+  if (priv->acl != NULL && !priv->acl ("is_exist", key_data))
+    hyscan_db_server_acl_error ();
+
+  project_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_NAME, 0);
+  if (project_name == NULL)
+    hyscan_db_server_get_error ("project_name");
+
+  track_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_NAME, 0);
+  channel_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_NAME, 0);
+
+  if (hyscan_db_is_exist (priv->db, project_name, track_name, channel_name))
+    rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+
+exit:
+  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
+  return 0;
+}
+
+static gint
 hyscan_db_server_rpc_proc_project_list (guint32   session,
                                         uRpcData *urpc_data,
                                         void     *proc_data,
@@ -822,6 +853,31 @@ hyscan_db_server_rpc_proc_channel_finalize (guint32   session,
     hyscan_db_server_get_error ("channel_id");
 
   hyscan_db_channel_finalize (priv->db, channel_id);
+
+exit:
+  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
+  return 0;
+}
+
+static gint
+hyscan_db_server_rpc_proc_channel_is_writable (guint32   session,
+                                               uRpcData *urpc_data,
+                                               void     *proc_data,
+                                               void     *key_data)
+{
+  HyScanDBServerPrivate *priv = proc_data;
+  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
+  gint32 channel_id;
+
+  if (priv->acl != NULL && !priv->acl ("channel_is_writable", key_data))
+    hyscan_db_server_acl_error ();
+
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
+    hyscan_db_server_get_error ("channel_id");
+
+  if (hyscan_db_channel_is_writable (priv->db, channel_id))
+    rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
 exit:
   urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
@@ -1459,6 +1515,11 @@ hyscan_db_server_start (HyScanDBServer *server)
   if (status != 0)
     goto fail;
 
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_IS_EXIST,
+                                 hyscan_db_server_rpc_proc_is_exist, priv);
+  if (status != 0)
+    goto fail;
+
   status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PROJECT_LIST,
                                  hyscan_db_server_rpc_proc_project_list, priv);
   if (status != 0)
@@ -1551,6 +1612,11 @@ hyscan_db_server_start (HyScanDBServer *server)
 
   status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_FINALIZE,
                                  hyscan_db_server_rpc_proc_channel_finalize, priv);
+  if (status != 0)
+    goto fail;
+
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_IS_WRITABLE,
+                                 hyscan_db_server_rpc_proc_channel_is_writable, priv);
   if (status != 0)
     goto fail;
 
