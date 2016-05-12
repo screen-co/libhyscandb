@@ -12,17 +12,17 @@
  *
  * Создание объекта класса осуществляется при помощи функции hyscan_db_param_file_new.
  *
- * Конструктор класса имеет три параметра:
+ * Конструктор класса имеет два параметра:
  *
- * - path - путь к каталогу с ini файлом (string);
- * - name - название группы параметров - ini файла (string).
+ * - param_file - путь к файлу со значениями параметров;
+ * - schema_file - путь к файлу со схемой данных.
  *
  */
 
 #ifndef __HYSCAN_DB_PARAM_FILE_H__
 #define __HYSCAN_DB_PARAM_FILE_H__
 
-#include <glib-object.h>
+#include <hyscan-data-schema.h>
 
 G_BEGIN_DECLS
 
@@ -52,59 +52,42 @@ struct _HyScanDBParamFileClass
 GType hyscan_db_param_file_get_type (void);
 
 /* Функция создаёт новый объект HyScanDBParamFile. */
-HyScanDBParamFile *hyscan_db_param_file_new    (const gchar           *path,
-                                                const gchar           *name);
+HyScanDBParamFile     *hyscan_db_param_file_new                (const gchar           *param_file,
+                                                                const gchar           *schema_file);
 
-/* Функция возвращает список параметров. */
-gchar    **hyscan_db_param_file_get_param_list (HyScanDBParamFile     *param);
+/* Функция возвращает список объектов. */
+gchar                **hyscan_db_param_file_object_list        (HyScanDBParamFile     *param);
 
-/* Функция удаляет параметры по маске. */
-gboolean   hyscan_db_param_file_remove_param   (HyScanDBParamFile     *param,
-                                                const gchar           *mask);
+/* Функция возвращает указатель на объект HyScanDataSchema для объекта.
+ * Объект принадлежит HyScanDBParamFile. */
+HyScanDataSchema      *hyscan_db_param_file_object_get_schema  (HyScanDBParamFile     *param,
+                                                                const gchar           *object_name);
 
-/* Функция проверяет существование указанного параметра. */
-gboolean   hyscan_db_param_file_has_param      (HyScanDBParamFile     *param,
-                                                const gchar           *name);
+/* Функция создаёт объект с указанным идентификатором схемы. */
+gboolean               hyscan_db_param_file_object_create      (HyScanDBParamFile     *param,
+                                                                const gchar           *object_name,
+                                                                const gchar           *schema_id);
 
-/* Функция увеличивает значение параметра типа integer на единицу. */
-gint64     hyscan_db_param_file_inc_integer    (HyScanDBParamFile     *param,
-                                                const gchar           *name);
+/* Функция удаляет объект. */
+gboolean               hyscan_db_param_file_object_remove      (HyScanDBParamFile     *param,
+                                                                const gchar           *object_name);
 
-/* Функция устанавливает значение параметра типа integer. */
-gboolean   hyscan_db_param_file_set_integer    (HyScanDBParamFile     *param,
-                                                const gchar           *name,
-                                                gint64                 value);
 
-/* Функция устанавливает значение параметра типа double. */
-gboolean   hyscan_db_param_file_set_double     (HyScanDBParamFile     *param,
-                                                const gchar           *name,
-                                                gdouble                value);
+/* Функция устанавливает значение параметра. */
+gboolean               hyscan_db_param_file_set                (HyScanDBParamFile     *param,
+                                                                const gchar           *object_name,
+                                                                const gchar           *param_name,
+                                                                HyScanDataSchemaType   param_type,
+                                                                gconstpointer          param_value,
+                                                                gint32                 param_size);
 
-/* Функция устанавливает значение параметра типа boolean. */
-gboolean   hyscan_db_param_file_set_boolean    (HyScanDBParamFile     *param,
-                                                const gchar           *name,
-                                                gboolean               value);
-
-/* Функция устанавливает значение параметра типа string. */
-gboolean   hyscan_db_param_file_set_string     (HyScanDBParamFile     *param,
-                                                const gchar           *name,
-                                                const gchar           *value);
-
-/* Функция возвращает значение параметра типа integer. */
-gint64     hyscan_db_param_file_get_integer    (HyScanDBParamFile     *param,
-                                                const gchar           *name);
-
-/* Функция возвращает значение параметра типа double. */
-gdouble    hyscan_db_param_file_get_double     (HyScanDBParamFile     *param,
-                                                const gchar           *name);
-
-/* Функция возвращает значение параметра типа boolean. */
-gboolean   hyscan_db_param_file_get_boolean    (HyScanDBParamFile     *param,
-                                                const gchar           *name);
-
-/* Функция возвращает значение параметра типа string. */
-gchar     *hyscan_db_param_file_get_string     (HyScanDBParamFile     *param,
-                                                const gchar           *name);
+/* Функция считывает значение параметра. */
+gboolean               hyscan_db_param_file_get                (HyScanDBParamFile     *param,
+                                                                const gchar           *object_name,
+                                                                const gchar           *param_name,
+                                                                HyScanDataSchemaType   param_type,
+                                                                gpointer               buffer,
+                                                                gint32                *buffer_size);
 
 G_END_DECLS
 

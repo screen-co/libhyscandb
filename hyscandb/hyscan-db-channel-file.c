@@ -13,18 +13,18 @@
 #include <gio/gio.h>
 #include <string.h>
 
-#define INDEX_FILE_MAGIC        0x58495348       /* HSIX в виде строки. */
-#define DATA_FILE_MAGIC         0x54445348       /* HSDT в виде строки. */
-#define FILE_VERSION            0x37303531       /* 1507 в виде строки. */
+#define INDEX_FILE_MAGIC       0x58495348              /* HSIX в виде строки. */
+#define DATA_FILE_MAGIC        0x54445348              /* HSDT в виде строки. */
+#define FILE_VERSION           0x37303531              /* 1507 в виде строки. */
 
-#define MAX_PARTS               999999           /* Максимальное число частей данных. */
-#define CACHED_INDEXES          2048             /* Число кэшированных индексов. */
+#define MAX_PARTS              999999                  /* Максимальное число частей данных. */
+#define CACHED_INDEXES         2048                    /* Число кэшированных индексов. */
 
-#define INDEX_FILE_HEADER_SIZE  12               /* Размер заголовка файла индексов. */
-#define DATA_FILE_HEADER_SIZE   8                /* Размер заголовка файла данных. */
+#define INDEX_FILE_HEADER_SIZE 12                      /* Размер заголовка файла индексов. */
+#define DATA_FILE_HEADER_SIZE  8                       /* Размер заголовка файла данных. */
 
-#define MIN_DATA_FILE_SIZE      1*1024*1024      /* Минимально возможный размер файла части данных. */
-#define MAX_DATA_FILE_SIZE      1024*1024*1024   /* Максимально возможный размер файла части данных. */
+#define MIN_DATA_FILE_SIZE     1*1024*1024             /* Минимально возможный размер файла части данных. */
+#define MAX_DATA_FILE_SIZE     1024*1024*1024          /* Максимально возможный размер файла части данных. */
 
 enum
 {
@@ -37,81 +37,80 @@ enum
 /* Информация о части списка данных. */
 typedef struct
 {
-  gint32                    data_size;           /* Размер файла данных этой части. */
+  gint32                       data_size;              /* Размер файла данных этой части. */
 
-  gint64                    create_time;         /* Время создания этой части данных. */
-  gint64                    last_append_time;    /* Время последней записи данных в эту часть. */
+  gint64                       create_time;            /* Время создания этой части данных. */
+  gint64                       last_append_time;       /* Время последней записи данных в эту часть. */
 
-  gint32                    begin_index;         /* Начальный индекс данных в этой части. */
-  gint32                    end_index;           /* Конечный индекс данных в этой части. */
+  gint32                       begin_index;            /* Начальный индекс данных в этой части. */
+  gint32                       end_index;              /* Конечный индекс данных в этой части. */
 
-  gint64                    begin_time;          /* Начальное время данных в этой части. */
-  gint64                    end_time;            /* Конечное время данных в этой части. */
+  gint64                       begin_time;             /* Начальное время данных в этой части. */
+  gint64                       end_time;               /* Конечное время данных в этой части. */
 
-  GFile                    *fdi;                 /* Объект работы с файлом индексов. */
-  GInputStream             *ifdi;                /* Поток чтения файла индексов. */
-  GOutputStream            *ofdi;                /* Поток записи файла индексов. */
+  GFile                       *fdi;                    /* Объект работы с файлом индексов. */
+  GInputStream                *ifdi;                   /* Поток чтения файла индексов. */
+  GOutputStream               *ofdi;                   /* Поток записи файла индексов. */
 
-  GFile                    *fdd;                 /* Объект работы с файлом данных. */
-  GInputStream             *ifdd;                /* Поток чтения файла данных. */
-  GOutputStream            *ofdd;                /* Поток записи файла данных. */
+  GFile                       *fdd;                    /* Объект работы с файлом данных. */
+  GInputStream                *ifdd;                   /* Поток чтения файла данных. */
+  GOutputStream               *ofdd;                   /* Поток записи файла данных. */
 } HyScanDBChannelFilePart;
 
 /* Структура индексной записи в файле. */
 typedef struct
 {
-  gint64                    time;                /* Время приёма данных, в микросекундах. */
-  gint32                    offset;              /* Смещение до начала данных. */
-  gint32                    size;                /* Размер данных. */
+  gint64                       time;                   /* Время приёма данных, в микросекундах. */
+  gint32                       offset;                 /* Смещение до начала данных. */
+  gint32                       size;                   /* Размер данных. */
 } HyScanDBChannelFileIndexRec;
 
 /* Информация о записи. */
 typedef struct _HyScanDBChannelFileIndex HyScanDBChannelFileIndex;
 struct _HyScanDBChannelFileIndex
 {
-  HyScanDBChannelFilePart  *part;                /* Номер части с данными. */
-  gint32                    index;               /* Значение индекса. */
+  HyScanDBChannelFilePart     *part;                   /* Номер части с данными. */
+  gint32                       index;                  /* Значение индекса. */
 
-  gint64                    time;                /* Время приёма данных, в микросекундах. */
-  gint32                    offset;              /* Смещение до начала данных. */
-  gint32                    size;                /* Размер данных. */
+  gint64                       time;                   /* Время приёма данных, в микросекундах. */
+  gint32                       offset;                 /* Смещение до начала данных. */
+  gint32                       size;                   /* Размер данных. */
 
-                                                 /* Структуры индексов связаны между собой
-                                                    не в порядке их номеров.*/
-  HyScanDBChannelFileIndex *prev;                /* Указатель на предыдущий индекс. */
-  HyScanDBChannelFileIndex *next;                /* Указатель на следующий индекс.*/
+                                                       /* Структуры индексов связаны между собой
+                                                          не в порядке их номеров.*/
+  HyScanDBChannelFileIndex    *prev;                   /* Указатель на предыдущий индекс. */
+  HyScanDBChannelFileIndex    *next;                   /* Указатель на следующий индекс.*/
 };
 
 /* Внутренние данные объекта. */
 struct _HyScanDBChannelFilePrivate
 {
-  gchar                    *path;                /* Путь к каталогу с файлами данных канала. */
-  gchar                    *name;                /* Название канала. */
+  gchar                       *path;                   /* Путь к каталогу с файлами данных канала. */
+  gchar                       *name;                   /* Название канала. */
 
-  gint32                    max_data_file_size;  /* Максимальный размер файла части данных. */
-  gint64                    save_time;           /* Интервал времени для которого хранятся записываемые данные. */
-  gint64                    save_size;           /* Максимальный объём всех сохраняемых данных. */
+  gint32                       max_data_file_size;     /* Максимальный размер файла части данных. */
+  gint64                       save_time;              /* Интервал времени для которого хранятся записываемые данные. */
+  gint64                       save_size;              /* Максимальный объём всех сохраняемых данных. */
 
-  gboolean                  readonly;            /* Создавать или нет файлы при открытии канала. */
-  gboolean                  fail;                /* Признак ошибки в объекте. */
+  gboolean                     readonly;               /* Создавать или нет файлы при открытии канала. */
+  gboolean                     fail;                   /* Признак ошибки в объекте. */
 
-  GMutex                    lock;                /* Блокировка многопоточного доступа. */
+  gint64                       data_size;              /* Текущий объём хранимых данных. */
 
-  gint64                    data_size;           /* Текущий объём хранимых данных. */
+  gint32                       begin_index;            /* Начальный индекс данных. */
+  gint32                       end_index;              /* Конечный индекс данных. */
 
-  gint32                    begin_index;         /* Начальный индекс данных. */
-  gint32                    end_index;           /* Конечный индекс данных. */
+  gint64                       begin_time;             /* Начальное время данных. */
+  gint64                       end_time;               /* Конечное время данных. */
 
-  gint64                    begin_time;          /* Начальное время данных. */
-  gint64                    end_time;            /* Конечное время данных. */
+  HyScanDBChannelFilePart    **parts;                  /* Массив указателей на структуры с описанием части данных. */
+  gint                         n_parts;                /* Число частей данных. */
 
-  HyScanDBChannelFilePart **parts;               /* Массив указателей на структуры с описанием части данных. */
-  gint                      n_parts;             /* Число частей данных. */
+  GHashTable                  *cached_indexes;         /* Таблица кэшированных индексов. */
+  HyScanDBChannelFileIndex    *first_cached_index;     /* Первый индекс (недавно использовался). */
+  HyScanDBChannelFileIndex    *last_cached_index;      /* Последний индекс (давно использовался). */
 
-  GHashTable               *cached_indexes;      /* Таблица кэшированных индексов. */
-  HyScanDBChannelFileIndex *first_cached_index;  /* Первый индекс (недавно использовался). */
-  HyScanDBChannelFileIndex *last_cached_index;   /* Последний индекс (давно использовался). */
-
+  GMutex                       lock;                   /* Блокировка многопоточного доступа. */
 };
 
 static void                      hyscan_db_channel_file_set_property        (GObject                     *object,
@@ -530,7 +529,7 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       priv->parts =
         g_realloc (priv->parts, 32 * (((priv->n_parts + 1) / 32) + 1) * sizeof (HyScanDBChannelFilePart *));
 
-      fpart = g_malloc (sizeof (HyScanDBChannelFilePart));
+      fpart = g_new (HyScanDBChannelFilePart, 1);
       priv->parts[priv->n_parts - 1] = fpart;
       priv->parts[priv->n_parts] = NULL;
 
@@ -662,7 +661,7 @@ hyscan_db_channel_file_add_part (HyScanDBChannelFilePrivate *priv)
   priv->parts =
     g_realloc (priv->parts, 32 * (((priv->n_parts + 1) / 32) + 1) * sizeof (HyScanDBChannelFilePart *));
 
-  fpart = g_malloc (sizeof (HyScanDBChannelFilePart));
+  fpart = g_new (HyScanDBChannelFilePart, 1);
   priv->parts[priv->n_parts - 1] = fpart;
   priv->parts[priv->n_parts] = NULL;
 

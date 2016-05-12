@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="db-logic-schema">
+
+  <enum id="enum">
+    <value name="value1" value="1"/>
+    <value name="value2" value="2"/>
+    <value name="value3" value="3"/>
+    <value name="value4" value="4"/>
+    <value name="value5" value="5"/>
+  </enum>
+
+  <schema id="complex">
+    <key id="boolean" name="Boolean" type="boolean">
+      <default>true</default>
+    </key>
+    <key id="integer" name="Integer" type="integer">
+      <default>2</default>
+    </key>
+    <key id="double" name="Double" type="double">
+      <default>0.2</default>
+    </key>
+    <key id="string" name="String" type="string">
+      <default>2</default>
+    </key>
+    <key id="enum" name="Enum" enum="enum">
+      <default>3</default>
+    </key>
+  </schema>
+
+</schemalist>

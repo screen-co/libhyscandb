@@ -162,37 +162,6 @@ hyscan_db_server_rpc_proc_version (guint32   session,
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_PROJECT_TYPE_LIST. */
-static gint
-hyscan_db_server_rpc_proc_get_project_type_list (guint32   session,
-                                                 uRpcData *urpc_data,
-                                                 void     *proc_data,
-                                                 void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-
-  gchar **type_list = NULL;
-
-  if (priv->acl != NULL && !priv->acl ("get_project_type_list", key_data))
-    hyscan_db_server_acl_error ();
-
-  type_list = hyscan_db_get_project_type_list (priv->db);
-  if (type_list != NULL)
-    {
-      if (urpc_data_set_strings (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_TYPE, type_list) != 0)
-        hyscan_db_server_set_error ("project_type");
-    }
-
-   rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  g_strfreev (type_list);
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_URI. */
 static gint
 hyscan_db_server_rpc_proc_get_uri (guint32   session,
                                    uRpcData *urpc_data,
@@ -222,7 +191,6 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_MOD_COUNT. */
 static gint
 hyscan_db_server_rpc_proc_get_mod_count (guint32   session,
                                          uRpcData *urpc_data,
@@ -233,7 +201,7 @@ hyscan_db_server_rpc_proc_get_mod_count (guint32   session,
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
   gint32 id;
-  guint32 mod_count;
+  guint64 mod_count;
 
   if (priv->acl != NULL && !priv->acl ("get_mod_count", key_data))
     hyscan_db_server_acl_error ();
@@ -242,7 +210,7 @@ hyscan_db_server_rpc_proc_get_mod_count (guint32   session,
     hyscan_db_server_get_error ("id");
 
   mod_count = hyscan_db_get_mod_count (priv->db, id);
-  if (urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_MOD_COUNT, mod_count) != 0)
+  if (urpc_data_set_uint64 (urpc_data, HYSCAN_DB_RPC_PARAM_MOD_COUNT, mod_count) != 0)
     hyscan_db_server_set_error ("mod_count");
 
   rpc_status = HYSCAN_DB_RPC_STATUS_OK;
@@ -252,23 +220,52 @@ exit:
   return 0;
 }
 
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_PROJECT_LIST. */
 static gint
-hyscan_db_server_rpc_proc_get_project_list (guint32   session,
-                                            uRpcData *urpc_data,
-                                            void     *proc_data,
-                                            void     *key_data)
+hyscan_db_server_rpc_proc_is_exist (guint32   session,
+                                    uRpcData *urpc_data,
+                                    void     *proc_data,
+                                    void     *key_data)
+{
+  HyScanDBServerPrivate *priv = proc_data;
+  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
+  const gchar *project_name;
+  const gchar *track_name;
+  const gchar *channel_name;
+
+  if (priv->acl != NULL && !priv->acl ("is_exist", key_data))
+    hyscan_db_server_acl_error ();
+
+  project_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_NAME, 0);
+  if (project_name == NULL)
+    hyscan_db_server_get_error ("project_name");
+
+  track_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_NAME, 0);
+  channel_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_NAME, 0);
+
+  if (hyscan_db_is_exist (priv->db, project_name, track_name, channel_name))
+    rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+
+exit:
+  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
+  return 0;
+}
+
+static gint
+hyscan_db_server_rpc_proc_project_list (guint32   session,
+                                        uRpcData *urpc_data,
+                                        void     *proc_data,
+                                        void     *key_data)
 {
   HyScanDBServerPrivate *priv = proc_data;
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
   gchar **project_list = NULL;
 
-  if (priv->acl != NULL && !priv->acl ("get_project_list", key_data))
+  if (priv->acl != NULL && !priv->acl ("project_list", key_data))
     hyscan_db_server_acl_error ();
 
-  project_list = hyscan_db_get_project_list (priv->db);
+  project_list = hyscan_db_project_list (priv->db);
   if (project_list != NULL)
     {
       if (urpc_data_set_strings (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_LIST, project_list) != 0)
@@ -283,9 +280,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_OPEN_PROJECT. */
 static gint
-hyscan_db_server_rpc_proc_open_project (guint32   session,
+hyscan_db_server_rpc_proc_project_open (guint32   session,
                                         uRpcData *urpc_data,
                                         void     *proc_data,
                                         void     *key_data)
@@ -296,14 +292,14 @@ hyscan_db_server_rpc_proc_open_project (guint32   session,
   const gchar *project_name;
   gint32 project_id;
 
-  if (priv->acl != NULL && !priv->acl ("open_project", key_data))
+  if (priv->acl != NULL && !priv->acl ("project_open", key_data))
     hyscan_db_server_acl_error ();
 
   project_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_NAME, 0);
   if (project_name == NULL)
     hyscan_db_server_get_error ("project_name");
 
-  project_id = hyscan_db_open_project (priv->db, project_name);
+  project_id = hyscan_db_project_open (priv->db, project_name);
   if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, project_id) != 0)
     hyscan_db_server_set_error ("project_id");
 
@@ -314,9 +310,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_CREATE_PROJECT. */
 static gint
-hyscan_db_server_rpc_proc_create_project (guint32   session,
+hyscan_db_server_rpc_proc_project_create (guint32   session,
                                           uRpcData *urpc_data,
                                           void     *proc_data,
                                           void     *key_data)
@@ -325,18 +320,18 @@ hyscan_db_server_rpc_proc_create_project (guint32   session,
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
   const gchar *project_name;
-  const gchar *project_type;
+  const gchar *project_schema;
   gint32 project_id;
 
-  if (priv->acl != NULL && !priv->acl ("create_project", key_data))
+  if (priv->acl != NULL && !priv->acl ("project_create", key_data))
     hyscan_db_server_acl_error ();
 
   project_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_NAME, 0);
-  project_type = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_TYPE, 0);
+  project_schema = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_SCHEMA, 0);
   if (project_name == NULL)
     hyscan_db_server_get_error ("project_name");
 
-  project_id = hyscan_db_create_project (priv->db, project_name, project_type);
+  project_id = hyscan_db_project_create (priv->db, project_name, project_schema);
   if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, project_id) != 0)
     hyscan_db_server_set_error ("project_id");
 
@@ -347,9 +342,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_REMOVE_PROJECT. */
 static gint
-hyscan_db_server_rpc_proc_remove_project (guint32   session,
+hyscan_db_server_rpc_proc_project_remove (guint32   session,
                                           uRpcData *urpc_data,
                                           void     *proc_data,
                                           void     *key_data)
@@ -359,14 +353,14 @@ hyscan_db_server_rpc_proc_remove_project (guint32   session,
 
   const gchar *project_name;
 
-  if (priv->acl != NULL && !priv->acl ("remove_project", key_data))
+  if (priv->acl != NULL && !priv->acl ("project_remove", key_data))
     hyscan_db_server_acl_error ();
 
   project_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_NAME, 0);
   if (project_name == NULL)
     hyscan_db_server_get_error ("project_name");
 
-  if (hyscan_db_remove_project (priv->db, project_name))
+  if (hyscan_db_project_remove (priv->db, project_name))
     rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
 exit:
@@ -374,34 +368,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_CLOSE_PROJECT. */
 static gint
-hyscan_db_server_rpc_proc_close_project (guint32   session,
-                                         uRpcData *urpc_data,
-                                         void     *proc_data,
-                                         void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-
-  gint32 project_id;
-
-  if (priv->acl != NULL && !priv->acl ("close_project", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
-    hyscan_db_server_get_error ("project_id");
-
-  hyscan_db_close_project (priv->db, project_id);
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_PROJECT_CTIME. */
-static gint
-hyscan_db_server_rpc_proc_get_project_ctime (guint32   session,
+hyscan_db_server_rpc_proc_project_get_ctime (guint32   session,
                                              uRpcData *urpc_data,
                                              void     *proc_data,
                                              void     *key_data)
@@ -413,13 +381,13 @@ hyscan_db_server_rpc_proc_get_project_ctime (guint32   session,
   GDateTime *ctime;
   gint64 itime;
 
-  if (priv->acl != NULL && !priv->acl ("get_project_ctime", key_data))
+  if (priv->acl != NULL && !priv->acl ("project_get_ctime", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
     hyscan_db_server_get_error ("project_id");
 
-  ctime = hyscan_db_get_project_ctime (priv->db, project_id);
+  ctime = hyscan_db_project_get_ctime (priv->db, project_id);
   if (ctime == NULL)
     goto exit;
 
@@ -435,12 +403,109 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_TRACK_LIST. */
+
 static gint
-hyscan_db_server_rpc_proc_get_track_list (guint32   session,
-                                          uRpcData *urpc_data,
-                                          void     *proc_data,
-                                          void     *key_data)
+hyscan_db_server_rpc_proc_project_param_list (guint32   session,
+                                                  uRpcData *urpc_data,
+                                                  void     *proc_data,
+                                                  void     *key_data)
+{
+  HyScanDBServerPrivate *priv = proc_data;
+  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
+  gchar **param_list = NULL;
+  gint32 project_id;
+
+  if (priv->acl != NULL && !priv->acl ("project_param_list", key_data))
+    hyscan_db_server_acl_error ();
+
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
+    hyscan_db_server_get_error ("project_id");
+
+  param_list = hyscan_db_project_param_list (priv->db, project_id);
+  if (param_list != NULL)
+    {
+      if (urpc_data_set_strings (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_GROUP_LIST, param_list) != 0)
+        hyscan_db_server_set_error ("param_list");
+    }
+
+  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+
+exit:
+  g_strfreev (param_list);
+  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
+  return 0;
+}
+
+static gint
+hyscan_db_server_rpc_proc_project_param_open (guint32   session,
+                                              uRpcData *urpc_data,
+                                              void     *proc_data,
+                                              void     *key_data)
+{
+  HyScanDBServerPrivate *priv = proc_data;
+  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
+  const gchar *group_name;
+  gint32 project_id;
+  gint32 param_id;
+
+  if (priv->acl != NULL && !priv->acl ("project_param_open", key_data))
+    hyscan_db_server_acl_error ();
+
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
+    hyscan_db_server_get_error ("project_id");
+
+  group_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_GROUP_NAME, 0);
+  if (group_name == NULL)
+    hyscan_db_server_get_error ("group_name");
+
+  param_id = hyscan_db_project_param_open (priv->db, project_id, group_name);
+  if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, param_id) != 0)
+    hyscan_db_server_set_error ("param_id");
+
+  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+
+exit:
+  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
+  return 0;
+}
+
+static gint
+hyscan_db_server_rpc_proc_project_param_remove (guint32   session,
+                                                uRpcData *urpc_data,
+                                                void     *proc_data,
+                                                void     *key_data)
+{
+  HyScanDBServerPrivate *priv = proc_data;
+  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
+  const gchar *group_name;
+  gint32 project_id;
+
+  if (priv->acl != NULL && !priv->acl ("project_param_remove", key_data))
+    hyscan_db_server_acl_error ();
+
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
+    hyscan_db_server_get_error ("project_id");
+
+  group_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_GROUP_NAME, 0);
+  if (group_name == NULL)
+    hyscan_db_server_get_error ("group_name");
+
+  if (hyscan_db_project_param_remove (priv->db, project_id, group_name))
+    rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+
+exit:
+  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
+  return 0;
+}
+
+static gint
+hyscan_db_server_rpc_proc_track_list (guint32   session,
+                                      uRpcData *urpc_data,
+                                      void     *proc_data,
+                                      void     *key_data)
 {
   HyScanDBServerPrivate *priv = proc_data;
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
@@ -448,13 +513,13 @@ hyscan_db_server_rpc_proc_get_track_list (guint32   session,
   gchar **track_list = NULL;
   gint32 project_id;
 
-  if (priv->acl != NULL && !priv->acl ("get_track_list", key_data))
+  if (priv->acl != NULL && !priv->acl ("track_list", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
     hyscan_db_server_get_error ("project_id");
 
-  track_list = hyscan_db_get_track_list (priv->db, project_id);
+  track_list = hyscan_db_track_list (priv->db, project_id);
   if (track_list != NULL)
     {
       if (urpc_data_set_strings (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_LIST, track_list) != 0)
@@ -469,9 +534,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_OPEN_TRACK. */
 static gint
-hyscan_db_server_rpc_proc_open_track (guint32   session,
+hyscan_db_server_rpc_proc_track_open (guint32   session,
                                       uRpcData *urpc_data,
                                       void     *proc_data,
                                       void     *key_data)
@@ -483,7 +547,7 @@ hyscan_db_server_rpc_proc_open_track (guint32   session,
   gint32 project_id;
   gint32 track_id;
 
-  if (priv->acl != NULL && !priv->acl ("open_track", key_data))
+  if (priv->acl != NULL && !priv->acl ("track_open", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
@@ -493,7 +557,7 @@ hyscan_db_server_rpc_proc_open_track (guint32   session,
   if (track_name == NULL)
     hyscan_db_server_get_error ("track_name");
 
-  track_id = hyscan_db_open_track (priv->db, project_id, track_name);
+  track_id = hyscan_db_track_open (priv->db, project_id, track_name);
   if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, track_id) != 0)
     hyscan_db_server_set_error ("track_id");
 
@@ -504,9 +568,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_CREATE_TRACK. */
 static gint
-hyscan_db_server_rpc_proc_create_track (guint32   session,
+hyscan_db_server_rpc_proc_track_create (guint32   session,
                                         uRpcData *urpc_data,
                                         void     *proc_data,
                                         void     *key_data)
@@ -515,10 +578,12 @@ hyscan_db_server_rpc_proc_create_track (guint32   session,
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
   const gchar *track_name;
+  const gchar *track_schema;
+  const gchar *schema_id;
   gint32 project_id;
   gint32 track_id;
 
-  if (priv->acl != NULL && !priv->acl ("create_track", key_data))
+  if (priv->acl != NULL && !priv->acl ("track_create", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
@@ -528,7 +593,10 @@ hyscan_db_server_rpc_proc_create_track (guint32   session,
   if (track_name == NULL)
     hyscan_db_server_get_error ("track_name");
 
-  track_id = hyscan_db_create_track (priv->db, project_id, track_name);
+  track_schema = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_SCHEMA, 0);
+  schema_id = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_SCHEMA_ID, 0);
+
+  track_id = hyscan_db_track_create (priv->db, project_id, track_name, track_schema, schema_id);
   if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, track_id) != 0)
     hyscan_db_server_set_error ("track_id");
 
@@ -539,9 +607,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_REMOVE_TRACK. */
 static gint
-hyscan_db_server_rpc_proc_remove_track (guint32   session,
+hyscan_db_server_rpc_proc_track_remove (guint32   session,
                                         uRpcData *urpc_data,
                                         void     *proc_data,
                                         void     *key_data)
@@ -552,7 +619,7 @@ hyscan_db_server_rpc_proc_remove_track (guint32   session,
   const gchar *track_name;
   gint32 project_id;
 
-  if (priv->acl != NULL && !priv->acl ("remove_track", key_data))
+  if (priv->acl != NULL && !priv->acl ("track_remove", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
@@ -562,7 +629,7 @@ hyscan_db_server_rpc_proc_remove_track (guint32   session,
   if (track_name == NULL)
     hyscan_db_server_get_error ("track_name");
 
-  if (hyscan_db_remove_track (priv->db, project_id, track_name))
+  if (hyscan_db_track_remove (priv->db, project_id, track_name))
     rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
 exit:
@@ -570,34 +637,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_CLOSE_TRACK. */
 static gint
-hyscan_db_server_rpc_proc_close_track (guint32   session,
-                                       uRpcData *urpc_data,
-                                       void     *proc_data,
-                                       void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-
-  gint32 track_id;
-
-  if (priv->acl != NULL && !priv->acl ("close_track", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, &track_id) != 0)
-    hyscan_db_server_get_error ("track_id");
-
-  hyscan_db_close_track (priv->db, track_id);
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_TRACK_CTIME. */
-static gint
-hyscan_db_server_rpc_proc_get_track_ctime (guint32   session,
+hyscan_db_server_rpc_proc_track_get_ctime (guint32   session,
                                            uRpcData *urpc_data,
                                            void     *proc_data,
                                            void     *key_data)
@@ -609,13 +650,13 @@ hyscan_db_server_rpc_proc_get_track_ctime (guint32   session,
   gint32 track_id;
   gint64 itime;
 
-  if (priv->acl != NULL && !priv->acl ("get_track_ctime", key_data))
+  if (priv->acl != NULL && !priv->acl ("track_get_ctime", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, &track_id) != 0)
     hyscan_db_server_get_error ("track_id");
 
-  ctime = hyscan_db_get_track_ctime (priv->db, track_id);
+  ctime = hyscan_db_track_get_ctime (priv->db, track_id);
   if (ctime == NULL)
     goto exit;
 
@@ -631,9 +672,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_CHANNEL_LIST. */
 static gint
-hyscan_db_server_rpc_proc_get_channel_list (guint32   session,
+hyscan_db_server_rpc_proc_track_param_open (guint32   session,
                                             uRpcData *urpc_data,
                                             void     *proc_data,
                                             void     *key_data)
@@ -641,16 +681,45 @@ hyscan_db_server_rpc_proc_get_channel_list (guint32   session,
   HyScanDBServerPrivate *priv = proc_data;
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
-  gchar **channel_list = NULL;
   gint32 track_id;
+  gint32 param_id;
 
-  if (priv->acl != NULL && !priv->acl ("get_channel_list", key_data))
+  if (priv->acl != NULL && !priv->acl ("track_param_open", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, &track_id) != 0)
     hyscan_db_server_get_error ("track_id");
 
-  channel_list = hyscan_db_get_channel_list (priv->db, track_id);
+  param_id = hyscan_db_track_param_open (priv->db, track_id);
+  if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, param_id) != 0)
+    hyscan_db_server_set_error ("param_id");
+
+  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+
+exit:
+  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
+  return 0;
+}
+
+static gint
+hyscan_db_server_rpc_proc_channel_list (guint32   session,
+                                        uRpcData *urpc_data,
+                                        void     *proc_data,
+                                        void     *key_data)
+{
+  HyScanDBServerPrivate *priv = proc_data;
+  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
+  gchar **channel_list = NULL;
+  gint32 track_id;
+
+  if (priv->acl != NULL && !priv->acl ("channel_list", key_data))
+    hyscan_db_server_acl_error ();
+
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, &track_id) != 0)
+    hyscan_db_server_get_error ("track_id");
+
+  channel_list = hyscan_db_channel_list (priv->db, track_id);
   if (channel_list != NULL)
     {
       if (urpc_data_set_strings (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_LIST, channel_list) != 0)
@@ -665,9 +734,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_OPEN_CHANNEL. */
 static gint
-hyscan_db_server_rpc_proc_open_channel (guint32   session,
+hyscan_db_server_rpc_proc_channel_open (guint32   session,
                                         uRpcData *urpc_data,
                                         void     *proc_data,
                                         void     *key_data)
@@ -679,7 +747,7 @@ hyscan_db_server_rpc_proc_open_channel (guint32   session,
   gint32 channel_id;
   gint32 track_id;
 
-  if (priv->acl != NULL && !priv->acl ("open_channel", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_open", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, &track_id) != 0)
@@ -689,7 +757,7 @@ hyscan_db_server_rpc_proc_open_channel (guint32   session,
   if (channel_name == NULL)
     hyscan_db_server_get_error ("channel_name");
 
-  channel_id = hyscan_db_open_channel (priv->db, track_id, channel_name);
+  channel_id = hyscan_db_channel_open (priv->db, track_id, channel_name);
   if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, channel_id) != 0)
     hyscan_db_server_set_error ("channel_id");
 
@@ -700,9 +768,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_CREATE_CHANNEL. */
 static gint
-hyscan_db_server_rpc_proc_create_channel (guint32   session,
+hyscan_db_server_rpc_proc_channel_create (guint32   session,
                                           uRpcData *urpc_data,
                                           void     *proc_data,
                                           void     *key_data)
@@ -711,10 +778,11 @@ hyscan_db_server_rpc_proc_create_channel (guint32   session,
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
   const gchar *channel_name;
+  const gchar *schema_id;
   gint32 channel_id;
   gint32 track_id;
 
-  if (priv->acl != NULL && !priv->acl ("create_channel", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_create", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, &track_id) != 0)
@@ -724,7 +792,9 @@ hyscan_db_server_rpc_proc_create_channel (guint32   session,
   if (channel_name == NULL)
     hyscan_db_server_get_error ("channel_name");
 
-  channel_id = hyscan_db_create_channel (priv->db, track_id, channel_name);
+  schema_id = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_SCHEMA_ID, 0);
+
+  channel_id = hyscan_db_channel_create (priv->db, track_id, channel_name, schema_id);
   if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, channel_id) != 0)
     hyscan_db_server_set_error ("channel_id");
 
@@ -735,9 +805,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_REMOVE_CHANNEL. */
 static gint
-hyscan_db_server_rpc_proc_remove_channel (guint32   session,
+hyscan_db_server_rpc_proc_channel_remove (guint32   session,
                                           uRpcData *urpc_data,
                                           void     *proc_data,
                                           void     *key_data)
@@ -748,7 +817,7 @@ hyscan_db_server_rpc_proc_remove_channel (guint32   session,
   const gchar *channel_name;
   gint32 track_id;
 
-  if (priv->acl != NULL && !priv->acl ("remove_channel", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_remove", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, &track_id) != 0)
@@ -758,7 +827,7 @@ hyscan_db_server_rpc_proc_remove_channel (guint32   session,
   if (channel_name == NULL)
     hyscan_db_server_get_error ("channel_name");
 
-  if (hyscan_db_remove_channel (priv->db, track_id, channel_name))
+  if (hyscan_db_channel_remove (priv->db, track_id, channel_name))
     rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
 exit:
@@ -766,34 +835,57 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_CLOSE_CHANNEL. */
 static gint
-hyscan_db_server_rpc_proc_close_channel (guint32   session,
-                                         uRpcData *urpc_data,
-                                         void     *proc_data,
-                                         void     *key_data)
+hyscan_db_server_rpc_proc_channel_finalize (guint32   session,
+                                            uRpcData *urpc_data,
+                                            void     *proc_data,
+                                            void     *key_data)
 {
   HyScanDBServerPrivate *priv = proc_data;
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
   gint32 channel_id;
 
-  if (priv->acl != NULL && !priv->acl ("close_channel", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_finalize", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
     hyscan_db_server_get_error ("channel_id");
 
-  hyscan_db_close_channel (priv->db, channel_id);
+  hyscan_db_channel_finalize (priv->db, channel_id);
 
 exit:
   urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_OPEN_CHANNEL_PARAM. */
 static gint
-hyscan_db_server_rpc_proc_open_channel_param (guint32   session,
+hyscan_db_server_rpc_proc_channel_is_writable (guint32   session,
+                                               uRpcData *urpc_data,
+                                               void     *proc_data,
+                                               void     *key_data)
+{
+  HyScanDBServerPrivate *priv = proc_data;
+  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
+  gint32 channel_id;
+
+  if (priv->acl != NULL && !priv->acl ("channel_is_writable", key_data))
+    hyscan_db_server_acl_error ();
+
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
+    hyscan_db_server_get_error ("channel_id");
+
+  if (hyscan_db_channel_is_writable (priv->db, channel_id))
+    rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+
+exit:
+  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
+  return 0;
+}
+
+static gint
+hyscan_db_server_rpc_proc_channel_param_open (guint32   session,
                                               uRpcData *urpc_data,
                                               void     *proc_data,
                                               void     *key_data)
@@ -804,13 +896,13 @@ hyscan_db_server_rpc_proc_open_channel_param (guint32   session,
   gint32 channel_id;
   gint32 param_id;
 
-  if (priv->acl != NULL && !priv->acl ("open_channel_param", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_param_open", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
     hyscan_db_server_get_error ("channel_id");
 
-  param_id = hyscan_db_open_channel_param (priv->db, channel_id);
+  param_id = hyscan_db_channel_param_open (priv->db, channel_id);
   if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, param_id) != 0)
     hyscan_db_server_set_error ("param_id");
 
@@ -821,9 +913,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_SET_CHANNEL_CHUNK_SIZE. */
 static gint
-hyscan_db_server_rpc_proc_set_channel_chunk_size (guint32   session,
+hyscan_db_server_rpc_proc_channel_set_chunk_size (guint32   session,
                                                   uRpcData *urpc_data,
                                                   void     *proc_data,
                                                   void     *key_data)
@@ -834,7 +925,7 @@ hyscan_db_server_rpc_proc_set_channel_chunk_size (guint32   session,
   gint32 channel_id;
   gint32 chunk_size;
 
-  if (priv->acl != NULL && !priv->acl ("set_channel_chunk_size", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_set_chunk_size", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
@@ -843,7 +934,7 @@ hyscan_db_server_rpc_proc_set_channel_chunk_size (guint32   session,
   if( urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHUNK_SIZE, &chunk_size) != 0)
     hyscan_db_server_get_error ("chunk_size");
 
-  if (hyscan_db_set_channel_chunk_size (priv->db, channel_id, chunk_size))
+  if (hyscan_db_channel_set_chunk_size (priv->db, channel_id, chunk_size))
     rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
 exit:
@@ -851,9 +942,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_SET_CHANNEL_SAVE_TIME. */
 static gint
-hyscan_db_server_rpc_proc_set_channel_save_time (guint32   session,
+hyscan_db_server_rpc_proc_channel_set_save_time (guint32   session,
                                                  uRpcData *urpc_data,
                                                  void     *proc_data,
                                                  void     *key_data)
@@ -864,7 +954,7 @@ hyscan_db_server_rpc_proc_set_channel_save_time (guint32   session,
   gint32 channel_id;
   gint64 save_time;
 
-  if (priv->acl != NULL && !priv->acl ("set_channel_save_time", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_set_save_time", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
@@ -873,7 +963,7 @@ hyscan_db_server_rpc_proc_set_channel_save_time (guint32   session,
   if (urpc_data_get_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_SAVE_TIME, &save_time) != 0)
     hyscan_db_server_get_error ("save_time");
 
-  if (hyscan_db_set_channel_save_time (priv->db, channel_id, save_time))
+  if (hyscan_db_channel_set_save_time (priv->db, channel_id, save_time))
     rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
 exit:
@@ -881,9 +971,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_SET_CHANNEL_SAVE_SIZE. */
 static gint
-hyscan_db_server_rpc_proc_set_channel_save_size (guint32   session,
+hyscan_db_server_rpc_proc_channel_set_save_size (guint32   session,
                                                  uRpcData *urpc_data,
                                                  void     *proc_data,
                                                  void     *key_data)
@@ -894,7 +983,7 @@ hyscan_db_server_rpc_proc_set_channel_save_size (guint32   session,
   gint32 channel_id;
   gint64 save_size;
 
-  if (priv->acl != NULL && !priv->acl ("set_channel_save_size", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_set_save_size", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
@@ -903,7 +992,7 @@ hyscan_db_server_rpc_proc_set_channel_save_size (guint32   session,
   if (urpc_data_get_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_SAVE_SIZE, &save_size) != 0)
     hyscan_db_server_get_error ("save_size");
 
-  if (hyscan_db_set_channel_save_size (priv->db, channel_id, save_size))
+  if (hyscan_db_channel_set_save_size (priv->db, channel_id, save_size))
     rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
 exit:
@@ -911,34 +1000,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_FINALIZE_CHANNEL. */
 static gint
-hyscan_db_server_rpc_proc_finalize_channel (guint32   session,
-                                            uRpcData *urpc_data,
-                                            void     *proc_data,
-                                            void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-
-  gint32 channel_id;
-
-  if (priv->acl != NULL && !priv->acl ("finalize_channel", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
-    hyscan_db_server_get_error ("channel_id");
-
-  hyscan_db_finalize_channel (priv->db, channel_id);
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_CHANNEL_DATA_RANGE. */
-static gint
-hyscan_db_server_rpc_proc_get_channel_data_range (guint32   session,
+hyscan_db_server_rpc_proc_channel_get_data_range (guint32   session,
                                                   uRpcData *urpc_data,
                                                   void     *proc_data,
                                                   void     *key_data)
@@ -950,13 +1013,13 @@ hyscan_db_server_rpc_proc_get_channel_data_range (guint32   session,
   gint32 first_index;
   gint32 last_index;
 
-  if (priv->acl != NULL && !priv->acl ("get_channel_data_range", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_get_data_range", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
     hyscan_db_server_get_error ("channel_id");
 
-  if (hyscan_db_get_channel_data_range (priv->db, channel_id, &first_index, &last_index))
+  if (hyscan_db_channel_get_data_range (priv->db, channel_id, &first_index, &last_index))
     {
       if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_LINDEX, first_index) != 0)
         hyscan_db_server_set_error ("first_index");
@@ -972,9 +1035,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_ADD_CHANNEL_DATA. */
 static gint
-hyscan_db_server_rpc_proc_add_channel_data (guint32   session,
+hyscan_db_server_rpc_proc_channel_add_data (guint32   session,
                                             uRpcData *urpc_data,
                                             void     *proc_data,
                                             void     *key_data)
@@ -988,7 +1050,7 @@ hyscan_db_server_rpc_proc_add_channel_data (guint32   session,
   guint32 size;
   gint32 index;
 
-  if (priv->acl != NULL && !priv->acl ("add_channel_data", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_add_data", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
@@ -1001,7 +1063,7 @@ hyscan_db_server_rpc_proc_add_channel_data (guint32   session,
   if (data == NULL)
     hyscan_db_server_get_error ("data");
 
-  if (hyscan_db_add_channel_data (priv->db, channel_id, time, data, size, &index))
+  if (hyscan_db_channel_add_data (priv->db, channel_id, time, data, size, &index))
     {
       if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_INDEX, index) != 0)
         hyscan_db_server_set_error ("index");
@@ -1014,9 +1076,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_CHANNEL_DATA. */
 static gint
-hyscan_db_server_rpc_proc_get_channel_data (guint32   session,
+hyscan_db_server_rpc_proc_channel_get_data (guint32   session,
                                             uRpcData *urpc_data,
                                             void     *proc_data,
                                             void     *key_data)
@@ -1030,7 +1091,7 @@ hyscan_db_server_rpc_proc_get_channel_data (guint32   session,
   gint32 buffer_size;
   gint64 time;
 
-  if (priv->acl != NULL && !priv->acl ("get_channel_data", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_get_data", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
@@ -1046,7 +1107,7 @@ hyscan_db_server_rpc_proc_get_channel_data (guint32   session,
         hyscan_db_server_set_error ("data");
     }
 
-  if (hyscan_db_get_channel_data (priv->db, channel_id, index, buffer, &buffer_size, &time))
+  if (hyscan_db_channel_get_data (priv->db, channel_id, index, buffer, &buffer_size, &time))
     {
       if (buffer != NULL)
         {
@@ -1070,9 +1131,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_FIND_CHANNEL_DATA. */
 static gint
-hyscan_db_server_rpc_proc_find_channel_data (guint32   session,
+hyscan_db_server_rpc_proc_channel_find_data (guint32   session,
                                              uRpcData *urpc_data,
                                              void     *proc_data,
                                              void     *key_data)
@@ -1087,7 +1147,7 @@ hyscan_db_server_rpc_proc_find_channel_data (guint32   session,
   gint64 ltime;
   gint64 rtime;
 
-  if (priv->acl != NULL && !priv->acl ("find_channel_data", key_data))
+  if (priv->acl != NULL && !priv->acl ("channel_find_data", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
@@ -1096,7 +1156,7 @@ hyscan_db_server_rpc_proc_find_channel_data (guint32   session,
   if (urpc_data_get_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_TIME, &time) != 0)
     hyscan_db_server_get_error ("time");
 
-  if (hyscan_db_find_channel_data (priv->db, channel_id, time, &lindex, &rindex, &ltime, &rtime))
+  if (hyscan_db_channel_find_data (priv->db, channel_id, time, &lindex, &rindex, &ltime, &rtime))
     {
       if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_LINDEX, lindex) != 0)
         hyscan_db_server_set_error ("lindex");
@@ -1118,208 +1178,8 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_PROJECT_PARAM_LIST. */
 static gint
-hyscan_db_server_rpc_proc_get_project_param_list (guint32   session,
-                                                  uRpcData *urpc_data,
-                                                  void     *proc_data,
-                                                  void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-
-  gchar **param_list = NULL;
-  gint32 project_id;
-
-  if (priv->acl != NULL && !priv->acl ("get_project_param_list", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
-    hyscan_db_server_get_error ("project_id");
-
-  param_list = hyscan_db_get_project_param_list (priv->db, project_id);
-  if (param_list != NULL)
-    {
-      if (urpc_data_set_strings (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_LIST, param_list) != 0)
-        hyscan_db_server_set_error ("param_list");
-    }
-
-  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  g_strfreev (param_list);
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_OPEN_PROJECT_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_open_project_param (guint32   session,
-                                              uRpcData *urpc_data,
-                                              void     *proc_data,
-                                              void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-
-  const gchar *group_name;
-  gint32 project_id;
-  gint32 param_id;
-
-  if (priv->acl != NULL && !priv->acl ("open_project_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
-    hyscan_db_server_get_error ("project_id");
-
-  group_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_GROUP_NAME, 0);
-  if (group_name == NULL)
-    hyscan_db_server_get_error ("group_name");
-
-  param_id = hyscan_db_open_project_param (priv->db, project_id, group_name);
-  if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, param_id) != 0)
-    hyscan_db_server_set_error ("param_id");
-
-  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_REMOVE_PROJECT_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_remove_project_param (guint32   session,
-                                                uRpcData *urpc_data,
-                                                void     *proc_data,
-                                                void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-
-  const gchar *group_name;
-  gint32 project_id;
-
-  if (priv->acl != NULL && !priv->acl ("remove_project_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PROJECT_ID, &project_id) != 0)
-    hyscan_db_server_get_error ("project_id");
-
-  group_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_GROUP_NAME, 0);
-  if (group_name == NULL)
-    hyscan_db_server_get_error ("group_name");
-
-  if (hyscan_db_remove_project_param (priv->db, project_id, group_name))
-    rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_TRACK_PARAM_LIST. */
-static gint
-hyscan_db_server_rpc_proc_get_track_param_list (guint32   session,
-                                                uRpcData *urpc_data,
-                                                void     *proc_data,
-                                                void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-
-  gchar **param_list = NULL;
-  gint32 track_id;
-
-  if (priv->acl != NULL && !priv->acl ("get_track_param_list", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, &track_id) != 0)
-    hyscan_db_server_get_error ("track_id");
-
-  param_list = hyscan_db_get_track_param_list (priv->db, track_id);
-  if (param_list != NULL)
-    {
-      if (urpc_data_set_strings (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_LIST, param_list) != 0)
-        hyscan_db_server_set_error ("param_list");
-    }
-
-  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  g_strfreev (param_list);
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_OPEN_TRACK_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_open_track_param (guint32   session,
-                                            uRpcData *urpc_data,
-                                            void     *proc_data,
-                                            void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-
-  const gchar *group_name;
-  gint32 track_id;
-  gint32 param_id;
-
-  if (priv->acl != NULL && !priv->acl ("open_track_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, &track_id) != 0)
-    hyscan_db_server_get_error ("track_id");
-
-  group_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_GROUP_NAME, 0);
-  if (group_name == NULL)
-    hyscan_db_server_get_error ("group_name");
-
-  param_id = hyscan_db_open_track_param (priv->db, track_id, group_name);
-  if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, param_id) != 0)
-    hyscan_db_server_set_error ("param_id");
-
-  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_REMOVE_TRACK_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_remove_track_param (guint32   session,
-                                              uRpcData *urpc_data,
-                                              void     *proc_data,
-                                              void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-  const gchar *group_name;
-  gint32 track_id;
-
-  if (priv->acl != NULL && !priv->acl ("remove_track_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TRACK_ID, &track_id) != 0)
-    hyscan_db_server_get_error ("track_id");
-
-  group_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_GROUP_NAME, 0);
-  if (group_name == NULL)
-    hyscan_db_server_get_error ("group_name");
-
-  if (hyscan_db_remove_track_param (priv->db, track_id, group_name))
-    rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_PARAM_LIST. */
-static gint
-hyscan_db_server_rpc_proc_get_param_list (guint32   session,
+hyscan_db_server_rpc_proc_get_param_object_list (guint32   session,
                                           uRpcData *urpc_data,
                                           void     *proc_data,
                                           void     *key_data)
@@ -1330,16 +1190,16 @@ hyscan_db_server_rpc_proc_get_param_list (guint32   session,
   gchar **param_list = NULL;
   gint32 param_id;
 
-  if (priv->acl != NULL && !priv->acl ("get_param_list", key_data))
+  if (priv->acl != NULL && !priv->acl ("param_object_list", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
     hyscan_db_server_get_error ("param_id");
 
-  param_list = hyscan_db_get_param_list (priv->db, param_id);
+  param_list = hyscan_db_param_object_list (priv->db, param_id);
   if (param_list != NULL)
     {
-      if (urpc_data_set_strings (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_LIST, param_list) != 0)
+      if (urpc_data_set_strings (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_OBJECT_LIST, param_list) != 0)
         hyscan_db_server_set_error ("param_list");
     }
 
@@ -1351,34 +1211,34 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_COPY_PARAM. */
 static gint
-hyscan_db_server_rpc_proc_copy_param (guint32   session,
-                                      uRpcData *urpc_data,
-                                      void     *proc_data,
-                                      void     *key_data)
+hyscan_db_server_rpc_proc_param_object_create (guint32   session,
+                                               uRpcData *urpc_data,
+                                               void     *proc_data,
+                                               void     *key_data)
 {
   HyScanDBServerPrivate *priv = proc_data;
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
-  gint32 src_param_id;
-  gint32 dst_param_id;
-  const gchar *mask;
+  gint32 param_id;
+  const gchar *object_name;
+  const gchar *schema_id;
 
-  if (priv->acl != NULL && !priv->acl ("copy_param", key_data))
+  if (priv->acl != NULL && !priv->acl ("param_object_create", key_data))
     hyscan_db_server_acl_error ();
 
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &src_param_id) != 0)
-    hyscan_db_server_get_error ("src_param_id");
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
+    hyscan_db_server_get_error ("param_id");
 
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_DST_ID, &dst_param_id) != 0)
-    hyscan_db_server_get_error ("dst_param_id");
+  object_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_OBJECT_NAME, 0);
+  if (object_name == NULL)
+    hyscan_db_server_get_error ("object_name");
 
-  mask = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_MASK, 0);
-  if (mask == NULL)
-    hyscan_db_server_get_error ("mask");
+  schema_id = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_OBJECT_SCHEMA_ID, 0);
+  if (object_name == NULL)
+    hyscan_db_server_get_error ("schema_id");
 
-  if (hyscan_db_copy_param (priv->db, src_param_id, dst_param_id, mask))
+  if (hyscan_db_param_object_create (priv->db, param_id, object_name, schema_id))
     rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
 exit:
@@ -1386,30 +1246,29 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_REMOVE_PARAM. */
 static gint
-hyscan_db_server_rpc_proc_remove_param (guint32   session,
-                                        uRpcData *urpc_data,
-                                        void     *proc_data,
-                                        void     *key_data)
+hyscan_db_server_rpc_proc_param_object_remove (guint32   session,
+                                               uRpcData *urpc_data,
+                                               void     *proc_data,
+                                               void     *key_data)
 {
   HyScanDBServerPrivate *priv = proc_data;
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
   gint32 param_id;
-  const gchar *mask;
+  const gchar *object_name;
 
-  if (priv->acl != NULL && !priv->acl ("remove_param", key_data))
+  if (priv->acl != NULL && !priv->acl ("param_object_remove", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
     hyscan_db_server_get_error ("param_id");
 
-  mask = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_MASK, 0);
-  if (mask == NULL)
-    hyscan_db_server_get_error ("mask");
+  object_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_OBJECT_NAME, 0);
+  if (object_name == NULL)
+    hyscan_db_server_get_error ("object_name");
 
-  if (hyscan_db_remove_param (priv->db, param_id, mask))
+  if (hyscan_db_param_object_remove (priv->db, param_id, object_name))
     rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
 exit:
@@ -1417,40 +1276,20 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_CLOSE_PARAM. */
 static gint
-hyscan_db_server_rpc_proc_close_param (guint32   session,
-                                       uRpcData *urpc_data,
-                                       void     *proc_data,
-                                       void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  gint32 param_id;
-
-  if (priv->acl != NULL && !priv->acl ("close_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
-    hyscan_db_server_get_error ("param_id");
-
-  hyscan_db_close_param (priv->db, param_id);
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, HYSCAN_DB_RPC_STATUS_OK);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_HAS_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_has_param (guint32   session,
-                                     uRpcData *urpc_data,
-                                     void     *proc_data,
-                                     void     *key_data)
+hyscan_db_server_rpc_proc_param_object_get_schema (guint32   session,
+                                                   uRpcData *urpc_data,
+                                                   void     *proc_data,
+                                                   void     *key_data)
 {
   HyScanDBServerPrivate *priv = proc_data;
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
   gint32 param_id;
-  const gchar *name;
+  const gchar *object_name;
+  HyScanDataSchema *schema;
+  gchar *schema_data;
+  gchar *schema_id;
 
   if (priv->acl != NULL && !priv->acl ("has_param", key_data))
     hyscan_db_server_acl_error ();
@@ -1458,11 +1297,69 @@ hyscan_db_server_rpc_proc_has_param (guint32   session,
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
     hyscan_db_server_get_error ("param_id");
 
-  name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
-  if (name == NULL)
-    hyscan_db_server_get_error ("name");
+  object_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_OBJECT_NAME, 0);
 
-  if (hyscan_db_has_param (priv->db, param_id, name))
+  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+
+  schema = hyscan_db_param_object_get_schema (priv->db, param_id, object_name);
+  if (schema != NULL)
+    {
+      schema_data = hyscan_data_schema_get_data (schema);
+      schema_id = hyscan_data_schema_get_id (schema);
+
+      if (urpc_data_set_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_OBJECT_SCHEMA, schema_data) != 0)
+        hyscan_db_server_set_error ("schema_data");
+
+      if (urpc_data_set_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_OBJECT_SCHEMA_ID, schema_id) != 0)
+        hyscan_db_server_set_error ("schema_id");
+
+      g_free (schema_id);
+      g_free (schema_data);
+
+      g_object_unref (schema);
+    }
+
+exit:
+  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
+  return 0;
+}
+
+static gint
+hyscan_db_server_rpc_proc_param_set (guint32   session,
+                                     uRpcData *urpc_data,
+                                     void     *proc_data,
+                                     void     *key_data)
+{
+  HyScanDBServerPrivate *priv = proc_data;
+  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
+  gint32 param_id;
+  const gchar *object_name;
+  const gchar *param_name;
+  gint32 type;
+  guint32 size;
+  gconstpointer value;
+
+  if (priv->acl != NULL && !priv->acl ("param_set", key_data))
+    hyscan_db_server_acl_error ();
+
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
+    hyscan_db_server_get_error ("param_id");
+
+  object_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_OBJECT_NAME, 0);
+
+  param_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
+  if (param_name == NULL)
+    hyscan_db_server_get_error ("param_name");
+
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TYPE, &type) != 0)
+    hyscan_db_server_get_error ("type");
+
+  value = urpc_data_get (urpc_data, HYSCAN_DB_RPC_PARAM_VALUE, &size);
+  if (value == NULL)
+    size = 0;
+
+  if (hyscan_db_param_set (priv->db, param_id, object_name, param_name, type, value, size))
     rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
 exit:
@@ -1470,311 +1367,85 @@ exit:
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_INC_INTEGER_PARAM. */
 static gint
-hyscan_db_server_rpc_proc_inc_integer_param (guint32   session,
-                                            uRpcData *urpc_data,
-                                            void     *proc_data,
-                                            void     *key_data)
+hyscan_db_server_rpc_proc_param_get (guint32   session,
+                                     uRpcData *urpc_data,
+                                     void     *proc_data,
+                                     void     *key_data)
 {
   HyScanDBServerPrivate *priv = proc_data;
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-  const gchar *name;
-  gint32 param_id;
-  gint64 value;
 
-  if (priv->acl != NULL && !priv->acl ("inc_integer_param", key_data))
+  gint32 param_id;
+  const gchar *object_name;
+  const gchar *param_name;
+  gint32 type;
+  gpointer buffer = NULL;
+  gint32 buffer_size;
+
+  if (priv->acl != NULL && !priv->acl ("param_get", key_data))
     hyscan_db_server_acl_error ();
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
     hyscan_db_server_get_error ("param_id");
 
-  name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
-  if (name == NULL)
-    hyscan_db_server_get_error ("name");
+  object_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_OBJECT_NAME, 0);
 
-  value = hyscan_db_inc_integer_param (priv->db, param_id, name);
-  if (urpc_data_set_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_VALUE, value) != 0)
-    hyscan_db_server_set_error ("value");
+  param_name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
+  if (param_name == NULL)
+    hyscan_db_server_get_error ("param_name");
 
-  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_TYPE, &type) != 0)
+    hyscan_db_server_get_error ("type");
+
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_SIZE, &buffer_size) == 0)
+    {
+      buffer = urpc_data_set (urpc_data, HYSCAN_DB_RPC_PARAM_DATA, NULL, buffer_size);
+      if (buffer == NULL)
+        hyscan_db_server_set_error ("data");
+    }
+
+  if (hyscan_db_param_get (priv->db, param_id, object_name, param_name, type, buffer, &buffer_size))
+    {
+      if (buffer != NULL)
+        {
+          if (urpc_data_set (urpc_data, HYSCAN_DB_RPC_PARAM_DATA, NULL, buffer_size) == NULL )
+            hyscan_db_server_set_error ("data");
+        }
+      else
+        {
+          if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_SIZE, buffer_size) != 0)
+            hyscan_db_server_set_error ("buffer_size");
+        }
+
+      rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+    }
 
 exit:
   urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
   return 0;
 }
 
-/* RPC Функция HYSCAN_DB_RPC_PROC_SET_INTEGER_PARAM. */
 static gint
-hyscan_db_server_rpc_proc_set_integer_param (guint32   session,
-                                             uRpcData *urpc_data,
-                                             void     *proc_data,
-                                             void     *key_data)
+hyscan_db_server_rpc_proc_close (guint32   session,
+                                 uRpcData *urpc_data,
+                                 void     *proc_data,
+                                 void     *key_data)
 {
   HyScanDBServerPrivate *priv = proc_data;
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-  gint32 param_id;
-  const gchar *name;
-  gint64 value;
 
-  if (priv->acl != NULL && !priv->acl ("set_integer_param", key_data))
+  gint32 id;
+
+  if (priv->acl != NULL && !priv->acl ("close", key_data))
     hyscan_db_server_acl_error ();
 
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
-    hyscan_db_server_get_error ("param_id");
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_ID, &id) != 0)
+    hyscan_db_server_get_error ("channel_id");
 
-  name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
-  if (name == NULL)
-    hyscan_db_server_get_error ("name");
-
-  if (urpc_data_get_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_VALUE, &value) != 0)
-    hyscan_db_server_get_error ("value");
-
-  if (hyscan_db_set_integer_param (priv->db, param_id, name, value))
-    rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+  hyscan_db_close (priv->db, id);
 
 exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_SET_DOUBLE_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_set_double_param (guint32   session,
-                                            uRpcData *urpc_data,
-                                            void     *proc_data,
-                                            void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-  gint32 param_id;
-  const gchar *name;
-  gdouble value;
-
-  if (priv->acl != NULL && !priv->acl ("set_double_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
-    hyscan_db_server_get_error ("param_id");
-
-  name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
-  if (name == NULL)
-    hyscan_db_server_get_error ("name");
-
-  if (urpc_data_get_double (urpc_data, HYSCAN_DB_RPC_PARAM_VALUE, &value) != 0)
-    hyscan_db_server_get_error ("value");
-
-  if (hyscan_db_set_double_param (priv->db, param_id, name, value))
-    rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_SET_BOOLEAN_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_set_boolean_param (guint32   session,
-                                             uRpcData *urpc_data,
-                                             void     *proc_data,
-                                             void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-  gint32 param_id;
-  const gchar *name;
-  gboolean value;
-
-  if (priv->acl != NULL && !priv->acl ("set_boolean_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
-    hyscan_db_server_get_error ("param_id");
-
-  name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
-  if (name == NULL)
-    hyscan_db_server_get_error ("name");
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_VALUE, &value) != 0)
-    hyscan_db_server_get_error ("value");
-
-  if (hyscan_db_set_boolean_param (priv->db, param_id, name, value))
-    rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_SET_STRING_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_set_string_param (guint32   session,
-                                            uRpcData *urpc_data,
-                                            void     *proc_data,
-                                            void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-  gint32 param_id;
-  const gchar *name;
-  const gchar *value;
-
-  if (priv->acl != NULL && !priv->acl ("set_string_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
-    hyscan_db_server_get_error ("param_id");
-
-  name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
-  if (name == NULL)
-    hyscan_db_server_get_error ("name");
-
-  value = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_VALUE, 0);
-  if( value == NULL)
-    hyscan_db_server_get_error ("value");
-
-  if (hyscan_db_set_string_param (priv->db, param_id, name, value))
-    rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_INTEGER_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_get_integer_param (guint32   session,
-                                             uRpcData *urpc_data,
-                                             void     *proc_data,
-                                             void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-  const gchar *name;
-  gint32 param_id;
-  gint64 value;
-
-  if (priv->acl != NULL && !priv->acl ("get_integer_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
-    hyscan_db_server_get_error ("param_id");
-
-  name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
-  if (name == NULL)
-    hyscan_db_server_get_error ("name");
-
-  value = hyscan_db_get_integer_param (priv->db, param_id, name);
-  if (urpc_data_set_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_VALUE, value) != 0)
-    hyscan_db_server_set_error ("value");
-
-  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_DOUBLE_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_get_double_param (guint32   session,
-                                            uRpcData *urpc_data,
-                                            void     *proc_data,
-                                            void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-  const gchar *name;
-  gint32 param_id;
-  gdouble value;
-
-  if (priv->acl != NULL && !priv->acl ("get_double_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
-    hyscan_db_server_get_error ("param_id");
-
-  name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
-  if (name == NULL)
-    hyscan_db_server_get_error ("name");
-
-  value = hyscan_db_get_double_param (priv->db, param_id, name);
-  if (urpc_data_set_double (urpc_data, HYSCAN_DB_RPC_PARAM_VALUE, value) != 0)
-    hyscan_db_server_set_error ("value");
-
-  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_BOOLEAN_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_get_boolean_param (guint32   session,
-                                             uRpcData *urpc_data,
-                                             void     *proc_data,
-                                             void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-  const gchar *name;
-  gint32 param_id;
-  gboolean value;
-
-  if (priv->acl != NULL && !priv->acl ("get_boolean_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
-    hyscan_db_server_get_error ("param_id");
-
-  name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
-  if (name == NULL)
-    hyscan_db_server_get_error ("name");
-
-  value = hyscan_db_get_boolean_param (priv->db, param_id, name);
-  if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_VALUE, value ? 1 : 0) != 0)
-    hyscan_db_server_set_error ("value");
-
-  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
-  return 0;
-}
-
-
-/* RPC Функция HYSCAN_DB_RPC_PROC_GET_STRING_PARAM. */
-static gint
-hyscan_db_server_rpc_proc_get_string_param (guint32   session,
-                                            uRpcData *urpc_data,
-                                            void     *proc_data,
-                                            void     *key_data)
-{
-  HyScanDBServerPrivate *priv = proc_data;
-  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
-  const gchar *name;
-  gint32 param_id;
-  gchar *value = NULL;
-
-  if (priv->acl != NULL && !priv->acl ("get_string_param", key_data))
-    hyscan_db_server_acl_error ();
-
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
-    hyscan_db_server_get_error ("param_id");
-
-  name = urpc_data_get_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_NAME, 0);
-  if (name == NULL)
-    hyscan_db_server_get_error ("name");
-
-  value = hyscan_db_get_string_param (priv->db, param_id, name);
-  if (value != NULL && urpc_data_set_string (urpc_data, HYSCAN_DB_RPC_PARAM_VALUE, value) != 0)
-    hyscan_db_server_set_error ("value");
-
-  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
-
-exit:
-  g_free (value);
   urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
   return 0;
 }
@@ -1834,11 +1505,6 @@ hyscan_db_server_start (HyScanDBServer *server)
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_PROJECT_TYPE_LIST,
-                                 hyscan_db_server_rpc_proc_get_project_type_list, priv);
-  if (status != 0)
-    goto fail;
-
   status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_URI,
                                  hyscan_db_server_rpc_proc_get_uri, priv);
   if (status != 0)
@@ -1849,233 +1515,183 @@ hyscan_db_server_start (HyScanDBServer *server)
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_PROJECT_LIST,
-                                 hyscan_db_server_rpc_proc_get_project_list, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_IS_EXIST,
+                                 hyscan_db_server_rpc_proc_is_exist, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_OPEN_PROJECT,
-                                 hyscan_db_server_rpc_proc_open_project, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PROJECT_LIST,
+                                 hyscan_db_server_rpc_proc_project_list, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CREATE_PROJECT,
-                                 hyscan_db_server_rpc_proc_create_project, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PROJECT_OPEN,
+                                 hyscan_db_server_rpc_proc_project_open, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_REMOVE_PROJECT,
-                                 hyscan_db_server_rpc_proc_remove_project, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PROJECT_CREATE,
+                                 hyscan_db_server_rpc_proc_project_create, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CLOSE_PROJECT,
-                                 hyscan_db_server_rpc_proc_close_project, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PROJECT_REMOVE,
+                                 hyscan_db_server_rpc_proc_project_remove, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_PROJECT_CTIME,
-                                 hyscan_db_server_rpc_proc_get_project_ctime, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PROJECT_GET_CTIME,
+                                 hyscan_db_server_rpc_proc_project_get_ctime, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_TRACK_LIST,
-                                 hyscan_db_server_rpc_proc_get_track_list, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PROJECT_PARAM_LIST,
+                                 hyscan_db_server_rpc_proc_project_param_list, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_OPEN_TRACK,
-                                 hyscan_db_server_rpc_proc_open_track, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PROJECT_PARAM_OPEN,
+                                 hyscan_db_server_rpc_proc_project_param_open, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CREATE_TRACK,
-                                 hyscan_db_server_rpc_proc_create_track, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PROJECT_PARAM_REMOVE,
+                                 hyscan_db_server_rpc_proc_project_param_remove, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_REMOVE_TRACK,
-                                 hyscan_db_server_rpc_proc_remove_track, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_TRACK_LIST,
+                                 hyscan_db_server_rpc_proc_track_list, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CLOSE_TRACK,
-                                 hyscan_db_server_rpc_proc_close_track, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_TRACK_OPEN,
+                                 hyscan_db_server_rpc_proc_track_open, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_TRACK_CTIME,
-                                 hyscan_db_server_rpc_proc_get_track_ctime, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_TRACK_CREATE,
+                                 hyscan_db_server_rpc_proc_track_create, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_CHANNEL_LIST,
-                                 hyscan_db_server_rpc_proc_get_channel_list, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_TRACK_REMOVE,
+                                 hyscan_db_server_rpc_proc_track_remove, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_OPEN_CHANNEL,
-                                 hyscan_db_server_rpc_proc_open_channel, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_TRACK_GET_CTIME,
+                                 hyscan_db_server_rpc_proc_track_get_ctime, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CREATE_CHANNEL,
-                                 hyscan_db_server_rpc_proc_create_channel, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_TRACK_PARAM_OPEN,
+                                 hyscan_db_server_rpc_proc_track_param_open, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_REMOVE_CHANNEL,
-                                 hyscan_db_server_rpc_proc_remove_channel, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_LIST,
+                                 hyscan_db_server_rpc_proc_channel_list, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CLOSE_CHANNEL,
-                                 hyscan_db_server_rpc_proc_close_channel, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_OPEN,
+                                 hyscan_db_server_rpc_proc_channel_open, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_OPEN_CHANNEL_PARAM,
-                                 hyscan_db_server_rpc_proc_open_channel_param, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_CREATE,
+                                 hyscan_db_server_rpc_proc_channel_create, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_SET_CHANNEL_CHUNK_SIZE,
-                                 hyscan_db_server_rpc_proc_set_channel_chunk_size, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_REMOVE,
+                                 hyscan_db_server_rpc_proc_channel_remove, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_SET_CHANNEL_SAVE_TIME,
-                                 hyscan_db_server_rpc_proc_set_channel_save_time, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_FINALIZE,
+                                 hyscan_db_server_rpc_proc_channel_finalize, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_SET_CHANNEL_SAVE_SIZE,
-                                 hyscan_db_server_rpc_proc_set_channel_save_size, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_IS_WRITABLE,
+                                 hyscan_db_server_rpc_proc_channel_is_writable, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_FINALIZE_CHANNEL,
-                                 hyscan_db_server_rpc_proc_finalize_channel, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_PARAM_OPEN,
+                                 hyscan_db_server_rpc_proc_channel_param_open, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_CHANNEL_DATA_RANGE,
-                                 hyscan_db_server_rpc_proc_get_channel_data_range, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_SET_CHUNK_SIZE,
+                                 hyscan_db_server_rpc_proc_channel_set_chunk_size, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_ADD_CHANNEL_DATA,
-                                 hyscan_db_server_rpc_proc_add_channel_data, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_SET_SAVE_TIME,
+                                 hyscan_db_server_rpc_proc_channel_set_save_time, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_CHANNEL_DATA,
-                                 hyscan_db_server_rpc_proc_get_channel_data, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_SET_SAVE_SIZE,
+                                 hyscan_db_server_rpc_proc_channel_set_save_size, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_FIND_CHANNEL_DATA,
-                                 hyscan_db_server_rpc_proc_find_channel_data, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_GET_DATA_RANGE,
+                                 hyscan_db_server_rpc_proc_channel_get_data_range, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_PROJECT_PARAM_LIST,
-                                 hyscan_db_server_rpc_proc_get_project_param_list, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_ADD_DATA,
+                                 hyscan_db_server_rpc_proc_channel_add_data, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_OPEN_PROJECT_PARAM,
-                                 hyscan_db_server_rpc_proc_open_project_param, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_GET_DATA,
+                                 hyscan_db_server_rpc_proc_channel_get_data, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_REMOVE_PROJECT_PARAM,
-                                 hyscan_db_server_rpc_proc_remove_project_param, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_FIND_DATA,
+                                 hyscan_db_server_rpc_proc_channel_find_data, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_TRACK_PARAM_LIST,
-                                 hyscan_db_server_rpc_proc_get_track_param_list, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PARAM_OBJECT_LIST,
+                                 hyscan_db_server_rpc_proc_get_param_object_list, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_OPEN_TRACK_PARAM,
-                                 hyscan_db_server_rpc_proc_open_track_param, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PARAM_OBJECT_CREATE,
+                                 hyscan_db_server_rpc_proc_param_object_create, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_REMOVE_TRACK_PARAM,
-                                 hyscan_db_server_rpc_proc_remove_track_param, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PARAM_OBJECT_REMOVE,
+                                 hyscan_db_server_rpc_proc_param_object_remove, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_PARAM_LIST,
-                                 hyscan_db_server_rpc_proc_get_param_list, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PARAM_OBJECT_GET_SCHEMA,
+                                 hyscan_db_server_rpc_proc_param_object_get_schema, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_COPY_PARAM,
-                                 hyscan_db_server_rpc_proc_copy_param, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PARAM_SET,
+                                 hyscan_db_server_rpc_proc_param_set, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_REMOVE_PARAM,
-                                 hyscan_db_server_rpc_proc_remove_param, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_PARAM_GET,
+                                 hyscan_db_server_rpc_proc_param_get, priv);
   if (status != 0)
     goto fail;
 
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CLOSE_PARAM,
-                                 hyscan_db_server_rpc_proc_close_param, priv);
-  if (status != 0)
-    goto fail;
-
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_HAS_PARAM,
-                                 hyscan_db_server_rpc_proc_has_param, priv);
-  if (status != 0)
-    goto fail;
-
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_INC_INTEGER_PARAM,
-                                 hyscan_db_server_rpc_proc_inc_integer_param, priv);
-  if (status != 0)
-    goto fail;
-
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_SET_INTEGER_PARAM,
-                                 hyscan_db_server_rpc_proc_set_integer_param, priv);
-  if (status != 0)
-    goto fail;
-
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_SET_DOUBLE_PARAM,
-                                 hyscan_db_server_rpc_proc_set_double_param, priv);
-  if (status != 0)
-    goto fail;
-
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_SET_BOOLEAN_PARAM,
-                                 hyscan_db_server_rpc_proc_set_boolean_param, priv);
-  if (status != 0)
-    goto fail;
-
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_SET_STRING_PARAM,
-                                 hyscan_db_server_rpc_proc_set_string_param, priv);
-  if (status != 0)
-    goto fail;
-
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_INTEGER_PARAM,
-                                 hyscan_db_server_rpc_proc_get_integer_param, priv);
-  if (status != 0)
-    goto fail;
-
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_DOUBLE_PARAM,
-                                 hyscan_db_server_rpc_proc_get_double_param, priv);
-  if (status != 0)
-    goto fail;
-
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_BOOLEAN_PARAM,
-                                 hyscan_db_server_rpc_proc_get_boolean_param, priv);
-  if (status != 0)
-    goto fail;
-
-  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_GET_STRING_PARAM,
-                                 hyscan_db_server_rpc_proc_get_string_param, priv);
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CLOSE,
+                                 hyscan_db_server_rpc_proc_close, priv);
   if (status != 0)
     goto fail;
 
