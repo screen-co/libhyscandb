@@ -268,7 +268,7 @@ struct _HyScanDBInterface
   gboolean             (*channel_add_data)                     (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint64                 time,
-                                                                gpointer               data,
+                                                                gconstpointer          data,
                                                                 gint32                 size,
                                                                 gint32                *index);
 
@@ -889,7 +889,7 @@ HYSCAN_DB_EXPORT
 gboolean               hyscan_db_channel_add_data              (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint64                 time,
-                                                                gpointer               data,
+                                                                gconstpointer          data,
                                                                 gint32                 size,
                                                                 gint32                *index);
 

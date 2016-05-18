@@ -1374,12 +1374,12 @@ exit:
 }
 
 static gboolean
-hyscan_db_client_channel_add_data (HyScanDB *db,
-                                   gint32    channel_id,
-                                   gint64    time,
-                                   gpointer  data,
-                                   gint32    size,
-                                   gint32   *index)
+hyscan_db_client_channel_add_data (HyScanDB      *db,
+                                   gint32         channel_id,
+                                   gint64         time,
+                                   gconstpointer  data,
+                                   gint32         size,
+                                   gint32        *index)
 {
   HyScanDBClient *dbc = HYSCAN_DB_CLIENT (db);
   HyScanDBClientPrivate *priv = dbc->priv;

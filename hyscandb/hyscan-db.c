@@ -454,12 +454,12 @@ hyscan_db_channel_get_data_range (HyScanDB *db,
 }
 
 gboolean
-hyscan_db_channel_add_data (HyScanDB *db,
-                            gint32    channel_id,
-                            gint64    time,
-                            gpointer  data,
-                            gint32    size,
-                            gint32   *index)
+hyscan_db_channel_add_data (HyScanDB      *db,
+                            gint32         channel_id,
+                            gint64         time,
+                            gconstpointer  data,
+                            gint32         size,
+                            gint32        *index)
 {
   HyScanDBInterface *iface;
 

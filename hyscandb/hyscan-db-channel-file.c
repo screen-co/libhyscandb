@@ -1049,7 +1049,7 @@ hyscan_db_channel_file_get_channel_data_range (HyScanDBChannelFile *channel,
 gboolean
 hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
                                          gint64               time,
-                                         gpointer             data,
+                                         gconstpointer        data,
                                          gint32               size,
                                          gint32              *index)
 {
