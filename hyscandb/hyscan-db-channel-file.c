@@ -1478,6 +1478,10 @@ hyscan_db_channel_file_set_channel_chunk_size (HyScanDBChannelFile *channel,
   if (priv->fail)
     return FALSE;
 
+  /* При отрицательном значении устаналиваем размер по умолчанию. */
+  if (chunk_size < 0)
+    chunk_size = MAX_DATA_FILE_SIZE;
+
   /* Проверяем новый размер файла. */
   if (chunk_size < MIN_DATA_FILE_SIZE || chunk_size > MAX_DATA_FILE_SIZE)
     return FALSE;
@@ -1504,6 +1508,10 @@ hyscan_db_channel_file_set_channel_save_time (HyScanDBChannelFile *channel,
   if (priv->fail)
     return FALSE;
 
+  /* При отрицательном значении устаналиваем время по умолчанию. */
+  if (save_time < 0)
+    save_time = G_MAXINT64;
+
   /* Проверяем новый интервал времени. */
   if (save_time < 5000000)
     return FALSE;
@@ -1529,6 +1537,10 @@ hyscan_db_channel_file_set_channel_save_size (HyScanDBChannelFile *channel,
 
   if (priv->fail)
     return FALSE;
+
+  /* При отрицательном значении устаналиваем объём по умолчанию. */
+  if (save_size < 0)
+    save_size = G_MAXINT64;
 
   /* Проверяем новый максимальный размер. */
   if (save_size < MIN_DATA_FILE_SIZE)
