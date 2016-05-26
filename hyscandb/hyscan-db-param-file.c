@@ -166,7 +166,7 @@ hyscan_db_param_file_schema_lookup (GHashTable       *schemas,
   if (schema != NULL)
     return schema;
 
-  schema = hyscan_data_schema_new_from_file (schema_file, schema_id, NULL);
+  schema = hyscan_data_schema_new_from_file (schema_file, schema_id);
   if (schema != NULL)
     g_hash_table_insert (schemas, g_strdup (schema_id), schema);
 

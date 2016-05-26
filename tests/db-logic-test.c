@@ -404,7 +404,7 @@ main (int argc, char **argv)
   if (schema_data == NULL)
     g_error ("can't load db-logic schema");
 
-  schema = hyscan_data_schema_new_from_string (g_bytes_get_data (schema_data, NULL), "complex", NULL);
+  schema = hyscan_data_schema_new_from_string (g_bytes_get_data (schema_data, NULL), "complex");
 
   /* Буфер ввода/вывода. */
   sample_size = (gint32)strlen (sample1) + 1;

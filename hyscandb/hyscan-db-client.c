@@ -1750,7 +1750,7 @@ hyscan_db_client_param_object_get_schema (HyScanDB    *db,
   if (schema_id == NULL)
     hyscan_db_client_get_error ("schema");
 
-  schema = hyscan_data_schema_new_from_string (schema_data, schema_id, NULL);
+  schema = hyscan_data_schema_new_from_string (schema_data, schema_id);
 
 exit:
   urpc_client_unlock (priv->rpc);
