@@ -70,7 +70,7 @@ struct _HyScanDBServerClass
   GObjectClass parent_class;
 };
 
-HYSCAN_DB_EXPORT
+HYSCAN_API
 GType                  hyscan_db_server_get_type       (void);
 
 /**
@@ -86,7 +86,7 @@ GType                  hyscan_db_server_get_type       (void);
  * \return Указатель на объект \link HyScanDBServer \endlink.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 HyScanDBServer        *hyscan_db_server_new            (const gchar           *uri,
                                                         HyScanDB              *db,
                                                         guint                  n_threads,
@@ -102,7 +102,7 @@ HyScanDBServer        *hyscan_db_server_new            (const gchar           *u
  * \return TRUE - если сервер успешно запущен, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_server_start          (HyScanDBServer        *server);
 
 G_END_DECLS

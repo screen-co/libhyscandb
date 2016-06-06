@@ -146,8 +146,8 @@
 #ifndef __HYSCAN_DB_H__
 #define __HYSCAN_DB_H__
 
+#include <hyscan-api.h>
 #include <hyscan-data-schema.h>
-#include <hyscan-db-exports.h>
 
 G_BEGIN_DECLS
 
@@ -323,7 +323,7 @@ struct _HyScanDBInterface
                                                                 gint32                 id);
 };
 
-HYSCAN_DB_EXPORT
+HYSCAN_API
 GType          hyscan_db_get_type              (void);
 
 /* Общие функции. */
@@ -347,7 +347,7 @@ GType          hyscan_db_get_type              (void);
  * \return Указатель на интерфейс \link HyScanDB \endlink или NULL.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 HyScanDB              *hyscan_db_new                           (const gchar           *uri);
 
 /**
@@ -361,7 +361,7 @@ HyScanDB              *hyscan_db_new                           (const gchar     
  * \return Строка uri или NULL в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gchar                 *hyscan_db_get_uri                       (HyScanDB              *db);
 
 /**
@@ -383,7 +383,7 @@ gchar                 *hyscan_db_get_uri                       (HyScanDB        
  * \return Номер изменения.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 guint64                hyscan_db_get_mod_count                 (HyScanDB              *db,
                                                                 gint32                 id);
 
@@ -404,7 +404,7 @@ guint64                hyscan_db_get_mod_count                 (HyScanDB        
  * \return TRUE - если объект существует, FALSE - если объекта нет.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_is_exist                      (HyScanDB              *db,
                                                                 const gchar           *project_name,
                                                                 const gchar           *track_name,
@@ -423,7 +423,7 @@ gboolean               hyscan_db_is_exist                      (HyScanDB        
  * \return NULL терминированный список проектов или NULL - если проектов нет.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gchar                **hyscan_db_project_list                  (HyScanDB              *db);
 
 /**
@@ -439,7 +439,7 @@ gchar                **hyscan_db_project_list                  (HyScanDB        
  * \return Идентификатор проекта или отрицательное число в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gint32                 hyscan_db_project_open                  (HyScanDB              *db,
                                                                 const gchar           *project_name);
 
@@ -457,7 +457,7 @@ gint32                 hyscan_db_project_open                  (HyScanDB        
  * \return Идентификатор проекта или отрицательное число в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gint32                 hyscan_db_project_create                (HyScanDB              *db,
                                                                 const gchar           *project_name,
                                                                 const gchar           *project_schema);
@@ -474,7 +474,7 @@ gint32                 hyscan_db_project_create                (HyScanDB        
  * \return TRUE - если проект был удалён, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_project_remove                (HyScanDB              *db,
                                                                 const gchar           *project_name);
 
@@ -490,7 +490,7 @@ gboolean               hyscan_db_project_remove                (HyScanDB        
  * \return Указатель на объект GDateTime или NULL в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 GDateTime             *hyscan_db_project_get_ctime             (HyScanDB              *db,
                                                                 gint32                 project_id);
 
@@ -506,7 +506,7 @@ GDateTime             *hyscan_db_project_get_ctime             (HyScanDB        
  * \return NULL терминированный список групп параметров или NULL - если параметров нет.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gchar                **hyscan_db_project_param_list            (HyScanDB              *db,
                                                                 gint32                 project_id);
 
@@ -525,7 +525,7 @@ gchar                **hyscan_db_project_param_list            (HyScanDB        
  * \return Идентификатор группы параметров проекта или отрицательное число в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gint32                 hyscan_db_project_param_open            (HyScanDB              *db,
                                                                 gint32                 project_id,
                                                                 const gchar           *group_name);
@@ -541,7 +541,7 @@ gint32                 hyscan_db_project_param_open            (HyScanDB        
  * \return TRUE - если группа параметров была удалёна, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_project_param_remove          (HyScanDB              *db,
                                                                 gint32                 project_id,
                                                                 const gchar           *group_name);
@@ -560,7 +560,7 @@ gboolean               hyscan_db_project_param_remove          (HyScanDB        
  * \return NULL терминированный список галсов или NULL - если галсов нет.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gchar                **hyscan_db_track_list                    (HyScanDB              *db,
                                                                 gint32                 project_id);
 
@@ -578,7 +578,7 @@ gchar                **hyscan_db_track_list                    (HyScanDB        
  * \return Идентификатор галса или отрицательное число в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gint32                 hyscan_db_track_open                    (HyScanDB              *db,
                                                                 gint32                 project_id,
                                                                 const gchar           *track_name);
@@ -603,7 +603,7 @@ gint32                 hyscan_db_track_open                    (HyScanDB        
  * \return Идентификатор галса или отрицательное число в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gint32                 hyscan_db_track_create                  (HyScanDB              *db,
                                                                 gint32                 project_id,
                                                                 const gchar           *track_name,
@@ -623,7 +623,7 @@ gint32                 hyscan_db_track_create                  (HyScanDB        
  * \return TRUE - если галс был удалён, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_track_remove                  (HyScanDB              *db,
                                                                 gint32                 project_id,
                                                                 const gchar           *track_name);
@@ -640,7 +640,7 @@ gboolean               hyscan_db_track_remove                  (HyScanDB        
  * \return Указатель на объект GDateTime или NULL в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 GDateTime             *hyscan_db_track_get_ctime               (HyScanDB              *db,
                                                                 gint32                 track_id);
 
@@ -662,7 +662,7 @@ GDateTime             *hyscan_db_track_get_ctime               (HyScanDB        
  * \return Идентификатор группы параметров галса или отрицательное число в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gint32                 hyscan_db_track_param_open              (HyScanDB              *db,
                                                                 gint32                 track_id);
 
@@ -680,7 +680,7 @@ gint32                 hyscan_db_track_param_open              (HyScanDB        
  * \return NULL терминированный список каналов данных или NULL - если каналов данных нет.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gchar                **hyscan_db_channel_list                  (HyScanDB              *db,
                                                                 gint32                 track_id);
 
@@ -699,7 +699,7 @@ gchar                **hyscan_db_channel_list                  (HyScanDB        
  * \return Идентификатор канала данных или отрицательное число в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gint32                 hyscan_db_channel_open                  (HyScanDB              *db,
                                                                 gint32                 track_id,
                                                                 const gchar           *channel_name);
@@ -722,7 +722,7 @@ gint32                 hyscan_db_channel_open                  (HyScanDB        
  * \return Идентификатор канала данных или отрицательное число в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gint32                 hyscan_db_channel_create                (HyScanDB              *db,
                                                                 gint32                 track_id,
                                                                 const gchar           *channel_name,
@@ -741,7 +741,7 @@ gint32                 hyscan_db_channel_create                (HyScanDB        
  * \return TRUE - если канал данных был удалён, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_channel_remove                (HyScanDB              *db,
                                                                 gint32                 track_id,
                                                                 const gchar           *channel_name);
@@ -757,7 +757,7 @@ gboolean               hyscan_db_channel_remove                (HyScanDB        
  * \return Функция не возвращает значений.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 void                   hyscan_db_channel_finalize              (HyScanDB              *db,
                                                                 gint32                 channel_id);
 
@@ -772,7 +772,7 @@ void                   hyscan_db_channel_finalize              (HyScanDB        
  * \return TRUE - если возможна запись данных, FALSE - если канал в режиме только чтения.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_channel_is_writable           (HyScanDB              *db,
                                                                 gint32                 channel_id);
 
@@ -794,7 +794,7 @@ gboolean               hyscan_db_channel_is_writable           (HyScanDB        
  * \return Идентификатор группы параметров канала данных или отрицательное число в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gint32                 hyscan_db_channel_param_open            (HyScanDB              *db,
                                                                 gint32                 channel_id);
 
@@ -811,7 +811,7 @@ gint32                 hyscan_db_channel_param_open            (HyScanDB        
  * \return TRUE - если максимальный размер файлов изменён, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_channel_set_chunk_size        (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint32                 chunk_size);
@@ -833,7 +833,7 @@ gboolean               hyscan_db_channel_set_chunk_size        (HyScanDB        
  * \return TRUE - если время хранения данных изменено, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_channel_set_save_time         (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint64                 save_time);
@@ -855,7 +855,7 @@ gboolean               hyscan_db_channel_set_save_time         (HyScanDB        
  * \return TRUE - если объём сохраняемых данных изменён, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_channel_set_save_size         (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint64                 save_size);
@@ -873,7 +873,7 @@ gboolean               hyscan_db_channel_set_save_size         (HyScanDB        
  * \return TRUE - если границы записей определены, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_channel_get_data_range        (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint32                *first_index,
@@ -893,7 +893,7 @@ gboolean               hyscan_db_channel_get_data_range        (HyScanDB        
  * \return TRUE - если данные успешно записаны, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_channel_add_data              (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint64                 time,
@@ -920,7 +920,7 @@ gboolean               hyscan_db_channel_add_data              (HyScanDB        
  * \return TRUE - если данные успешно считаны, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_channel_get_data              (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint32                 index,
@@ -955,7 +955,7 @@ gboolean               hyscan_db_channel_get_data              (HyScanDB        
  * \return TRUE - если данные найдены, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_channel_find_data             (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint64                 time,
@@ -978,7 +978,7 @@ gboolean               hyscan_db_channel_find_data             (HyScanDB        
  * \return NULL терминированный список групп параметров или NULL - если параметров нет.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gchar                **hyscan_db_param_object_list             (HyScanDB              *db,
                                                                 gint32                 param_id);
 
@@ -994,7 +994,7 @@ gchar                **hyscan_db_param_object_list             (HyScanDB        
  * \return TRUE - если объект успешно создан, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_object_create           (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1011,7 +1011,7 @@ gboolean               hyscan_db_param_object_create           (HyScanDB        
  * \return TRUE - если объект успешно удалён, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_object_remove           (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name);
@@ -1031,7 +1031,7 @@ gboolean               hyscan_db_param_object_remove           (HyScanDB        
  * \return Указатель на объект \link HyScanDataSchema \endlink или NULL если объекта нет.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 HyScanDataSchema      *hyscan_db_param_object_get_schema       (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name);
@@ -1057,7 +1057,7 @@ HyScanDataSchema      *hyscan_db_param_object_get_schema       (HyScanDB        
  * \return TRUE - если значение установлено, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_set                     (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1085,7 +1085,7 @@ gboolean               hyscan_db_param_set                     (HyScanDB        
  * \return TRUE - если значение считано, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_get                     (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1107,7 +1107,7 @@ gboolean               hyscan_db_param_get                     (HyScanDB        
  * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_set_boolean             (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1127,7 +1127,7 @@ gboolean               hyscan_db_param_set_boolean             (HyScanDB        
  * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_set_integer             (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1147,7 +1147,7 @@ gboolean               hyscan_db_param_set_integer             (HyScanDB        
  * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_set_double              (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1167,7 +1167,7 @@ gboolean               hyscan_db_param_set_double              (HyScanDB        
  * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_set_string              (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1187,7 +1187,7 @@ gboolean               hyscan_db_param_set_string              (HyScanDB        
  * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_set_enum                (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1207,7 +1207,7 @@ gboolean               hyscan_db_param_set_enum                (HyScanDB        
  * \return TRUE - если значение считано, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_get_boolean             (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1227,7 +1227,7 @@ gboolean               hyscan_db_param_get_boolean             (HyScanDB        
  * \return TRUE - если значение считано, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_get_integer             (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1247,7 +1247,7 @@ gboolean               hyscan_db_param_get_integer             (HyScanDB        
  * \return TRUE - если значение считано, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_get_double              (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1268,7 +1268,7 @@ gboolean               hyscan_db_param_get_double              (HyScanDB        
  * \return Значение параметра или NULL - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gchar                 *hyscan_db_param_get_string             (HyScanDB               *db,
                                                                gint32                  param_id,
                                                                const gchar            *object_name,
@@ -1287,7 +1287,7 @@ gchar                 *hyscan_db_param_get_string             (HyScanDB         
  * \return TRUE - если значение считано, FALSE - в случае ошибки.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 gboolean               hyscan_db_param_get_enum                (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
@@ -1305,7 +1305,7 @@ gboolean               hyscan_db_param_get_enum                (HyScanDB        
  * \return Функция не возвращает значений.
  *
  */
-HYSCAN_DB_EXPORT
+HYSCAN_API
 void                   hyscan_db_close                         (HyScanDB              *db,
                                                                 gint32                 id);
 
