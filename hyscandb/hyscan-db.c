@@ -744,7 +744,7 @@ hyscan_db_param_get_string (HyScanDB    *db,
 
   status = hyscan_db_param_get (db, param_id, object_name, param_name,
                                 HYSCAN_DATA_SCHEMA_TYPE_STRING, NULL, &size);
-  if (!status)
+  if (!status || size == 0)
     return NULL;
 
   value = g_malloc (size);

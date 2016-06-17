@@ -160,6 +160,7 @@ clear_parameters (HyScanDB *db,
   hyscan_db_param_set (db, param_id, object_name, "/integer", HYSCAN_DATA_SCHEMA_TYPE_INTEGER, NULL, 0);
   hyscan_db_param_set (db, param_id, object_name, "/double", HYSCAN_DATA_SCHEMA_TYPE_DOUBLE, NULL, 0);
   hyscan_db_param_set (db, param_id, object_name, "/string", HYSCAN_DATA_SCHEMA_TYPE_STRING, NULL, 0);
+  hyscan_db_param_set (db, param_id, object_name, "/null", HYSCAN_DATA_SCHEMA_TYPE_STRING, NULL, 0);
   hyscan_db_param_set (db, param_id, object_name, "/enum", HYSCAN_DATA_SCHEMA_TYPE_ENUM, NULL, 0);
 }
 
@@ -181,6 +182,7 @@ set_parameters (HyScanDB *db,
   hyscan_db_param_set_integer (db, param_id, object_name, "/integer", ivalue);
   hyscan_db_param_set_double (db, param_id, object_name, "/double", dvalue);
   hyscan_db_param_set_string (db, param_id, object_name, "/string", svalue);
+  hyscan_db_param_set_string (db, param_id, object_name, "/null", svalue);
   hyscan_db_param_set_enum (db, param_id, object_name, "/enum", evalue);
 
   g_free (svalue);
@@ -215,6 +217,8 @@ check_parameters (HyScanDB *db,
   svalue = hyscan_db_param_get_string (db, param_id, object_name, "/string");
   if (svalue == NULL)
     g_error ("%s: can't get /string parameter", error_prefix);
+  if (hyscan_db_param_get_string (db, param_id, object_name, "/null") != NULL)
+    g_error ("%s: error in /null parameter", error_prefix);
   if (!hyscan_db_param_get_enum (db, param_id, object_name, "/enum", &evalue))
     g_error ("%s: can't get /enum parameter", error_prefix);
 

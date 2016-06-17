@@ -429,7 +429,7 @@ hyscan_db_param_file_set (HyScanDBParamFile    *param,
     goto exit;
 
   /* Сбрасываем значение параметра до состояния по умолчанию. */
-  if (value == NULL && size == 0)
+  if (value == NULL)
     {
       g_key_file_remove_key (priv->params, object_name, param_name, NULL);
     }
@@ -600,13 +600,15 @@ hyscan_db_param_file_get (HyScanDBParamFile     *param,
         string = g_strdup (hyscan_data_schema_key_get_default_string (schema, param_name));
       else
         string = g_key_file_get_string (priv->params, object_name, param_name, NULL);
-      string_length = strlen (string) + 1;
-      if (buffer == NULL)
+
+      string_length = (string != NULL) ? strlen (string) + 1 : 0;
+      if (buffer == NULL || string_length == 0)
         {
           *buffer_size = string_length;
           g_free (string);
           break;
         }
+
       *buffer_size = (*buffer_size > string_length) ? string_length : *buffer_size;
       string [*buffer_size - 1] = 0;
       memcpy (buffer, string, *buffer_size);
