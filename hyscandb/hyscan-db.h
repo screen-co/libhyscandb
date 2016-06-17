@@ -47,6 +47,7 @@
  *   -# получение диапазона доступных данных - #hyscan_db_channel_get_data_range
  * - работа с параметрами
  *   -# получение списка объектов в группе параметров - #hyscan_db_param_object_list
+ *   -# создание объекта в группе параметров - #hyscan_db_param_object_create
  *   -# удаление объектов в группе параметров - #hyscan_db_param_object_remove
  *   -# установка значения параметра - #hyscan_db_param_set
  *   -# чтение значения параметра - #hyscan_db_param_get
@@ -984,7 +985,7 @@ gchar                **hyscan_db_param_object_list             (HyScanDB        
 
 /**
  *
- * Фнукция создаёт объект в группе параметров проекта.
+ * Функция создаёт объект в группе параметров проекта.
  *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор группы параметров;
@@ -1002,7 +1003,7 @@ gboolean               hyscan_db_param_object_create           (HyScanDB        
 
 /**
  *
- * Фнукция удаляет объект из группы параметров проекта.
+ * Функция удаляет объект из группы параметров проекта.
  *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор группы параметров;
