@@ -2547,13 +2547,11 @@ exit:
 }
 
 static gboolean
-hyscan_db_file_param_set (HyScanDB             *db,
-                          gint32                param_id,
-                          const gchar          *object_name,
-                          const gchar          *param_name,
-                          HyScanDataSchemaType  type,
-                          gconstpointer         value,
-                          gint32                size)
+hyscan_db_file_param_set (HyScanDB            *db,
+                          gint32               param_id,
+                          const gchar         *object_name,
+                          const gchar *const  *param_names,
+                          GVariant           **param_values)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -2599,7 +2597,7 @@ hyscan_db_file_param_set (HyScanDB             *db,
       object_name = param_info->object_name;
     }
 
-  status = hyscan_db_param_file_set (param_info->param, object_name, param_name, type, value, size);
+  status = hyscan_db_param_file_set (param_info->param, object_name, param_names, param_values);
   if (status)
     g_atomic_int_inc (&param_info->mod_count);
 
@@ -2610,13 +2608,11 @@ exit:
 }
 
 static gboolean
-hyscan_db_file_param_get (HyScanDB              *db,
-                          gint32                 param_id,
-                          const gchar           *object_name,
-                          const gchar           *param_name,
-                          HyScanDataSchemaType   type,
-                          gpointer               buffer,
-                          gint32                *buffer_size)
+hyscan_db_file_param_get (HyScanDB            *db,
+                          gint32               param_id,
+                          const gchar         *object_name,
+                          const gchar *const  *param_names,
+                          GVariant           **param_values)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -2646,7 +2642,7 @@ hyscan_db_file_param_get (HyScanDB              *db,
       object_name = param_info->object_name;
     }
 
-  status = hyscan_db_param_file_get (param_info->param, object_name, param_name, type, buffer, buffer_size);
+  status = hyscan_db_param_file_get (param_info->param, object_name, param_names, param_values);
 
 exit:
   g_rw_lock_reader_unlock (&priv->lock);

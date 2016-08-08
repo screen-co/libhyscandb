@@ -22,8 +22,7 @@
     <key id="string" name="String" type="string">
       <default>2</default>
     </key>
-    <key id="null" name="Null string" type="string" flags="readonly">
-    </key>
+    <key id="null" name="NULL" type="string"/>
     <key id="enum" name="Enum" enum="enum">
       <default>3</default>
     </key>
