@@ -1,4 +1,6 @@
+
 #include <hyscan-db-server.h>
+#include <libxml/parser.h>
 #include <stdio.h>
 
 static gboolean
@@ -77,6 +79,8 @@ main (int    argc,
   g_object_unref (server);
   g_object_unref (db);
   g_free (server_uri);
+
+  xmlCleanupParser ();
 
   return 0;
 }

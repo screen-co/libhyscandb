@@ -458,7 +458,7 @@ hyscan_db_project_test (const gchar *path,
 
   /* Время создания проекта. */
   if (ctime != NULL)
-    *ctime = g_key_file_get_integer (project_param, "project", "ctime", NULL);
+    *ctime = g_key_file_get_int64 (project_param, "project", "ctime", NULL);
 
   /* Этот каталог содержит проект. */
   status = TRUE;
@@ -490,7 +490,7 @@ hyscan_db_track_test (const gchar *path,
 
   /* Время создания галса. */
   if (ctime != NULL)
-    *ctime = g_key_file_get_integer (track_param, "project", "ctime", NULL);
+    *ctime = g_key_file_get_int64 (track_param, "project", "ctime", NULL);
 
   /* Этот каталог содержит галс. */
   status = TRUE;

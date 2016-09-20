@@ -1,6 +1,7 @@
 
 #include "hyscan-db.h"
 
+#include <libxml/parser.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
 #include <string.h>
@@ -1566,6 +1567,8 @@ main (int argc, char **argv)
 
   g_bytes_unref (schema_data);
   g_object_unref (schema);
+
+  xmlCleanupParser ();
 
   return 0;
 }
