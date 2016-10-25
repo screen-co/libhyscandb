@@ -490,7 +490,7 @@ hyscan_db_track_test (const gchar *path,
 
   /* Время создания галса. */
   if (ctime != NULL)
-    *ctime = g_key_file_get_int64 (track_param, "project", "ctime", NULL);
+    *ctime = g_key_file_get_int64 (track_param, "track", "ctime", NULL);
 
   /* Этот каталог содержит галс. */
   status = TRUE;
