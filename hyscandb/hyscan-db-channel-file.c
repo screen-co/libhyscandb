@@ -1557,7 +1557,6 @@ hyscan_db_channel_file_set_channel_save_size (HyScanDBChannelFile *channel,
   return TRUE;
 }
 
-
 /* Функция завершает запись данных. */
 void
 hyscan_db_channel_file_finalize_channel (HyScanDBChannelFile *channel)

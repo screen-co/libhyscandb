@@ -960,6 +960,7 @@ hyscan_db_file_project_create (HyScanDB    *db,
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
 
+  gboolean exist = FALSE;
   gboolean status = FALSE;
 
   GKeyFile *project_param = NULL;
@@ -982,6 +983,7 @@ hyscan_db_file_project_create (HyScanDB    *db,
   /* Проверяем, что каталога с названием проекта нет. */
   if (g_file_test (project_path, G_FILE_TEST_IS_DIR))
     {
+      exist = TRUE;
       g_info ("HyScanDBFile: project '%s' already exists", project_name);
       goto exit;
     }
@@ -1027,6 +1029,9 @@ exit:
 
   if (status)
     return hyscan_db_file_project_open (db, project_name);
+
+  if (exist)
+    return 0;
 
   return -1;
 }
@@ -1307,7 +1312,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
 
   gint32 id = -1;
 
-  GKeyFile *track_id = NULL;
+  GKeyFile *track_param = NULL;
   gchar *track_path = NULL;
   gchar *track_id_file = NULL;
   gchar *track_param_file = NULL;
@@ -1325,7 +1330,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
   if (project_info == NULL)
     goto exit;
 
-  track_id = g_key_file_new ();
+  track_param = g_key_file_new ();
   track_path = g_build_filename (project_info->path, track_name, NULL);
   track_id_file = g_build_filename (project_info->path, track_name, TRACK_ID_FILE, NULL);
   track_param_file = g_build_filename (project_info->path, track_name, TRACK_PARAMETERS_FILE, NULL);
@@ -1334,6 +1339,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
   /* Проверяем, что каталога с названием проекта нет. */
   if (g_file_test (track_path, G_FILE_TEST_IS_DIR))
     {
+      id = 0;
       g_info ("HyScanDBFile: track '%s.%s' already exists", project_info->project_name, track_name);
       goto exit;
     }
@@ -1347,9 +1353,9 @@ hyscan_db_file_track_create (HyScanDB    *db,
     }
 
   /* Файл идентификатор галса. */
-  g_key_file_set_integer (track_id, "track", "version", HYSCAN_DB_FILE_API);
-  g_key_file_set_int64 (track_id, "track", "ctime", g_get_real_time () / G_USEC_PER_SEC);
-  param_data = g_key_file_to_data (track_id, NULL, NULL);
+  g_key_file_set_integer (track_param, "track", "version", HYSCAN_DB_FILE_API);
+  g_key_file_set_int64 (track_param, "track", "ctime", g_get_real_time () / G_USEC_PER_SEC);
+  param_data = g_key_file_to_data (track_param, NULL, NULL);
   if (!g_file_set_contents (track_id_file, param_data, -1, NULL))
     {
       g_warning ("HyScanDBFile: can't save track '%s.%s' identification file",
@@ -1384,7 +1390,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
 exit:
   g_rw_lock_writer_unlock (&priv->lock);
 
-  g_clear_pointer (&track_id, g_key_file_free);
+  g_clear_pointer (&track_param, g_key_file_free);
   g_free (track_schema_file);
   g_free (track_param_file);
   g_free (track_id_file);
@@ -1622,7 +1628,8 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
         }
       else
         {
-          /* Если канал уже открыт и находится в режиме записи - возвращаем ошибку. */
+          /* Если канал уже открыт и находится в режиме записи - сообщаем об этом. */
+          id = 0;
           g_info ("HyScanDBFile: channel '%s.%s.%s' already exists",
                   track_info->project_name, track_info->track_name, channel_name);
           goto exit;
@@ -1632,17 +1639,18 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
   /* Открываем канал для работы. */
   else
     {
-      /* Если канала нет и запрашивается его открытие на чтение или
-         если канал есть и запрашивается открытие на запись - ошибка. */
       if (hyscan_db_channel_test (track_info->path, channel_name) != readonly)
         {
           if (readonly)
             {
+              /* Если канала нет и запрашивается его открытие на чтение - ошибка. */
               g_info ("HyScanDBFile: '%s.%s.%s' - no such channel",
                       track_info->project_name, track_info->track_name, channel_name);
             }
           else
             {
+              /* Если канал есть и запрашивается открытие на запись - сообщаеи об этом. */
+              id = 0;
               g_info ("HyScanDBFile: channel '%s.%s.%s' already exists",
                       track_info->project_name, track_info->track_name, channel_name);
             }
