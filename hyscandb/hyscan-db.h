@@ -253,7 +253,7 @@ struct _HyScanDBInterface
 
   gboolean             (*channel_set_chunk_size)               (HyScanDB              *db,
                                                                 gint32                 channel_id,
-                                                                gint32                 chunk_size);
+                                                                guint64                chunk_size);
 
   gboolean             (*channel_set_save_time)                (HyScanDB              *db,
                                                                 gint32                 channel_id,
@@ -261,7 +261,7 @@ struct _HyScanDBInterface
 
   gboolean             (*channel_set_save_size)                (HyScanDB              *db,
                                                                 gint32                 channel_id,
-                                                                gint64                 save_size);
+                                                                guint64                save_size);
 
   gboolean             (*channel_get_data_range)               (HyScanDB              *db,
                                                                 gint32                 channel_id,
@@ -272,14 +272,14 @@ struct _HyScanDBInterface
                                                                 gint32                 channel_id,
                                                                 gint64                 time,
                                                                 gconstpointer          data,
-                                                                gint32                 size,
+                                                                guint32                size,
                                                                 gint32                *index);
 
   gboolean             (*channel_get_data)                     (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint32                 index,
                                                                 gpointer               buffer,
-                                                                gint32                *buffer_size,
+                                                                guint32               *buffer_size,
                                                                 gint64                *time);
 
   gboolean             (*channel_find_data)                    (HyScanDB              *db,
@@ -806,8 +806,8 @@ gint32                 hyscan_db_channel_param_open            (HyScanDB        
 /**
  *
  * Функция задаёт максимальный размер файлов, хранящих данные канала, которые может создавать система.
- * Если для максимального размера указано отрицательное число, будет восстановлено значение
- * по умолчанию.
+ *
+ * Если для максимального размера указан ноль, будет восстановлено значение по умолчанию.
  *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор канала данных;
@@ -819,17 +819,15 @@ gint32                 hyscan_db_channel_param_open            (HyScanDB        
 HYSCAN_API
 gboolean               hyscan_db_channel_set_chunk_size        (HyScanDB              *db,
                                                                 gint32                 channel_id,
-                                                                gint32                 chunk_size);
+                                                                guint64                chunk_size);
 
 /**
  *
  * Функция задаёт интервал времени, для которого сохраняются записываемые данные. Если данные
- * были записаны ранее "текущего времени" - "интервал хранения" они удаляются.
+ * были записаны ранее "текущего времени" - "интервал хранения" они удаляются. Подробнее об этом
+ * можно прочитать в описании интерфейса \link HyScanDB \endlink.
  *
- * Подробнее об этом можно прочитать в описании интерфейса \link HyScanDB \endlink.
- *
- * Если для времени указано отрицательное число, будет восстановлено значение
- * по умолчанию.
+ * Если для времени указан ноль, будет восстановлено значение по умолчанию.
  *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор канала данных;
@@ -846,12 +844,10 @@ gboolean               hyscan_db_channel_set_save_time         (HyScanDB        
 /**
  *
  * Функция задаёт объём сохраняемых данных в канале. Если объём данных превышает этот предел,
- * старые данные удаляются.
+ * старые данные удаляются. Подробнее об этом можно прочитать в описании интерфейса
+ * \link HyScanDB \endlink.
  *
- * Подробнее об этом можно прочитать в описании интерфейса \link HyScanDB \endlink.
- *
- * Если для объёма указано отрицательное число, будет восстановлено значение
- * по умолчанию.
+ * Если для объёма указан ноль, будет восстановлено значение по умолчанию.
  *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор канала данных;
@@ -863,7 +859,7 @@ gboolean               hyscan_db_channel_set_save_time         (HyScanDB        
 HYSCAN_API
 gboolean               hyscan_db_channel_set_save_size         (HyScanDB              *db,
                                                                 gint32                 channel_id,
-                                                                gint64                 save_size);
+                                                                guint64                save_size);
 
 /**
  *
@@ -903,7 +899,7 @@ gboolean               hyscan_db_channel_add_data              (HyScanDB        
                                                                 gint32                 channel_id,
                                                                 gint64                 time,
                                                                 gconstpointer          data,
-                                                                gint32                 size,
+                                                                guint32                size,
                                                                 gint32                *index);
 
 /**
@@ -930,7 +926,7 @@ gboolean               hyscan_db_channel_get_data              (HyScanDB        
                                                                 gint32                 channel_id,
                                                                 gint32                 index,
                                                                 gpointer               buffer,
-                                                                gint32                *buffer_size,
+                                                                guint32               *buffer_size,
                                                                 gint64                *time);
 
 /**

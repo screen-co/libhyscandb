@@ -225,6 +225,7 @@ hyscan_db_param_file_params_flush (GKeyFile      *params,
 {
   gchar *data;
   gsize dsize;
+  gssize wsize;
 
   GError *error;
 
@@ -239,8 +240,9 @@ hyscan_db_param_file_params_flush (GKeyFile      *params,
     }
 
   /* Записываем в него новые данные. */
+  wsize = dsize;
   error = NULL;
-  if (g_output_stream_write (ofd, data, dsize, NULL, &error) != dsize)
+  if (g_output_stream_write (ofd, data, dsize, NULL, &error) != wsize)
     {
       if (error != NULL)
         g_warning ("HyScanDBParamFile: %s", error->message);

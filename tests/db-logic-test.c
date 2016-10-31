@@ -314,7 +314,7 @@ main (int argc, char **argv)
   gint32             **track_param_id        = NULL;
   gint32            ***channel_param_id      = NULL;
 
-  gint32               sample_size           = 0;
+  guint32              sample_size           = 0;
   gchar               *sample1               = "THIS IS SAMPLE DATA";
   gchar               *buffer                = NULL;
 
@@ -967,7 +967,7 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gint32 readed_size = sample_size;
+          guint32 readed_size = sample_size;
           if (!hyscan_db_channel_get_data (db, channel_id[i][j][k], 0, buffer, &sample_size, NULL))
             g_error ("can't read data from 'Project %d.Track %d.Channel %d'", i + 1, j + 1, k + 1);
           if (readed_size != sample_size || g_strcmp0 (sample1, buffer) != 0)
@@ -1270,7 +1270,7 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gint32 readed_size = sample_size;
+          guint32 readed_size = sample_size;
           if (!hyscan_db_channel_get_data (db, channel_id[i][j][k], 0, buffer, &sample_size, NULL))
             g_error ("can't read data from '%s.%s.%s'", projects[i], tracks[j], channels[k]);
           if (readed_size != sample_size || g_strcmp0 (sample1, buffer) != 0)

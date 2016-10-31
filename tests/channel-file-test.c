@@ -13,15 +13,16 @@ int main( int argc, char **argv )
   gint32 index;
   gchar *datap[DATA_PATTERNS];
   gchar *data;
-  gint i, j, k;
+  gint32 i;
+  guint32 j, k;
 
   gint32 first_index, last_index;
 
   gchar *channel_name = NULL;
 
-  gint32 max_file_size = 1024 * 1024 * 1024;
-  gint32 data_size = 64 * 1024;
-  gint32 total_records = 1000;
+  guint32 max_file_size = 1024 * 1024 * 1024;
+  guint32 data_size = 64 * 1024;
+  guint32 total_records = 1000;
 
   GTimer *cur_timer;
   GTimer *all_timer;
@@ -144,7 +145,7 @@ int main( int argc, char **argv )
     {
 
     guint32 hash = 0;
-    gint32 readed_data_size = data_size;
+    guint32 readed_data_size = data_size;
 
     if( g_timer_elapsed( cur_timer, NULL ) >= 1.0 )
       {
@@ -191,7 +192,7 @@ int main( int argc, char **argv )
     {
 
     guint32 hash = 0;
-    gint32 readed_data_size = data_size;
+    guint32 readed_data_size = data_size;
 
     if( g_timer_elapsed( cur_timer, NULL ) >= 1.0 )
       {
@@ -202,7 +203,7 @@ int main( int argc, char **argv )
 
     i = g_random_int_range( first_index, last_index + 1 );
 
-    if( !hyscan_db_channel_file_get_channel_data( channel, i, data, &readed_data_size, &time64 ) )
+    if( !hyscan_db_channel_file_get_channel_data ( channel, i, data, &readed_data_size, &time64 ) )
       g_warning( "hyscan_db_channel_get failed" );
 
     // Проверяем размер данных.

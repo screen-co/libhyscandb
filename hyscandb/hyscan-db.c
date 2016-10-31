@@ -391,7 +391,7 @@ hyscan_db_channel_param_open (HyScanDB *db,
 gboolean
 hyscan_db_channel_set_chunk_size (HyScanDB *db,
                                   gint32    channel_id,
-                                  gint32    chunk_size)
+                                  guint64   chunk_size)
 {
   HyScanDBInterface *iface;
 
@@ -423,7 +423,7 @@ hyscan_db_channel_set_save_time (HyScanDB *db,
 gboolean
 hyscan_db_channel_set_save_size (HyScanDB *db,
                                  gint32    channel_id,
-                                 gint64    save_size)
+                                 guint64   save_size)
 {
   HyScanDBInterface *iface;
 
@@ -458,7 +458,7 @@ hyscan_db_channel_add_data (HyScanDB      *db,
                             gint32         channel_id,
                             gint64         time,
                             gconstpointer  data,
-                            gint32         size,
+                            guint32        size,
                             gint32        *index)
 {
   HyScanDBInterface *iface;
@@ -477,7 +477,7 @@ hyscan_db_channel_get_data (HyScanDB *db,
                             gint32    channel_id,
                             gint32    index,
                             gpointer  buffer,
-                            gint32   *buffer_size,
+                            guint32  *buffer_size,
                             gint64   *time)
 {
   HyScanDBInterface *iface;

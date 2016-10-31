@@ -923,7 +923,7 @@ hyscan_db_server_rpc_proc_channel_set_chunk_size (guint32   session,
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
   gint32 channel_id;
-  gint32 chunk_size;
+  guint64 chunk_size;
 
   if (priv->acl != NULL && !priv->acl ("channel_set_chunk_size", key_data))
     hyscan_db_server_acl_error ();
@@ -931,7 +931,7 @@ hyscan_db_server_rpc_proc_channel_set_chunk_size (guint32   session,
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
     hyscan_db_server_get_error ("channel_id");
 
-  if( urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHUNK_SIZE, &chunk_size) != 0)
+  if( urpc_data_get_uint64 (urpc_data, HYSCAN_DB_RPC_PARAM_CHUNK_SIZE, &chunk_size) != 0)
     hyscan_db_server_get_error ("chunk_size");
 
   if (hyscan_db_channel_set_chunk_size (priv->db, channel_id, chunk_size))
@@ -981,7 +981,7 @@ hyscan_db_server_rpc_proc_channel_set_save_size (guint32   session,
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
   gint32 channel_id;
-  gint64 save_size;
+  guint64 save_size;
 
   if (priv->acl != NULL && !priv->acl ("channel_set_save_size", key_data))
     hyscan_db_server_acl_error ();
@@ -989,7 +989,7 @@ hyscan_db_server_rpc_proc_channel_set_save_size (guint32   session,
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
     hyscan_db_server_get_error ("channel_id");
 
-  if (urpc_data_get_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_SAVE_SIZE, &save_size) != 0)
+  if (urpc_data_get_uint64 (urpc_data, HYSCAN_DB_RPC_PARAM_SAVE_SIZE, &save_size) != 0)
     hyscan_db_server_get_error ("save_size");
 
   if (hyscan_db_channel_set_save_size (priv->db, channel_id, save_size))
@@ -1088,7 +1088,7 @@ hyscan_db_server_rpc_proc_channel_get_data (guint32   session,
   gint32 channel_id;
   gint32 index;
   gpointer buffer = NULL;
-  gint32 buffer_size;
+  guint32 buffer_size;
   gint64 time;
 
   if (priv->acl != NULL && !priv->acl ("channel_get_data", key_data))
@@ -1100,7 +1100,7 @@ hyscan_db_server_rpc_proc_channel_get_data (guint32   session,
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_INDEX, &index) != 0)
     hyscan_db_server_get_error ("index");
 
-  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_SIZE, &buffer_size) == 0)
+  if (urpc_data_get_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_SIZE, &buffer_size) == 0)
     {
       buffer = urpc_data_set (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_DATA, NULL, buffer_size);
       if (buffer == NULL)

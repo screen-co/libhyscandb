@@ -1901,7 +1901,7 @@ hyscan_db_file_channel_is_writable (HyScanDB *db,
 static gboolean
 hyscan_db_file_channel_set_chunk_size (HyScanDB *db,
                                        gint32    channel_id,
-                                       gint32    chunk_size)
+                                       guint64   chunk_size)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -1949,7 +1949,7 @@ hyscan_db_file_channel_set_save_time (HyScanDB *db,
 static gboolean
 hyscan_db_file_channel_set_save_size (HyScanDB *db,
                                       gint32    channel_id,
-                                      gint64    save_size)
+                                      guint64   save_size)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -2000,7 +2000,7 @@ hyscan_db_file_channel_add_data (HyScanDB      *db,
                                  gint32         channel_id,
                                  gint64         time,
                                  gconstpointer  data,
-                                 gint32         size,
+                                 guint32        size,
                                  gint32        *index)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
@@ -2031,7 +2031,7 @@ hyscan_db_file_channel_get_data (HyScanDB *db,
                                  gint32    channel_id,
                                  gint32    index,
                                  gpointer  buffer,
-                                 gint32   *buffer_size,
+                                 guint32  *buffer_size,
                                  gint64   *time)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);

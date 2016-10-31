@@ -103,14 +103,14 @@ gboolean   hyscan_db_channel_file_get_channel_data_range   (HyScanDBChannelFile 
 gboolean   hyscan_db_channel_file_add_channel_data         (HyScanDBChannelFile *channel,
                                                             gint64               time,
                                                             gconstpointer        data,
-                                                            gint32               size,
+                                                            guint32              size,
                                                             gint32              *index);
 
 /* Функция считывает данные. */
 gboolean   hyscan_db_channel_file_get_channel_data         (HyScanDBChannelFile *channel,
                                                             gint32               index,
                                                             gpointer             buffer,
-                                                            gint32              *buffer_size,
+                                                            guint32             *buffer_size,
                                                             gint64              *time);
 
 /* Функция ищет данные по метке времени. */
@@ -123,7 +123,7 @@ gboolean   hyscan_db_channel_file_find_channel_data        (HyScanDBChannelFile 
 
 /* Функция устанавливает максимальный размер файла данных. */
 gboolean   hyscan_db_channel_file_set_channel_chunk_size   (HyScanDBChannelFile *channel,
-                                                            gint32               chunk_size);
+                                                            guint64              chunk_size);
 
 /* Функция устанавливает интервал времени в микросекундах для которого хранятся записываемые данные. */
 gboolean   hyscan_db_channel_file_set_channel_save_time    (HyScanDBChannelFile *channel,
@@ -131,7 +131,7 @@ gboolean   hyscan_db_channel_file_set_channel_save_time    (HyScanDBChannelFile 
 
 /* Функция устанавливает максимальный объём сохраняемых данных. */
 gboolean   hyscan_db_channel_file_set_channel_save_size    (HyScanDBChannelFile *channel,
-                                                            gint64               save_size);
+                                                            guint64              save_size);
 
 /* Функция завершает запись данных. */
 void       hyscan_db_channel_file_finalize_channel         (HyScanDBChannelFile *channel);

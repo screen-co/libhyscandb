@@ -24,7 +24,8 @@
 #define DATA_FILE_HEADER_SIZE  8                       /* Размер заголовка файла данных. */
 
 #define MIN_DATA_FILE_SIZE     1*1024*1024             /* Минимально возможный размер файла части данных. */
-#define MAX_DATA_FILE_SIZE     1024*1024*1024          /* Максимально возможный размер файла части данных. */
+#define MAX_DATA_FILE_SIZE     1024*1024*1024*1024L    /* Максимально возможный размер файла части данных. */
+#define DEFAULT_DATA_FILE_SIZE 1024*1024*1024          /* Размер файла части данных по умолчанию. */
 
 enum
 {
@@ -61,8 +62,8 @@ typedef struct
 typedef struct
 {
   gint64                       time;                   /* Время приёма данных, в микросекундах. */
-  gint32                       offset;                 /* Смещение до начала данных. */
-  gint32                       size;                   /* Размер данных. */
+  guint32                      offset;                 /* Смещение до начала данных. */
+  guint32                      size;                   /* Размер данных. */
 } HyScanDBChannelFileIndexRec;
 
 /* Информация о записи. */
@@ -74,7 +75,7 @@ struct _HyScanDBChannelFileIndex
 
   gint64                       time;                   /* Время приёма данных, в микросекундах. */
   gint32                       offset;                 /* Смещение до начала данных. */
-  gint32                       size;                   /* Размер данных. */
+  guint32                      size;                   /* Размер данных. */
 
                                                        /* Структуры индексов связаны между собой
                                                           не в порядке их номеров.*/
@@ -88,14 +89,14 @@ struct _HyScanDBChannelFilePrivate
   gchar                       *path;                   /* Путь к каталогу с файлами данных канала. */
   gchar                       *name;                   /* Название канала. */
 
-  gint32                       max_data_file_size;     /* Максимальный размер файла части данных. */
+  guint64                      max_data_file_size;     /* Максимальный размер файла части данных. */
+  guint64                      save_size;              /* Максимальный объём всех сохраняемых данных. */
   gint64                       save_time;              /* Интервал времени для которого хранятся записываемые данные. */
-  gint64                       save_size;              /* Максимальный объём всех сохраняемых данных. */
 
   gboolean                     readonly;               /* Создавать или нет файлы при открытии канала. */
   gboolean                     fail;                   /* Признак ошибки в объекте. */
 
-  gint64                       data_size;              /* Текущий объём хранимых данных. */
+  guint64                      data_size;              /* Текущий объём хранимых данных. */
 
   gint32                       begin_index;            /* Начальный индекс данных. */
   gint32                       end_index;              /* Конечный индекс данных. */
@@ -104,7 +105,7 @@ struct _HyScanDBChannelFilePrivate
   gint64                       end_time;               /* Конечное время данных. */
 
   HyScanDBChannelFilePart    **parts;                  /* Массив указателей на структуры с описанием части данных. */
-  gint                         n_parts;                /* Число частей данных. */
+  guint                        n_parts;                /* Число частей данных. */
 
   GHashTable                  *cached_indexes;         /* Таблица кэшированных индексов. */
   HyScanDBChannelFileIndex    *first_cached_index;     /* Первый индекс (недавно использовался). */
@@ -194,7 +195,7 @@ hyscan_db_channel_file_object_constructed (GObject *object)
   gint i;
 
   /* Начальные значения. */
-  priv->max_data_file_size = MAX_DATA_FILE_SIZE;
+  priv->max_data_file_size = DEFAULT_DATA_FILE_SIZE;
   priv->save_time = G_MAXINT64;
   priv->save_size = G_MAXINT64;
   priv->readonly = FALSE;
@@ -258,11 +259,11 @@ hyscan_db_channel_file_object_constructed (GObject *object)
 
       GFile *fdi = NULL;
       GInputStream *ifdi = NULL;
-      gint32 index_file_size;
+      guint32 index_file_size;
 
       GFile *fdd = NULL;
       GInputStream *ifdd = NULL;
-      gint32 data_file_size;
+      guint32 data_file_size;
 
       guint64 begin_time;
       guint64 end_time;
@@ -273,7 +274,7 @@ hyscan_db_channel_file_object_constructed (GObject *object)
 
       GError *error;
       goffset offset;
-      gsize iosize;
+      gssize iosize;
       gint32 value;
 
       /* Файл индексов. */
@@ -517,7 +518,7 @@ hyscan_db_channel_file_object_constructed (GObject *object)
 
       /* Проверяем размер файла с данными - он должен быть равен смещению до данных
          по последнему индексу + размер данных. */
-      if (data_file_size != (GINT32_FROM_LE (rec_index.offset) + GINT32_FROM_LE (rec_index.size)))
+      if (data_file_size != (GUINT32_FROM_LE (rec_index.offset) + GUINT32_FROM_LE (rec_index.size)))
         {
           g_warning ("HyScanDBChannelFile: channel '%s': part %d: invalid data file size",
                       priv->name, priv->n_parts);
@@ -584,7 +585,7 @@ hyscan_db_channel_file_object_finalize (GObject *object)
   HyScanDBChannelFile *channel = HYSCAN_DB_CHANNEL_FILE (object);
   HyScanDBChannelFilePrivate *priv = channel->priv;
 
-  gint i;
+  guint i;
 
   /* Освобождаем структуры кэша индексов. */
   while (priv->first_cached_index != NULL)
@@ -632,7 +633,7 @@ hyscan_db_channel_file_add_part (HyScanDBChannelFilePrivate *priv)
   gint32 begin_index = 0;
 
   GError *error;
-  gsize iosize;
+  gssize iosize;
   gint32 value;
 
   if (priv->readonly)
@@ -805,7 +806,7 @@ hyscan_db_channel_file_remove_old_part (HyScanDBChannelFilePrivate *priv)
   HyScanDBChannelFilePart *fpart;
 
   GError *error;
-  gint i;
+  guint i;
 
   if (priv->readonly)
     return TRUE;
@@ -917,8 +918,8 @@ hyscan_db_channel_file_read_index (HyScanDBChannelFilePrivate *priv,
 
   GError *error;
   goffset offset;
-  gsize iosize;
-  gint i;
+  gssize iosize;
+  guint i;
 
   /* Индекс найден в кэше. */
   if (db_index != NULL)
@@ -1050,7 +1051,7 @@ gboolean
 hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
                                          gint64               time,
                                          gconstpointer        data,
-                                         gint32               size,
+                                         guint32              size,
                                          gint32              *index)
 {
   HyScanDBChannelFilePrivate *priv;
@@ -1060,7 +1061,7 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
   HyScanDBChannelFileIndexRec rec_index;
 
   GError *error;
-  gsize iosize;
+  gssize iosize;
 
   g_return_val_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel), FALSE);
 
@@ -1249,7 +1250,7 @@ gboolean
 hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
                                          gint32               index,
                                          gpointer             buffer,
-                                         gint32              *buffer_size,
+                                         guint32             *buffer_size,
                                          gint64              *time)
 {
   HyScanDBChannelFilePrivate *priv;
@@ -1257,7 +1258,7 @@ hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
   HyScanDBChannelFileIndex *db_index;
 
   GError *error;
-  gsize iosize;
+  gssize iosize;
 
   g_return_val_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel), FALSE);
 
@@ -1470,7 +1471,7 @@ hyscan_db_channel_file_find_channel_data (HyScanDBChannelFile *channel,
 /* Функция устанавливает максимальный размер файла данных. */
 gboolean
 hyscan_db_channel_file_set_channel_chunk_size (HyScanDBChannelFile *channel,
-                                               gint32               chunk_size)
+                                               guint64              chunk_size)
 {
   HyScanDBChannelFilePrivate *priv;
 
@@ -1481,9 +1482,9 @@ hyscan_db_channel_file_set_channel_chunk_size (HyScanDBChannelFile *channel,
   if (priv->fail)
     return FALSE;
 
-  /* При отрицательном значении устаналиваем размер по умолчанию. */
-  if (chunk_size < 0)
-    chunk_size = MAX_DATA_FILE_SIZE;
+  /* При нулевом значении устаналиваем размер по умолчанию. */
+  if (chunk_size == 0)
+    chunk_size = DEFAULT_DATA_FILE_SIZE;
 
   /* Проверяем новый размер файла. */
   if (chunk_size < MIN_DATA_FILE_SIZE || chunk_size > MAX_DATA_FILE_SIZE)
@@ -1511,8 +1512,8 @@ hyscan_db_channel_file_set_channel_save_time (HyScanDBChannelFile *channel,
   if (priv->fail)
     return FALSE;
 
-  /* При отрицательном значении устаналиваем время по умолчанию. */
-  if (save_time < 0)
+  /* При нулевом значении устаналиваем время по умолчанию. */
+  if (save_time == 0)
     save_time = G_MAXINT64;
 
   /* Проверяем новый интервал времени. */
@@ -1530,7 +1531,7 @@ hyscan_db_channel_file_set_channel_save_time (HyScanDBChannelFile *channel,
 /* Функция устанавливает максимальный объём сохраняемых данных. */
 gboolean
 hyscan_db_channel_file_set_channel_save_size (HyScanDBChannelFile *channel,
-                                              gint64               save_size)
+                                              guint64              save_size)
 {
   HyScanDBChannelFilePrivate *priv;
 
@@ -1541,9 +1542,9 @@ hyscan_db_channel_file_set_channel_save_size (HyScanDBChannelFile *channel,
   if (priv->fail)
     return FALSE;
 
-  /* При отрицательном значении устаналиваем объём по умолчанию. */
-  if (save_size < 0)
-    save_size = G_MAXINT64;
+  /* При нулевом значении устаналиваем объём по умолчанию. */
+  if (save_size == 0)
+    save_size = G_MAXUINT64;
 
   /* Проверяем новый максимальный размер. */
   if (save_size < MIN_DATA_FILE_SIZE)
@@ -1563,7 +1564,7 @@ hyscan_db_channel_file_finalize_channel (HyScanDBChannelFile *channel)
 {
   HyScanDBChannelFilePrivate *priv;
 
-  gint i;
+  guint i;
 
   g_return_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel));
 
