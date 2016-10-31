@@ -526,8 +526,8 @@ hyscan_db_channel_file_object_constructed (GObject *object)
 
       /* Считываем информацию о части данных. */
       priv->n_parts += 1;
-      priv->parts =
-        g_realloc (priv->parts, 32 * (((priv->n_parts + 1) / 32) + 1) * sizeof (HyScanDBChannelFilePart *));
+      priv->parts = g_realloc (priv->parts,
+                               32 * (((priv->n_parts + 1) / 32) + 1) * sizeof (HyScanDBChannelFilePart *));
 
       fpart = g_new (HyScanDBChannelFilePart, 1);
       priv->parts[priv->n_parts - 1] = fpart;
@@ -658,8 +658,8 @@ hyscan_db_channel_file_add_part (HyScanDBChannelFilePrivate *priv)
     }
 
   priv->n_parts += 1;
-  priv->parts =
-    g_realloc (priv->parts, 32 * (((priv->n_parts + 1) / 32) + 1) * sizeof (HyScanDBChannelFilePart *));
+  priv->parts = g_realloc (priv->parts,
+                           32 * (((priv->n_parts + 1) / 32) + 1) * sizeof (HyScanDBChannelFilePart *));
 
   fpart = g_new (HyScanDBChannelFilePart, 1);
   priv->parts[priv->n_parts - 1] = fpart;
@@ -1124,9 +1124,12 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
       /* Проверяем записываемое время. */
       if (fpart->end_time >= time)
         {
-          g_warning ("HyScanDBChannelFile: channel '%s': current time %" G_GINT64_FORMAT
-                     ".% " G_GINT64_FORMAT " is less than previously written",
-                     priv->name, time / 1000000, time % 1000000);
+          g_warning ("HyScanDBChannelFile: channel '%s': current time %" G_GINT64_FORMAT ".%" G_GINT64_FORMAT
+                     " is less or equal to previously written %" G_GINT64_FORMAT ".%" G_GINT64_FORMAT,
+                     priv->name,
+                     time / 1000000, time % 1000000,
+                     fpart->end_time / 1000000, fpart->end_time % 1000000);
+
           g_mutex_unlock (&priv->lock);
           return FALSE;
         }

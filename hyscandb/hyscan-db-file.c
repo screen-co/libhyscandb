@@ -982,7 +982,7 @@ hyscan_db_file_project_create (HyScanDB    *db,
   /* Проверяем, что каталога с названием проекта нет. */
   if (g_file_test (project_path, G_FILE_TEST_IS_DIR))
     {
-      g_warning ("HyScanDBFile: project '%s' already exists", project_name);
+      g_info ("HyScanDBFile: project '%s' already exists", project_name);
       goto exit;
     }
 
@@ -1334,8 +1334,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
   /* Проверяем, что каталога с названием проекта нет. */
   if (g_file_test (track_path, G_FILE_TEST_IS_DIR))
     {
-      g_warning ("HyScanDBFile: track '%s.%s' already exists",
-                 project_info->project_name, track_name);
+      g_info ("HyScanDBFile: track '%s.%s' already exists", project_info->project_name, track_name);
       goto exit;
     }
 
@@ -1624,8 +1623,8 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
       else
         {
           /* Если канал уже открыт и находится в режиме записи - возвращаем ошибку. */
-          g_warning ("HyScanDBFile: channel '%s.%s.%s' already exists",
-                     track_info->project_name, track_info->track_name, channel_name);
+          g_info ("HyScanDBFile: channel '%s.%s.%s' already exists",
+                  track_info->project_name, track_info->track_name, channel_name);
           goto exit;
         }
     }
@@ -1638,11 +1637,15 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
       if (hyscan_db_channel_test (track_info->path, channel_name) != readonly)
         {
           if (readonly)
-            g_warning ("HyScanDBFile: '%s.%s.%s' - no such channel",
-                       track_info->project_name, track_info->track_name, channel_name);
+            {
+              g_info ("HyScanDBFile: '%s.%s.%s' - no such channel",
+                      track_info->project_name, track_info->track_name, channel_name);
+            }
           else
-            g_warning ("HyScanDBFile: channel '%s.%s.%s' already exists",
-                       track_info->project_name, track_info->track_name, channel_name);
+            {
+              g_info ("HyScanDBFile: channel '%s.%s.%s' already exists",
+                      track_info->project_name, track_info->track_name, channel_name);
+            }
           goto exit;
         }
 
