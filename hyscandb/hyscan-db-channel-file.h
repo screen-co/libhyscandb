@@ -136,6 +136,10 @@ gboolean   hyscan_db_channel_file_set_channel_save_size    (HyScanDBChannelFile 
 /* Функция завершает запись данных. */
 void       hyscan_db_channel_file_finalize_channel         (HyScanDBChannelFile *channel);
 
+/* Функция удаляет все файлы в каталоге path относящиеся к каналу name. */
+gboolean   hyscan_db_channel_remove_channel_files          (const gchar         *path,
+                                                            const gchar         *name);
+
 G_END_DECLS
 
 #endif /* __HYSCAN_DB_CHANNEL_FILE_H__ */

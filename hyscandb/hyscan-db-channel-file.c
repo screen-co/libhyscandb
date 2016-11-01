@@ -10,6 +10,7 @@
 
 #include "hyscan-db-channel-file.h"
 
+#include <glib/gstdio.h>
 #include <gio/gio.h>
 #include <string.h>
 
@@ -297,7 +298,7 @@ hyscan_db_channel_file_object_constructed (GObject *object)
 
       priv->readonly = TRUE;
 
-      /* Поток чтение индексов. */
+      /* Поток чтения индексов. */
       error = NULL;
       ifdi = G_INPUT_STREAM (g_file_read (fdi, NULL, &error));
       if (error != NULL)
@@ -1586,4 +1587,62 @@ hyscan_db_channel_file_finalize_channel (HyScanDBChannelFile *channel)
   priv->readonly = TRUE;
 
   g_mutex_unlock (&priv->lock);
+}
+
+/* Функция удаляет все файлы в каталоге path относящиеся к каналу name. */
+gboolean
+hyscan_db_channel_remove_channel_files (const gchar *path,
+                                        const gchar *name)
+{
+  gboolean status = TRUE;
+  gchar *channel_file = NULL;
+  gint i;
+
+  /* Удаляем файлы индексов. */
+  for (i = 0; i < MAX_PARTS; i++)
+    {
+      channel_file = g_strdup_printf ("%s%s%s.%06d.i", path, G_DIR_SEPARATOR_S, name, i);
+
+      /* Если файлы закончились - выходим. */
+      if (!g_file_test (channel_file, G_FILE_TEST_IS_REGULAR))
+        {
+          g_free (channel_file);
+          break;
+        }
+
+      if (g_unlink (channel_file) != 0)
+        {
+          g_warning ("HyScanDBFile: can't remove file %s", channel_file);
+          status = FALSE;
+        }
+      g_free (channel_file);
+
+      if (!status)
+        return status;
+    }
+
+  /* Удаляем файлы данных. */
+  for (i = 0; i < MAX_PARTS; i++)
+    {
+      channel_file = g_strdup_printf ("%s%s%s.%06d.d", path, G_DIR_SEPARATOR_S, name, i);
+
+      /* Если файлы закончились - выходим. */
+      if (!g_file_test (channel_file, G_FILE_TEST_IS_REGULAR))
+        {
+          g_free (channel_file);
+          break;
+        }
+
+      if (g_unlink (channel_file) != 0)
+        {
+          g_warning ("HyScanDBFile: can't remove file %s", channel_file);
+          status = FALSE;
+        }
+      g_free (channel_file);
+
+      if (!status)
+        return status;
+    }
+
+  return status;
 }

@@ -27,9 +27,6 @@
 
 #define HYSCAN_DB_FILE_API     20160400                /* Версия API файловой базы данных. */
 
-#define MAX_CHANNEL_PARTS      999999                  /* Максимальное число частей канала - число файлов,
-                                                          должно совпадать с MAX_PARTS в файле hyscan-db-channel-file.c. */
-
 /* Свойства HyScanDBFile. */
 enum
 {
@@ -158,8 +155,6 @@ static gboolean        hyscan_db_channel_test                  (const gchar     
 static gchar         **hyscan_db_file_get_directory_param_list (const gchar           *path);
 
 static gboolean        hyscan_db_file_remove_directory         (const gchar           *path);
-static gboolean        hyscan_db_file_remove_channel_files     (const gchar           *path,
-                                                                const gchar           *name);
 
 G_DEFINE_TYPE_WITH_CODE (HyScanDBFile, hyscan_db_file, G_TYPE_OBJECT,
                          G_ADD_PRIVATE (HyScanDBFile)
@@ -628,64 +623,6 @@ hyscan_db_file_remove_directory (const gchar *path)
     {
       g_warning ("HyScanDBFile: can't remove directory %s", path);
       status = FALSE;
-    }
-
-  return status;
-}
-
-/* Функция удаляет все файлы в каталоге path относящиеся к каналу name. */
-static gboolean
-hyscan_db_file_remove_channel_files (const gchar *path,
-                                     const gchar *name)
-{
-  gboolean status = TRUE;
-  gchar *channel_file = NULL;
-  gint i;
-
-  /* Удаляем файлы индексов. */
-  for (i = 0; i < MAX_CHANNEL_PARTS; i++)
-    {
-      channel_file = g_strdup_printf ("%s%s%s.%06d.i", path, G_DIR_SEPARATOR_S, name, i);
-
-      /* Если файлы закончились - выходим. */
-      if (!g_file_test (channel_file, G_FILE_TEST_IS_REGULAR))
-        {
-          g_free (channel_file);
-          break;
-        }
-
-      if (g_unlink (channel_file) != 0)
-        {
-          g_warning ("HyScanDBFile: can't remove file %s", channel_file);
-          status = FALSE;
-        }
-      g_free (channel_file);
-
-      if (!status)
-        return status;
-    }
-
-  /* Удаляем файлы данных. */
-  for (i = 0; i < MAX_CHANNEL_PARTS; i++)
-    {
-      channel_file = g_strdup_printf ("%s%s%s.%06d.d", path, G_DIR_SEPARATOR_S, name, i);
-
-      /* Если файлы закончились - выходим. */
-      if (!g_file_test (channel_file, G_FILE_TEST_IS_REGULAR))
-        {
-          g_free (channel_file);
-          break;
-        }
-
-      if (g_unlink (channel_file) != 0)
-        {
-          g_warning ("HyScanDBFile: can't remove file %s", channel_file);
-          status = FALSE;
-        }
-      g_free (channel_file);
-
-      if (!status)
-        return status;
     }
 
   return status;
@@ -1827,7 +1764,7 @@ hyscan_db_file_channel_remove (HyScanDB    *db,
   g_free (track_param_file);
 
   /* Удаляем файлы канала данных. */
-  status = hyscan_db_file_remove_channel_files (track_info->path, channel_name);
+  status = hyscan_db_channel_remove_channel_files (track_info->path, channel_name);
   g_atomic_int_inc (&track_info->mod_count);
 
 exit:
