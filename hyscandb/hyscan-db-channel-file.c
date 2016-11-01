@@ -25,7 +25,7 @@
 #define DATA_FILE_HEADER_SIZE  8                       /* Размер заголовка файла данных. */
 
 #define MIN_DATA_FILE_SIZE     1*1024*1024             /* Минимально возможный размер файла части данных. */
-#define MAX_DATA_FILE_SIZE     1024*1024*1024*1024L    /* Максимально возможный размер файла части данных. */
+#define MAX_DATA_FILE_SIZE     1024*1024*1024*1024LL   /* Максимально возможный размер файла части данных. */
 #define DEFAULT_DATA_FILE_SIZE 1024*1024*1024          /* Размер файла части данных по умолчанию. */
 
 enum
@@ -1488,7 +1488,7 @@ hyscan_db_channel_file_set_channel_chunk_size (HyScanDBChannelFile *channel,
     chunk_size = DEFAULT_DATA_FILE_SIZE;
 
   /* Проверяем новый размер файла. */
-  if (chunk_size < MIN_DATA_FILE_SIZE || chunk_size > MAX_DATA_FILE_SIZE)
+  if ((chunk_size < MIN_DATA_FILE_SIZE) || (chunk_size > MAX_DATA_FILE_SIZE))
     return FALSE;
 
   /* Устанавливаем новый размер. */
