@@ -32,7 +32,7 @@ hyscan_db_get_uri (HyScanDB *db)
   return NULL;
 }
 
-guint64
+guint32
 hyscan_db_get_mod_count (HyScanDB *db,
                          gint32    id)
 {

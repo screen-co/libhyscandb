@@ -201,7 +201,7 @@ hyscan_db_server_rpc_proc_get_mod_count (guint32   session,
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
   gint32 id;
-  guint64 mod_count;
+  guint32 mod_count;
 
   if (priv->acl != NULL && !priv->acl ("get_mod_count", key_data))
     hyscan_db_server_acl_error ();
@@ -210,7 +210,7 @@ hyscan_db_server_rpc_proc_get_mod_count (guint32   session,
     hyscan_db_server_get_error ("id");
 
   mod_count = hyscan_db_get_mod_count (priv->db, id);
-  if (urpc_data_set_uint64 (urpc_data, HYSCAN_DB_RPC_PARAM_MOD_COUNT, mod_count) != 0)
+  if (urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_MOD_COUNT, mod_count) != 0)
     hyscan_db_server_set_error ("mod_count");
 
   rpc_status = HYSCAN_DB_RPC_STATUS_OK;

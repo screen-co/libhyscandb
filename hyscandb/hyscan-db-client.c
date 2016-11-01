@@ -203,7 +203,7 @@ exit:
   return uri;
 }
 
-guint64
+guint32
 hyscan_db_client_get_mod_count (HyScanDB *db,
                                 gint32    id)
 {
@@ -213,7 +213,7 @@ hyscan_db_client_get_mod_count (HyScanDB *db,
   uRpcData *urpc_data;
   guint32 exec_status;
 
-  guint64 mod_count;
+  guint32 mod_count;
 
   if (priv->rpc == NULL)
     return 0;
@@ -233,7 +233,7 @@ hyscan_db_client_get_mod_count (HyScanDB *db,
   if (exec_status != HYSCAN_DB_RPC_STATUS_OK)
     goto exit;
 
-  if (urpc_data_get_uint64 (urpc_data, HYSCAN_DB_RPC_PARAM_MOD_COUNT, &mod_count) != 0)
+  if (urpc_data_get_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_MOD_COUNT, &mod_count) != 0)
     {
       mod_count = 0;
       hyscan_db_client_get_error ("mod_count");

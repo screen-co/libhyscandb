@@ -169,7 +169,7 @@ struct _HyScanDBInterface
 
   gchar               *(*get_uri)                              (HyScanDB              *db);
 
-  guint64              (*get_mod_count)                        (HyScanDB              *db,
+  guint32              (*get_mod_count)                        (HyScanDB              *db,
                                                                 gint32                 id);
 
   gboolean             (*is_exist)                             (HyScanDB              *db,
@@ -383,7 +383,7 @@ gchar                 *hyscan_db_get_uri                       (HyScanDB        
  *
  */
 HYSCAN_API
-guint64                hyscan_db_get_mod_count                 (HyScanDB              *db,
+guint32                hyscan_db_get_mod_count                 (HyScanDB              *db,
                                                                 gint32                 id);
 
 /**

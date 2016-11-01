@@ -707,7 +707,7 @@ hyscan_db_file_get_uri (HyScanDB *db)
 }
 
 /* Функция возвращает номер изменения в объекте. */
-static guint64
+static guint32
 hyscan_db_file_get_mod_count (HyScanDB *db,
                               gint32    id)
 {
