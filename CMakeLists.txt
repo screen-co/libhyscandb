@@ -48,7 +48,7 @@ include_directories ("${CMAKE_CURRENT_SOURCE_DIR}/../libhyscantypes/hyscantypes"
 
 link_directories ("${CMAKE_CURRENT_SOURCE_DIR}/../urpc/bin")
 link_directories ("${CMAKE_CURRENT_SOURCE_DIR}/../libhyscantypes/bin")
-set (ADDON_LIBRARIES urpc hyscantypes)
+set (HYSCAN_LIBRARIES urpc hyscantypes)
 
 add_definitions (-DG_LOG_DOMAIN="HyScanDB")
 add_subdirectory ("hyscandb")
