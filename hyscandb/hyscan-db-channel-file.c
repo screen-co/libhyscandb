@@ -16,13 +16,13 @@
 
 #define INDEX_FILE_MAGIC       0x58495348              /* HSIX в виде строки. */
 #define DATA_FILE_MAGIC        0x54445348              /* HSDT в виде строки. */
-#define FILE_VERSION           0x37303531              /* 1507 в виде строки. */
+#define FILE_VERSION           0x31303731              /* 1701 в виде строки. */
 
 #define MAX_PARTS              999999                  /* Максимальное число частей данных. */
 #define CACHED_INDEXES         2048                    /* Число кэшированных индексов. */
 
-#define INDEX_FILE_HEADER_SIZE 12                      /* Размер заголовка файла индексов. */
-#define DATA_FILE_HEADER_SIZE  8                       /* Размер заголовка файла данных. */
+#define INDEX_FILE_HEADER_SIZE 20                      /* Размер заголовка файла индексов. */
+#define DATA_FILE_HEADER_SIZE  16                      /* Размер заголовка файла данных. */
 
 #define MIN_DATA_FILE_SIZE     1*1024*1024             /* Минимально возможный размер файла части данных. */
 #define MAX_DATA_FILE_SIZE     1024*1024*1024*1024LL   /* Максимально возможный размер файла части данных. */
@@ -36,16 +36,24 @@ enum
   PROP_READONLY
 };
 
+/* Заголовок файлов данных и индексов. */
+typedef struct
+{
+  guint32              magic;                  /* Идентификатор файла. */
+  guint32              version;                /* Версия API системы хранения. */
+  gint64               ctime;                  /* Дата создания. */
+} HyScanDBChannelFileID;
+
 /* Информация о части списка данных. */
 typedef struct
 {
-  gint32                       data_size;              /* Размер файла данных этой части. */
+  guint64                      data_size;              /* Размер файла данных этой части. */
 
   gint64                       create_time;            /* Время создания этой части данных. */
   gint64                       last_append_time;       /* Время последней записи данных в эту часть. */
 
-  gint32                       begin_index;            /* Начальный индекс данных в этой части. */
-  gint32                       end_index;              /* Конечный индекс данных в этой части. */
+  guint32                      begin_index;            /* Начальный индекс данных в этой части. */
+  guint32                      end_index;              /* Конечный индекс данных в этой части. */
 
   gint64                       begin_time;             /* Начальное время данных в этой части. */
   gint64                       end_time;               /* Конечное время данных в этой части. */
@@ -63,8 +71,9 @@ typedef struct
 typedef struct
 {
   gint64                       time;                   /* Время приёма данных, в микросекундах. */
-  guint32                      offset;                 /* Смещение до начала данных. */
+  guint64                      offset;                 /* Смещение до начала данных. */
   guint32                      size;                   /* Размер данных. */
+  guint32                      pad;                    /* Выравнивание. */
 } HyScanDBChannelFileIndexRec;
 
 /* Информация о записи. */
@@ -72,10 +81,10 @@ typedef struct _HyScanDBChannelFileIndex HyScanDBChannelFileIndex;
 struct _HyScanDBChannelFileIndex
 {
   HyScanDBChannelFilePart     *part;                   /* Номер части с данными. */
-  gint32                       index;                  /* Значение индекса. */
+  guint32                      index;                  /* Значение индекса. */
 
   gint64                       time;                   /* Время приёма данных, в микросекундах. */
-  gint32                       offset;                 /* Смещение до начала данных. */
+  guint64                      offset;                 /* Смещение до начала данных. */
   guint32                      size;                   /* Размер данных. */
 
                                                        /* Структуры индексов связаны между собой
@@ -89,6 +98,7 @@ struct _HyScanDBChannelFilePrivate
 {
   gchar                       *path;                   /* Путь к каталогу с файлами данных канала. */
   gchar                       *name;                   /* Название канала. */
+  gint64                       ctime;                  /* Дата и время создания канала данных. */
 
   guint64                      max_data_file_size;     /* Максимальный размер файла части данных. */
   guint64                      save_size;              /* Максимальный объём всех сохраняемых данных. */
@@ -125,7 +135,7 @@ static void                      hyscan_db_channel_file_object_finalize     (GOb
 static gboolean                  hyscan_db_channel_file_add_part            (HyScanDBChannelFilePrivate  *priv);
 static gboolean                  hyscan_db_channel_file_remove_old_part     (HyScanDBChannelFilePrivate  *priv);
 static HyScanDBChannelFileIndex *hyscan_db_channel_file_read_index          (HyScanDBChannelFilePrivate  *priv,
-                                                                             gint32                       index);
+                                                                             guint32                      index);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanDBChannelFile, hyscan_db_channel_file, G_TYPE_OBJECT);
 
@@ -254,29 +264,29 @@ hyscan_db_channel_file_object_constructed (GObject *object)
   while (TRUE)
     {
       HyScanDBChannelFilePart *fpart;
+      HyScanDBChannelFileID id;
 
       gchar *fname;
       GFileInfo *finfo = NULL;
 
       GFile *fdi = NULL;
       GInputStream *ifdi = NULL;
-      guint32 index_file_size;
+      guint64 index_file_size;
 
       GFile *fdd = NULL;
       GInputStream *ifdd = NULL;
-      guint32 data_file_size;
+      guint64 data_file_size;
 
       guint64 begin_time;
       guint64 end_time;
 
       HyScanDBChannelFileIndexRec rec_index;
-      gint32 begin_index;
-      gint32 end_index;
+      guint32 begin_index;
+      guint32 end_index;
 
       GError *error;
       goffset offset;
       gssize iosize;
-      gint32 value;
 
       /* Файл индексов. */
       fname = g_strdup_printf ("%s%s%s.%06d.i", priv->path, G_DIR_SEPARATOR_S, priv->name, priv->n_parts);
@@ -364,10 +374,10 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       data_file_size = g_file_info_get_size (finfo);
       g_object_unref (finfo);
 
-      /* Считываем идентификатор файла индексов. */
+      /* Считываем заголовок файла индексов. */
       error = NULL;
-      iosize = sizeof (gint32);
-      if (g_input_stream_read (ifdi, &value, iosize, NULL, &error) != iosize)
+      iosize = sizeof (HyScanDBChannelFileID);
+      if (g_input_stream_read (ifdi, &id, iosize, NULL, &error) != iosize)
         {
           g_warning ("HyScanDBChannelFile: channel '%s': part %d: %s",
                       priv->name, priv->n_parts, error->message);
@@ -375,19 +385,19 @@ hyscan_db_channel_file_object_constructed (GObject *object)
           goto break_open;
         }
 
-      /* Проверяем идентификатор файла индексов. */
-      value = GINT32_FROM_LE (value);
-      if (value != INDEX_FILE_MAGIC)
+      /* Проверяем заголовок файла индексов. */
+      if ((GUINT32_FROM_LE (id.magic) != INDEX_FILE_MAGIC) ||
+          (GUINT32_FROM_LE (id.version) != FILE_VERSION))
         {
           g_warning ("HyScanDBChannelFile: channel '%s': part %d: unknown file format",
                       priv->name, priv->n_parts);
           goto break_open;
         }
 
-      /* Считываем версию файла индексов. */
+      /* Считываем заголовок файла данных. */
       error = NULL;
-      iosize = sizeof (gint32);
-      if (g_input_stream_read (ifdi, &value, iosize, NULL, &error) != iosize)
+      iosize = sizeof (HyScanDBChannelFileID);
+      if (g_input_stream_read (ifdd, &id, iosize, NULL, &error) != iosize)
         {
           g_warning ("HyScanDBChannelFile: channel '%s': part %d: %s",
                       priv->name, priv->n_parts, error->message);
@@ -395,59 +405,19 @@ hyscan_db_channel_file_object_constructed (GObject *object)
           goto break_open;
         }
 
-      /* Проверяем версию файла индексов. */
-      value = GINT32_FROM_LE (value);
-      if (value != FILE_VERSION)
+      /* Проверяем заголовок файла данных. */
+      if ((GUINT32_FROM_LE (id.magic) != DATA_FILE_MAGIC) ||
+          (GUINT32_FROM_LE (id.version) != FILE_VERSION))
         {
           g_warning ("HyScanDBChannelFile: channel '%s': part %d: unknown file format",
-                      priv->name, priv->n_parts);
-          goto break_open;
-        }
-
-      /* Считываем идентификатор файла данных. */
-      error = NULL;
-      iosize = sizeof (gint32);
-      if (g_input_stream_read (ifdd, &value, iosize, NULL, &error) != iosize)
-        {
-          g_warning ("HyScanDBChannelFile: channel '%s': part %d: %s",
-                      priv->name, priv->n_parts, error->message);
-          g_error_free (error);
-          goto break_open;
-        }
-
-      /* Проверяем идентификатор файла данных. */
-      value = GINT32_FROM_LE (value);
-      if (value != DATA_FILE_MAGIC)
-        {
-          g_warning ("HyScanDBChannelFile: channel '%s': part %d: invalid file version",
-                      priv->name, priv->n_parts);
-          goto break_open;
-        }
-
-      /* Считываем версию файла данных. */
-      error = NULL;
-      iosize = sizeof (gint32);
-      if (g_input_stream_read (ifdd, &value, iosize, NULL, &error) != iosize)
-        {
-          g_warning ("HyScanDBChannelFile: channel '%s': part %d: %s",
-                      priv->name, priv->n_parts, error->message);
-          g_error_free (error);
-          goto break_open;
-        }
-
-      /* Проверяем версию файла данных. */
-      value = GINT32_FROM_LE (value);
-      if (value != FILE_VERSION)
-        {
-          g_warning ("HyScanDBChannelFile: channel '%s': part %d: invalid file version",
                       priv->name, priv->n_parts);
           goto break_open;
         }
 
       /* Считываем начальный номер индекса части данных. */
       error = NULL;
-      iosize = sizeof (gint32);
-      if (g_input_stream_read (ifdi, &value, iosize, NULL, &error) != iosize)
+      iosize = sizeof (guint32);
+      if (g_input_stream_read (ifdi, &begin_index, iosize, NULL, &error) != iosize)
         {
           g_warning ("HyScanDBChannelFile: channel '%s': part %d: %s",
                       priv->name, priv->n_parts, error->message);
@@ -456,15 +426,14 @@ hyscan_db_channel_file_object_constructed (GObject *object)
         }
 
       /* Проверяем начальный номер индекса части данных. */
-      value = GINT32_FROM_LE (value);
-      if (value < 0 || (priv->n_parts > 0 && value != priv->parts[priv->n_parts - 1]->end_index + 1))
+      begin_index = GUINT32_FROM_LE (begin_index);
+      if ((priv->n_parts > 0) && (begin_index != priv->parts[priv->n_parts - 1]->end_index + 1))
         {
           g_warning ("HyScanDBChannelFile: channel '%s': part %d: invalid index",
                       priv->name, priv->n_parts);
           goto break_open;
         }
 
-      begin_index = value;
       end_index = begin_index + ((index_file_size - INDEX_FILE_HEADER_SIZE) / sizeof (HyScanDBChannelFileIndexRec)) - 1;
 
       /* Считываем первый индекс части данных. */
@@ -519,7 +488,7 @@ hyscan_db_channel_file_object_constructed (GObject *object)
 
       /* Проверяем размер файла с данными - он должен быть равен смещению до данных
          по последнему индексу + размер данных. */
-      if (data_file_size != (GUINT32_FROM_LE (rec_index.offset) + GUINT32_FROM_LE (rec_index.size)))
+      if (data_file_size != (GUINT64_FROM_LE (rec_index.offset) + GUINT32_FROM_LE (rec_index.size)))
         {
           g_warning ("HyScanDBChannelFile: channel '%s': part %d: invalid data file size",
                       priv->name, priv->n_parts);
@@ -534,6 +503,9 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       fpart = g_new (HyScanDBChannelFilePart, 1);
       priv->parts[priv->n_parts - 1] = fpart;
       priv->parts[priv->n_parts] = NULL;
+
+      if (priv->ctime == 0)
+        priv->ctime = GUINT64_FROM_LE (id.ctime);
 
       fpart->fdi = fdi;
       fpart->fdd = fdd;
@@ -564,14 +536,10 @@ hyscan_db_channel_file_object_constructed (GObject *object)
       /* Если не прочитали ни одной части - печалька... */
       if (priv->n_parts == 0)
         priv->fail = TRUE;
-      if (ifdi != NULL)
-        g_object_unref (ifdi);
-      if (ifdd != NULL)
-        g_object_unref (ifdd);
-      if (fdi != NULL)
-        g_object_unref (fdi);
-      if (fdd != NULL)
-        g_object_unref (fdd);
+      g_clear_object (&ifdi);
+      g_clear_object (&ifdd);
+      g_clear_object (&fdi);
+      g_clear_object (&fdd);
       break;
     }
 
@@ -600,18 +568,12 @@ hyscan_db_channel_file_object_finalize (GObject *object)
   /* Освобождаем структуры с информацией о частях данных. */
   for (i = 0; i < priv->n_parts; i++)
     {
-      if (priv->parts[i]->ofdi != NULL)
-        g_object_unref (priv->parts[i]->ofdi);
-      if (priv->parts[i]->ofdd != NULL)
-        g_object_unref (priv->parts[i]->ofdd);
-      if (priv->parts[i]->ifdi != NULL)
-        g_object_unref (priv->parts[i]->ifdi);
-      if (priv->parts[i]->ifdd != NULL)
-        g_object_unref (priv->parts[i]->ifdd);
-      if (priv->parts[i]->fdi != NULL)
-        g_object_unref (priv->parts[i]->fdi);
-      if (priv->parts[i]->fdd != NULL)
-        g_object_unref (priv->parts[i]->fdd);
+      g_clear_object (&priv->parts[i]->ofdi);
+      g_clear_object (&priv->parts[i]->ofdd);
+      g_clear_object (&priv->parts[i]->ifdi);
+      g_clear_object (&priv->parts[i]->ifdd);
+      g_clear_object (&priv->parts[i]->fdi);
+      g_clear_object (&priv->parts[i]->fdd);
       g_free (priv->parts[i]);
     }
   g_free (priv->parts);
@@ -630,12 +592,13 @@ hyscan_db_channel_file_add_part (HyScanDBChannelFilePrivate *priv)
 {
   gchar *fname;
   HyScanDBChannelFilePart *fpart;
+  HyScanDBChannelFileID id;
 
-  gint32 begin_index = 0;
+  guint32 begin_index = 0;
+  gint64 ctime;
 
   GError *error;
   gssize iosize;
-  gint32 value;
 
   if (priv->readonly)
     {
@@ -646,10 +609,8 @@ hyscan_db_channel_file_add_part (HyScanDBChannelFilePrivate *priv)
   /* Закрываем потоки вывода текущей части. */
   if (priv->n_parts > 0)
     {
-      g_object_unref (priv->parts[priv->n_parts - 1]->ofdi);
-      g_object_unref (priv->parts[priv->n_parts - 1]->ofdd);
-      priv->parts[priv->n_parts - 1]->ofdi = NULL;
-      priv->parts[priv->n_parts - 1]->ofdd = NULL;
+      g_clear_object (&priv->parts[priv->n_parts - 1]->ofdi);
+      g_clear_object (&priv->parts[priv->n_parts - 1]->ofdd);
     }
 
   /* Всего частей может быть не более MAX_PARTS. */
@@ -733,12 +694,15 @@ hyscan_db_channel_file_add_part (HyScanDBChannelFilePrivate *priv)
   fpart->begin_time = 0;
   fpart->end_time = 0;
 
-  iosize = sizeof (gint32);
+  /* Запись заголовка файла индексов. */
+  ctime = g_get_real_time () / G_USEC_PER_SEC;
+  id.magic = GUINT32_TO_LE (INDEX_FILE_MAGIC);
+  id.version = GUINT32_TO_LE (FILE_VERSION);
+  id.ctime = GUINT64_TO_LE (ctime);
 
-  /* Запись идентификатора файла индексов. */
   error = NULL;
-  value = GINT32_TO_LE (INDEX_FILE_MAGIC);
-  if (g_output_stream_write (fpart->ofdi, &value, iosize, NULL, &error) != iosize)
+  iosize = sizeof (HyScanDBChannelFileID);
+  if (g_output_stream_write (fpart->ofdi, &id, iosize, NULL, &error) != iosize)
     {
       g_warning ("HyScanDBChannelFile: channel '%s': can't write index header (%s)",
                   priv->name, error->message);
@@ -747,22 +711,12 @@ hyscan_db_channel_file_add_part (HyScanDBChannelFilePrivate *priv)
       return FALSE;
     }
 
-  /* Запись версии файла индексов. */
-  error = NULL;
-  value = GINT32_TO_LE (FILE_VERSION);
-  if (g_output_stream_write (fpart->ofdi, &value, iosize, NULL, &error) != iosize)
-    {
-      g_warning ("HyScanDBChannelFile: channel '%s': can't write index version (%s)",
-                  priv->name, error->message);
-      g_error_free (error);
-      priv->fail = TRUE;
-      return FALSE;
-    }
-
   /* Запись значения начального индекса. */
+  begin_index = GUINT32_TO_LE (begin_index);
+
   error = NULL;
-  value = GINT32_TO_LE (begin_index);
-  if (g_output_stream_write (fpart->ofdi, &value, iosize, NULL, &error) != iosize)
+  iosize = sizeof (guint32);
+  if (g_output_stream_write (fpart->ofdi, &begin_index, iosize, NULL, &error) != iosize)
     {
       g_warning ("HyScanDBChannelFile: channel '%s': can't write start index value (%s)",
                   priv->name, error->message);
@@ -771,24 +725,17 @@ hyscan_db_channel_file_add_part (HyScanDBChannelFilePrivate *priv)
       return FALSE;
     }
 
-  /* Запись идентификатора файла данных. */
+  /* Запись заголовка файла данных. */
+  ctime = g_get_real_time () / G_USEC_PER_SEC;
+  id.magic = GUINT32_TO_LE (DATA_FILE_MAGIC);
+  id.version = GUINT32_TO_LE (FILE_VERSION);
+  id.ctime = GUINT64_TO_LE (ctime);
+
   error = NULL;
-  value = GINT32_TO_LE (DATA_FILE_MAGIC);
-  if (g_output_stream_write (fpart->ofdd, &value, iosize, NULL, &error) != iosize)
+  iosize = sizeof (HyScanDBChannelFileID);
+  if (g_output_stream_write (fpart->ofdd, &id, iosize, NULL, &error) != iosize)
     {
       g_warning ("HyScanDBChannelFile: channel '%s': can't write data header (%s)",
-                  priv->name, error->message);
-      g_error_free (error);
-      priv->fail = TRUE;
-      return FALSE;
-    }
-
-  /* Запись версии файла данных. */
-  error = NULL;
-  value = GINT32_TO_LE (FILE_VERSION);
-  if (g_output_stream_write (fpart->ofdd, &value, iosize, NULL, &error) != iosize)
-    {
-      g_warning ("HyScanDBChannelFile: channel '%s': can't write data version (%s)",
                   priv->name, error->message);
       g_error_free (error);
       priv->fail = TRUE;
@@ -911,9 +858,9 @@ hyscan_db_channel_file_remove_old_part (HyScanDBChannelFilePrivate *priv)
    если не находит его производит чтение из файла.*/
 static HyScanDBChannelFileIndex *
 hyscan_db_channel_file_read_index (HyScanDBChannelFilePrivate *priv,
-                                   gint32                      index)
+                                   guint32                     index)
 {
-  HyScanDBChannelFileIndex *db_index = g_hash_table_lookup (priv->cached_indexes, GINT_TO_POINTER (index));
+  HyScanDBChannelFileIndex *db_index = g_hash_table_lookup (priv->cached_indexes, GUINT_TO_POINTER (index));
 
   HyScanDBChannelFileIndexRec rec_index;
 
@@ -992,8 +939,8 @@ hyscan_db_channel_file_read_index (HyScanDBChannelFilePrivate *priv,
   db_index->part = priv->parts[i];
   db_index->index = index;
   db_index->time = GINT64_FROM_LE (rec_index.time);
-  db_index->offset = GINT32_FROM_LE (rec_index.offset);
-  db_index->size = GINT32_FROM_LE (rec_index.size);
+  db_index->offset = GUINT64_FROM_LE (rec_index.offset);
+  db_index->size = GUINT32_FROM_LE (rec_index.size);
 
   /* Помещаем в начало цепочки. */
   db_index->prev = NULL;
@@ -1013,13 +960,23 @@ hyscan_db_channel_file_new (const gchar *path,
   return g_object_new (HYSCAN_TYPE_DB_CHANNEL_FILE, "path", path, "name", name, "readonly", readonly, NULL);
 }
 
+/* Функция возвращает дату и время создания канала данных. */
+gint64
+hyscan_db_channel_file_get_ctime (HyScanDBChannelFile *channel)
+{
+  g_return_val_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel), 0);
+
+  return channel->priv->ctime;
+}
+
 /* Функция возвращает диапазон текущих значений индексов данных. */
 gboolean
 hyscan_db_channel_file_get_channel_data_range (HyScanDBChannelFile *channel,
-                                               gint32              *first_index,
-                                               gint32              *last_index)
+                                               guint32             *first_index,
+                                               guint32             *last_index)
 {
   HyScanDBChannelFilePrivate *priv;
+  gboolean status = FALSE;
 
   g_return_val_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel), FALSE);
 
@@ -1032,19 +989,19 @@ hyscan_db_channel_file_get_channel_data_range (HyScanDBChannelFile *channel,
 
   /* Нет данных. */
   if (priv->n_parts == 0)
-    {
-      g_mutex_unlock (&priv->lock);
-      return FALSE;
-    }
+    goto exit;
 
   if (first_index != NULL)
     *first_index = priv->parts[0]->begin_index;
   if (last_index != NULL)
     *last_index = priv->parts[priv->n_parts - 1]->end_index;
 
+  status = TRUE;
+
+exit:
   g_mutex_unlock (&priv->lock);
 
-  return TRUE;
+  return status;
 }
 
 /* Функция записывает новые данные. */
@@ -1053,7 +1010,7 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
                                          gint64               time,
                                          gconstpointer        data,
                                          guint32              size,
-                                         gint32              *index)
+                                         guint32             *index)
 {
   HyScanDBChannelFilePrivate *priv;
 
@@ -1061,7 +1018,8 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
   HyScanDBChannelFileIndex *db_index;
   HyScanDBChannelFileIndexRec rec_index;
 
-  GError *error;
+  gboolean status = FALSE;
+  GError *error = NULL;
   gssize iosize;
 
   g_return_val_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel), FALSE);
@@ -1091,8 +1049,7 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
   if (!hyscan_db_channel_file_remove_old_part (priv))
     {
       priv->fail = TRUE;
-      g_mutex_unlock (&priv->lock);
-      return FALSE;
+      goto exit;
     }
 
   /* Записанных данных еще нет. */
@@ -1105,8 +1062,7 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
         }
       else
         {
-          g_mutex_unlock (&priv->lock);
-          return FALSE;
+          goto exit;
         }
     }
   /* Уже есть записанные данные. */
@@ -1116,11 +1072,10 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
       fpart = priv->parts[priv->n_parts - 1];
 
       /* Проверяем, что не превысили максимального числа записей. */
-      if (fpart->end_index == G_MAXINT32)
+      if (fpart->end_index == G_MAXUINT32)
         {
           g_warning ("HyScanDBChannelFile: channel '%s': too many records", priv->name);
-          g_mutex_unlock (&priv->lock);
-          return FALSE;
+          goto exit;
         }
 
       /* Проверяем записываемое время. */
@@ -1132,8 +1087,7 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
                      time / 1000000, time % 1000000,
                      fpart->end_time / 1000000, fpart->end_time % 1000000);
 
-          g_mutex_unlock (&priv->lock);
-          return FALSE;
+          goto exit;
         }
 
       /* Если при записи данных будет превышен максимальный размер файла или
@@ -1151,8 +1105,7 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
             }
           else
             {
-              g_mutex_unlock (&priv->lock);
-              return FALSE;
+              goto exit;
             }
         }
       /* Записываем данные в текущую часть.
@@ -1169,28 +1122,23 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
 
   /* Структура нового индекса. */
   rec_index.time = GINT64_TO_LE (time);
-  rec_index.offset = GINT32_TO_LE (fpart->data_size);
-  rec_index.size = GINT32_TO_LE (size);
+  rec_index.offset = GUINT64_TO_LE (fpart->data_size);
+  rec_index.size = GUINT32_TO_LE (size);
 
   /* Записываем индекс. */
-  error = NULL;
   iosize = sizeof (HyScanDBChannelFileIndexRec);
   if (g_output_stream_write (fpart->ofdi, &rec_index, iosize, NULL, &error) != iosize)
     {
       g_warning ("HyScanDBChannelFile: channel '%s': %s", priv->name, error->message);
-      g_error_free (error);
-      g_mutex_unlock (&priv->lock);
       priv->fail = TRUE;
-      return FALSE;
+      goto exit;
     }
 
   if (!g_output_stream_flush (fpart->ofdi, NULL, &error))
     {
       g_warning ("HyScanDBChannelFile: channel '%s': %s", priv->name, error->message);
-      g_error_free (error);
-      g_mutex_unlock (&priv->lock);
       priv->fail = TRUE;
-      return FALSE;
+      goto exit;
     }
 
   /* Записываем данные. */
@@ -1199,19 +1147,15 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
   if (g_output_stream_write (fpart->ofdd, data, iosize, NULL, &error) != iosize)
     {
       g_warning ("HyScanDBChannelFile: channel '%s': %s", priv->name, error->message);
-      g_error_free (error);
-      g_mutex_unlock (&priv->lock);
       priv->fail = TRUE;
-      return FALSE;
+      goto exit;
     }
 
   if (!g_output_stream_flush (fpart->ofdd, NULL, &error))
     {
       g_warning ("HyScanDBChannelFile: channel '%s': %s", priv->name, error->message);
-      g_error_free (error);
-      g_mutex_unlock (&priv->lock);
       priv->fail = TRUE;
-      return FALSE;
+      goto exit;
     }
 
   /* Записанный индекс. */
@@ -1232,8 +1176,8 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
   db_index->part = fpart;
   db_index->index = fpart->end_index;
   db_index->time = GINT64_FROM_LE (rec_index.time);
-  db_index->offset = GINT32_FROM_LE (rec_index.offset);
-  db_index->size = GINT32_FROM_LE (rec_index.size);
+  db_index->offset = GUINT64_FROM_LE (rec_index.offset);
+  db_index->size = GUINT32_FROM_LE (rec_index.size);
 
   /* Помещаем в начало цепочки. */
   db_index->prev = NULL;
@@ -1241,15 +1185,19 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
   db_index->next->prev = db_index;
   priv->first_cached_index = db_index;
 
-  g_mutex_unlock (&priv->lock);
+  status = TRUE;
 
-  return TRUE;
+exit:
+  g_mutex_unlock (&priv->lock);
+  g_clear_pointer (&error, g_error_free);
+
+  return status;
 }
 
 /* Функция считывает данные. */
 gboolean
 hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
-                                         gint32               index,
+                                         guint32              index,
                                          gpointer             buffer,
                                          guint32             *buffer_size,
                                          gint64              *time)
@@ -1258,7 +1206,8 @@ hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
 
   HyScanDBChannelFileIndex *db_index;
 
-  GError *error;
+  gboolean status = FALSE;
+  GError *error = NULL;
   gssize iosize;
 
   g_return_val_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel), FALSE);
@@ -1275,10 +1224,7 @@ hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
 
   /* Такого индекса нет. */
   if (db_index == NULL)
-    {
-      g_mutex_unlock (&priv->lock);
-      return FALSE;
-    }
+    goto exit;
 
   /* Считываем данные. */
   if (buffer != NULL)
@@ -1288,10 +1234,8 @@ hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
       if (!g_seekable_seek (G_SEEKABLE (db_index->part->ifdd), db_index->offset, G_SEEK_SET, NULL, &error))
         {
           g_warning ("HyScanDBChannelFile: channel '%s': %s", priv->name, error->message);
-          g_error_free (error);
-          g_mutex_unlock (&priv->lock);
           priv->fail = TRUE;
-          return FALSE;
+          goto exit;
         }
 
       /* Считываем данные. */
@@ -1300,10 +1244,8 @@ hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
       if (g_input_stream_read (db_index->part->ifdd, buffer, iosize, NULL, &error) != iosize)
         {
           g_warning ("HyScanDBChannelFile: channel '%s': %s", priv->name, error->message);
-          g_error_free (error);
-          g_mutex_unlock (&priv->lock);
           priv->fail = TRUE;
-          return FALSE;
+          goto exit;
         }
     }
   else
@@ -1318,18 +1260,22 @@ hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
   /* Размер данных. */
   *buffer_size = iosize;
 
-  g_mutex_unlock (&priv->lock);
+  status = TRUE;
 
-  return TRUE;
+exit:
+  g_mutex_unlock (&priv->lock);
+  g_clear_pointer (&error, g_error_free);
+
+  return status;
 }
 
 
 /* Функция ищет данные по метке времени. */
-gboolean
+HyScanDBFindStatus
 hyscan_db_channel_file_find_channel_data (HyScanDBChannelFile *channel,
                                           gint64               time,
-                                          gint32              *lindex,
-                                          gint32              *rindex,
+                                          guint32             *lindex,
+                                          guint32             *rindex,
                                           gint64              *ltime,
                                           gint64              *rtime)
 {
@@ -1338,18 +1284,19 @@ hyscan_db_channel_file_find_channel_data (HyScanDBChannelFile *channel,
   gint64 begin_time;
   gint64 end_time;
 
-  gint32 begin_index;
-  gint32 end_index;
-  gint32 new_index;
+  guint32 begin_index;
+  guint32 end_index;
+  guint32 new_index;
 
   HyScanDBChannelFileIndex *db_index;
+  HyScanDBFindStatus status = HYSCAN_DB_FIND_FAIL;
 
   g_return_val_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel), FALSE);
 
   priv = channel->priv;
 
   if (priv->fail)
-    return FALSE;
+    return HYSCAN_DB_FIND_FAIL;
 
   g_mutex_lock (&priv->lock);
 
@@ -1363,31 +1310,15 @@ hyscan_db_channel_file_find_channel_data (HyScanDBChannelFile *channel,
   /* Проверяем границу начала данных. */
   if (time < priv->parts[0]->begin_time)
     {
-      if (lindex != NULL)
-        *lindex = G_MININT32;
-      if (rindex != NULL)
-        *rindex = priv->parts[0]->begin_index;
-      if (ltime != NULL)
-        *ltime = G_MININT64;
-      if (rtime != NULL)
-        *rtime = priv->parts[0]->begin_time;
-      g_mutex_unlock (&priv->lock);
-      return TRUE;
+      status = HYSCAN_DB_FIND_LESS;
+      goto exit;
     }
 
   /* Проверяем границу конца данных. */
   if (time > priv->parts[priv->n_parts - 1]->end_time)
     {
-      if (lindex != NULL)
-        *lindex = priv->parts[priv->n_parts - 1]->end_index;
-      if (rindex != NULL)
-        *rindex = G_MAXINT32;
-      if (ltime != NULL)
-        *ltime = priv->parts[priv->n_parts - 1]->end_time;
-      if (rtime != NULL)
-        *rtime = G_MAXINT64;
-      g_mutex_unlock (&priv->lock);
-      return TRUE;
+      status = HYSCAN_DB_FIND_GREATER;
+      goto exit;
     }
 
   begin_time = priv->parts[0]->begin_time;
@@ -1442,13 +1373,10 @@ hyscan_db_channel_file_find_channel_data (HyScanDBChannelFile *channel,
         }
 
       /* Делим отрезок. */
-      new_index = begin_index + (0.5 * (end_index - begin_index));
+      new_index = begin_index + ((end_index - begin_index) / 2);
       db_index = hyscan_db_channel_file_read_index (priv, new_index);
       if (db_index == NULL)
-        {
-          g_mutex_unlock (&priv->lock);
-          return FALSE;
-        }
+        goto exit;
 
       /* Корректируем границы поиска. */
       if (db_index->time <= time)
@@ -1464,9 +1392,12 @@ hyscan_db_channel_file_find_channel_data (HyScanDBChannelFile *channel,
         }
     }
 
+  status = HYSCAN_DB_FIND_OK;
+
+exit:
   g_mutex_unlock (&priv->lock);
 
-  return TRUE;
+  return status;
 }
 
 /* Функция устанавливает максимальный размер файла данных. */
@@ -1576,12 +1507,8 @@ hyscan_db_channel_file_finalize_channel (HyScanDBChannelFile *channel)
 
   for (i = 0; i < priv->n_parts; i++)
     {
-      if (priv->parts[i]->ofdi != NULL)
-        g_object_unref (priv->parts[i]->ofdi);
-      if (priv->parts[i]->ofdd != NULL)
-        g_object_unref (priv->parts[i]->ofdd);
-      priv->parts[i]->ofdi = NULL;
-      priv->parts[i]->ofdd = NULL;
+      g_clear_object (&priv->parts[i]->ofdi);
+      g_clear_object (&priv->parts[i]->ofdd);
     }
 
   priv->readonly = TRUE;

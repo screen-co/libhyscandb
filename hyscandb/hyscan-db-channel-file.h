@@ -59,7 +59,7 @@
 #ifndef __HYSCAN_DB_CHANNEL_FILE_H__
 #define __HYSCAN_DB_CHANNEL_FILE_H__
 
-#include <glib-object.h>
+#include "hyscan-db.h"
 
 G_BEGIN_DECLS
 
@@ -93,31 +93,33 @@ HyScanDBChannelFile *hyscan_db_channel_file_new            (const gchar         
                                                             const gchar         *name,
                                                             gboolean             readonly);
 
+/* Функция возвращает дату и время создания канала данных. */
+gint64     hyscan_db_channel_file_get_ctime                (HyScanDBChannelFile *channel);
+
 /* Функция возвращает диапазон текущих значений индексов данных. */
 gboolean   hyscan_db_channel_file_get_channel_data_range   (HyScanDBChannelFile *channel,
-                                                            gint32              *first_index,
-                                                            gint32              *last_index);
-
+                                                            guint32             *first_index,
+                                                            guint32             *last_index);
 
 /* Функция записывает новые данные. */
 gboolean   hyscan_db_channel_file_add_channel_data         (HyScanDBChannelFile *channel,
                                                             gint64               time,
                                                             gconstpointer        data,
                                                             guint32              size,
-                                                            gint32              *index);
+                                                            guint32             *index);
 
 /* Функция считывает данные. */
 gboolean   hyscan_db_channel_file_get_channel_data         (HyScanDBChannelFile *channel,
-                                                            gint32               index,
+                                                            guint32              index,
                                                             gpointer             buffer,
                                                             guint32             *buffer_size,
                                                             gint64              *time);
 
 /* Функция ищет данные по метке времени. */
-gboolean   hyscan_db_channel_file_find_channel_data        (HyScanDBChannelFile *channel,
+HyScanDBFindStatus hyscan_db_channel_file_find_channel_data (HyScanDBChannelFile *channel,
                                                             gint64               time,
-                                                            gint32              *lindex,
-                                                            gint32              *rindex,
+                                                            guint32             *lindex,
+                                                            guint32             *rindex,
                                                             gint64              *ltime,
                                                             gint64              *rtime);
 
