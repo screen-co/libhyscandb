@@ -517,16 +517,12 @@ hyscan_db_file_get_directory_param_list (const gchar *path)
   GDir *dir;
   const gchar *name;
   gchar **params = NULL;
-
-  GError *error = NULL;
   gint i = 0;
 
   /* Открываем каталог с группами параметров. */
-  error = NULL;
-  dir = g_dir_open (path, 0, &error);
-  if (dir == NULL)
+  if ((dir = g_dir_open (path, 0, NULL)) == NULL)
     {
-      g_warning ("HyScanDBFile: %s", error->message);
+      g_warning ("HyScanDBFile: can't open project parameters directory '%s'", path);
       return NULL;
     }
 
@@ -763,15 +759,12 @@ hyscan_db_file_project_list (HyScanDB *db)
   GDir *db_dir;
   const gchar *project_name;
   gchar **projects = NULL;
-
-  GError *error = NULL;
   gint i = 0;
 
   /* Открываем каталог с проектами. */
-  db_dir = g_dir_open (priv->path, 0, &error);
-  if (db_dir == NULL)
+  if ((db_dir = g_dir_open (priv->path, 0, NULL)) == NULL)
     {
-      g_warning ("HyScanDBFile: %s", error->message);
+      g_warning ("HyScanDBFile: can't open project directory '%s'", priv->path);
       return NULL;
     }
 
@@ -1070,7 +1063,7 @@ hyscan_db_file_project_get_ctime (HyScanDB *db,
 /* Функция возвращает список доступных галсов проекта. */
 static gchar **
 hyscan_db_file_track_list (HyScanDB *db,
-                               gint32    project_id)
+                           gint32    project_id)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -1080,8 +1073,6 @@ hyscan_db_file_track_list (HyScanDB *db,
   GDir *db_dir = NULL;
   const gchar *track_name;
   gchar **tracks = NULL;
-
-  GError *error;
   gint i = 0;
 
   g_rw_lock_reader_lock (&priv->lock);
@@ -1091,11 +1082,9 @@ hyscan_db_file_track_list (HyScanDB *db,
     goto exit;
 
   /* Открываем каталог проекта с галсами. */
-  error = NULL;
-  db_dir = g_dir_open (project_info->path, 0, &error);
-  if (db_dir == NULL)
+  if ((db_dir = g_dir_open (project_info->path, 0, NULL)) == NULL)
     {
-      g_warning ("HyScanDBFile: %s", error->message);
+      g_warning ("HyScanDBFile: can't open project directory '%s'", project_info->path);
       goto exit;
     }
 
@@ -1439,8 +1428,6 @@ hyscan_db_file_channel_list (HyScanDB *db,
   GDir *db_dir = NULL;
   const gchar *file_name;
   gchar **channels = NULL;
-
-  GError *error;
   gint i = 0;
 
   g_rw_lock_reader_lock (&priv->lock);
@@ -1451,11 +1438,9 @@ hyscan_db_file_channel_list (HyScanDB *db,
     goto exit;
 
   /* Открываем каталог галса. */
-  error = NULL;
-  db_dir = g_dir_open (track_info->path, 0, &error);
-  if (db_dir == NULL)
+  if ((db_dir = g_dir_open (track_info->path, 0, NULL)) == NULL)
     {
-      g_warning ("HyScanDBFile: %s", error->message);
+      g_warning ("HyScanDBFile: can't open track directory '%s'", track_info->path);
       goto exit;
     }
 

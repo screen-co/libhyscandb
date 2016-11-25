@@ -18,7 +18,7 @@ int main( int argc, char **argv )
 
   gchar *channel_name = NULL;
 
-  guint32 max_file_size = 1024 * 1024 * 1024;
+  guint64 max_file_size = 1024 * 1024 * 1024;
   guint32 data_size = 64 * 1024;
   guint32 total_records = 1000;
 
@@ -36,7 +36,7 @@ int main( int argc, char **argv )
   GOptionContext  *context;
   GOptionEntry     entries[] =
   {
-    { "file-size", 'f', 0, G_OPTION_ARG_INT, &max_file_size, "Maximum data file size", NULL },
+    { "file-size", 'f', 0, G_OPTION_ARG_INT64, &max_file_size, "Maximum data file size", NULL },
     { "data-size", 'd', 0, G_OPTION_ARG_INT, &data_size, "Data record size", NULL },
     { "records", 'r', 0, G_OPTION_ARG_INT, &total_records, "Total records number", NULL },
     { NULL }
