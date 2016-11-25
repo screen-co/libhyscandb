@@ -2652,6 +2652,39 @@ hyscan_db_file_channel_close (HyScanDBFilePrivate *priv,
       if (param_info != NULL)
         param_info->channel_object_wid = -1;
 
+      /* Если в канал так и не записали данные, удаляем его параметры. */
+      if (!hyscan_db_channel_file_get_channel_data_range (channel_info->channel, NULL, NULL))
+        {
+          HyScanDBParamFile *param;
+
+          object_info.project_name = channel_info->project_name;
+          object_info.track_name = channel_info->track_name;
+          object_info.group_name = TRACK_GROUP_ID;
+          object_info.object_name = "*";
+
+          /* Если кто-то уже использует параметры галса, удаляем через этот объект
+           * или создаём временный. */
+          param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
+          if (param_info != NULL)
+            {
+              param = g_object_ref (param_info->param);
+            }
+          else
+            {
+              gchar *param_file = g_build_filename (channel_info->path, TRACK_PARAMETERS_FILE, NULL);
+              gchar *schema_file = g_build_filename (channel_info->path, TRACK_SCHEMA_FILE, NULL);
+
+              param = hyscan_db_param_file_new (param_file, schema_file);
+
+              g_free (param_file);
+              g_free (schema_file);
+            }
+
+          hyscan_db_param_file_object_remove (param, channel_info->channel_name);
+
+          g_object_unref (param);
+        }
+
       channel_info->wid = -1;
     }
 
