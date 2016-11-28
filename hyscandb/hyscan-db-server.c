@@ -836,6 +836,41 @@ exit:
 }
 
 static gint
+hyscan_db_server_rpc_proc_channel_get_ctime (guint32   session,
+                                             uRpcData *urpc_data,
+                                             void     *proc_data,
+                                             void     *key_data)
+{
+  HyScanDBServerPrivate *priv = proc_data;
+  guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
+
+  GDateTime *ctime;
+  gint32 channel_id;
+  gint64 itime;
+
+  if (priv->acl != NULL && !priv->acl ("channel_get_ctime", key_data))
+    hyscan_db_server_acl_error ();
+
+  if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_CHANNEL_ID, &channel_id) != 0)
+    hyscan_db_server_get_error ("channel_id");
+
+  ctime = hyscan_db_channel_get_ctime (priv->db, channel_id);
+  if (ctime == NULL)
+    goto exit;
+
+  itime = g_date_time_to_unix (ctime);
+  g_date_time_unref (ctime);
+  if (urpc_data_set_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_CTIME, itime) != 0)
+    hyscan_db_server_set_error ("ctime");
+
+  rpc_status = HYSCAN_DB_RPC_STATUS_OK;
+
+exit:
+  urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_STATUS, rpc_status);
+  return 0;
+}
+
+static gint
 hyscan_db_server_rpc_proc_channel_finalize (guint32   session,
                                             uRpcData *urpc_data,
                                             void     *proc_data,
@@ -1010,8 +1045,8 @@ hyscan_db_server_rpc_proc_channel_get_data_range (guint32   session,
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
   gint32 channel_id;
-  gint32 first_index;
-  gint32 last_index;
+  guint32 first_index;
+  guint32 last_index;
 
   if (priv->acl != NULL && !priv->acl ("channel_get_data_range", key_data))
     hyscan_db_server_acl_error ();
@@ -1021,10 +1056,10 @@ hyscan_db_server_rpc_proc_channel_get_data_range (guint32   session,
 
   if (hyscan_db_channel_get_data_range (priv->db, channel_id, &first_index, &last_index))
     {
-      if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_LINDEX, first_index) != 0)
+      if (urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_LINDEX, first_index) != 0)
         hyscan_db_server_set_error ("first_index");
 
-      if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_RINDEX, last_index) != 0)
+      if (urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_RINDEX, last_index) != 0)
         hyscan_db_server_set_error ("last_index");
 
       rpc_status = HYSCAN_DB_RPC_STATUS_OK;
@@ -1048,7 +1083,7 @@ hyscan_db_server_rpc_proc_channel_add_data (guint32   session,
   gint64 time;
   gpointer data;
   guint32 size;
-  gint32 index;
+  guint32 index;
 
   if (priv->acl != NULL && !priv->acl ("channel_add_data", key_data))
     hyscan_db_server_acl_error ();
@@ -1065,7 +1100,7 @@ hyscan_db_server_rpc_proc_channel_add_data (guint32   session,
 
   if (hyscan_db_channel_add_data (priv->db, channel_id, time, data, size, &index))
     {
-      if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_INDEX, index) != 0)
+      if (urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_INDEX, index) != 0)
         hyscan_db_server_set_error ("index");
 
       rpc_status = HYSCAN_DB_RPC_STATUS_OK;
@@ -1116,7 +1151,7 @@ hyscan_db_server_rpc_proc_channel_get_data (guint32   session,
         }
       else
         {
-          if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_SIZE, buffer_size) != 0)
+          if (urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_SIZE, buffer_size) != 0)
             hyscan_db_server_set_error ("buffer_size");
         }
 
@@ -1140,10 +1175,11 @@ hyscan_db_server_rpc_proc_channel_find_data (guint32   session,
   HyScanDBServerPrivate *priv = proc_data;
   guint32 rpc_status = HYSCAN_DB_RPC_STATUS_FAIL;
 
+  gint32 find_status;
   gint32 channel_id;
   gint64 time;
-  gint32 lindex;
-  gint32 rindex;
+  guint32 lindex;
+  guint32 rindex;
   gint64 ltime;
   gint64 rtime;
 
@@ -1156,12 +1192,13 @@ hyscan_db_server_rpc_proc_channel_find_data (guint32   session,
   if (urpc_data_get_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_TIME, &time) != 0)
     hyscan_db_server_get_error ("time");
 
-  if (hyscan_db_channel_find_data (priv->db, channel_id, time, &lindex, &rindex, &ltime, &rtime))
+  find_status = hyscan_db_channel_find_data (priv->db, channel_id, time, &lindex, &rindex, &ltime, &rtime);
+  if (find_status == HYSCAN_DB_FIND_OK)
     {
-      if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_LINDEX, lindex) != 0)
+      if (urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_LINDEX, lindex) != 0)
         hyscan_db_server_set_error ("lindex");
 
-      if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_RINDEX, rindex) != 0)
+      if (urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_RINDEX, rindex) != 0)
         hyscan_db_server_set_error ("rindex");
 
       if (urpc_data_set_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_LTIME, ltime) != 0)
@@ -1170,6 +1207,9 @@ hyscan_db_server_rpc_proc_channel_find_data (guint32   session,
       if (urpc_data_set_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_RTIME, rtime) != 0)
         hyscan_db_server_set_error ("rtime");
     }
+
+  if (urpc_data_set_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_FIND_STATUS, find_status) != 0)
+    hyscan_db_server_set_error ("find_status");
 
   rpc_status = HYSCAN_DB_RPC_STATUS_OK;
 
@@ -1792,6 +1832,11 @@ hyscan_db_server_start (HyScanDBServer *server)
 
   status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_REMOVE,
                                  hyscan_db_server_rpc_proc_channel_remove, priv);
+  if (status != 0)
+    goto fail;
+
+  status = urpc_server_add_proc (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_GET_CTIME,
+                                 hyscan_db_server_rpc_proc_channel_get_ctime, priv);
   if (status != 0)
     goto fail;
 

@@ -41,6 +41,7 @@
  * - выбор используемого канала данных - #hyscan_db_channel_list
  *   -# открытие существующего канала данных - #hyscan_db_channel_open
  *   -# создание нового канала данных #hyscan_db_channel_create
+ *   -# получение даты и времени создания канала данных - #hyscan_db_channel_get_ctime
  *   -# открытие группы параметров - #hyscan_db_channel_param_open
  * - работа с данными
  *   -# запись данных - #hyscan_db_channel_add_data
@@ -154,6 +155,15 @@
 
 G_BEGIN_DECLS
 
+/** \brief Статус поиска записи. */
+typedef enum
+{
+  HYSCAN_DB_FIND_OK          = 0,              /**< Запись найдена. */
+  HYSCAN_DB_FIND_FAIL        = 1,              /**< Ошибка поиска. */
+  HYSCAN_DB_FIND_LESS        = 2,              /**< Запись не найдена, метка времени раньше записанных данных. */
+  HYSCAN_DB_FIND_GREATER     = 3               /**< Запись не найдена, метка времени позже записанных данных. */
+} HyScanDBFindStatus;
+
 #define HYSCAN_TYPE_DB            (hyscan_db_get_type ())
 #define HYSCAN_DB(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_DB, HyScanDB))
 #define HYSCAN_IS_DB(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HYSCAN_TYPE_DB))
@@ -242,6 +252,9 @@ struct _HyScanDBInterface
                                                                 gint32                 track_id,
                                                                 const gchar           *channel_name);
 
+  GDateTime           *(*channel_get_ctime)                    (HyScanDB              *db,
+                                                                gint32                 channel_id);
+
   void                 (*channel_finalize)                     (HyScanDB              *db,
                                                                 gint32                 channel_id);
 
@@ -265,28 +278,28 @@ struct _HyScanDBInterface
 
   gboolean             (*channel_get_data_range)               (HyScanDB              *db,
                                                                 gint32                 channel_id,
-                                                                gint32                *first_index,
-                                                                gint32                *last_index);
+                                                                guint32               *first_index,
+                                                                guint32               *last_index);
 
   gboolean             (*channel_add_data)                     (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint64                 time,
                                                                 gconstpointer          data,
                                                                 guint32                size,
-                                                                gint32                *index);
+                                                                guint32               *index);
 
   gboolean             (*channel_get_data)                     (HyScanDB              *db,
                                                                 gint32                 channel_id,
-                                                                gint32                 index,
+                                                                guint32                index,
                                                                 gpointer               buffer,
                                                                 guint32               *buffer_size,
                                                                 gint64                *time);
 
-  gboolean             (*channel_find_data)                    (HyScanDB              *db,
+  gint32               (*channel_find_data)                    (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint64                 time,
-                                                                gint32                *lindex,
-                                                                gint32                *rindex,
+                                                                guint32               *lindex,
+                                                                guint32               *rindex,
                                                                 gint64                *ltime,
                                                                 gint64                *rtime);
 
@@ -753,6 +766,22 @@ gboolean               hyscan_db_channel_remove                (HyScanDB        
 
 /**
  *
+ * Функция возвращает информацию о дате и времени создания канала данных.
+ *
+ * Память выделенная под объект GDateTime должна быть освобождена после использования (см. g_date_time_unref).
+ *
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
+ * \param channel_id идентификатор канала данных.
+ *
+ * \return Указатель на объект GDateTime или NULL в случае ошибки.
+ *
+ */
+HYSCAN_API
+GDateTime             *hyscan_db_channel_get_ctime             (HyScanDB              *db,
+                                                                gint32                 channel_id);
+
+/**
+ *
  * Функция переводит канал данных в режим только чтения. После вызова этой функции
  * записывать новые данные в канал и изменять его параметры нельзя.
  *
@@ -877,8 +906,8 @@ gboolean               hyscan_db_channel_set_save_size         (HyScanDB        
 HYSCAN_API
 gboolean               hyscan_db_channel_get_data_range        (HyScanDB              *db,
                                                                 gint32                 channel_id,
-                                                                gint32                *first_index,
-                                                                gint32                *last_index);
+                                                                guint32               *first_index,
+                                                                guint32               *last_index);
 
 /**
  *
@@ -900,7 +929,7 @@ gboolean               hyscan_db_channel_add_data              (HyScanDB        
                                                                 gint64                 time,
                                                                 gconstpointer          data,
                                                                 guint32                size,
-                                                                gint32                *index);
+                                                                guint32               *index);
 
 /**
  *
@@ -909,7 +938,7 @@ gboolean               hyscan_db_channel_add_data              (HyScanDB        
  * Перед вызовом функции в переменную buffer_size должен быть записан размер буфера. После успешного
  * чтения данных в переменную buffer_size будет записан действительный размер считанных данных. Размер
  * считанных данных может быть ограничен размером буфера. Для того чтобы определить размер данных без
- * их чтения необходимо вызвать функцию с переменной buffer = NULL.
+ * их чтения, необходимо вызвать функцию с переменной buffer = NULL.
  *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор канала данных;
@@ -924,14 +953,15 @@ gboolean               hyscan_db_channel_add_data              (HyScanDB        
 HYSCAN_API
 gboolean               hyscan_db_channel_get_data              (HyScanDB              *db,
                                                                 gint32                 channel_id,
-                                                                gint32                 index,
+                                                                guint32                index,
                                                                 gpointer               buffer,
                                                                 guint32               *buffer_size,
                                                                 gint64                *time);
 
 /**
  *
- * Функция ищет индекс данных для указанного момента времени.
+ * Функция ищет индекс данных для указанного момента времени. Функция возвращает статус поиска
+ * индекса данных \link HyScanDBFindStatus \endlink.
  *
  * Если найдены данные, метка времени которых точно совпадает с указанной, значения lindex и rindex,
  * а также ltime и rtime будут одинаковые.
@@ -941,10 +971,6 @@ gboolean               hyscan_db_channel_get_data              (HyScanDB        
  * моментом времени. А rindex и ltime будут указывать на индекс и время соответственно, данных, записанных
  * после искомого момента времени.
  *
- * Если lindex == G_MININT32 или ltime == G_MININT64, то момент времени раньше чем первая запись данных.
- *
- * Если rindex == G_MAXINT32 или rtime == G_MAXINT64, то момент времени позже, чем последняя запись данных.
- *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор канала данных;
  * \param time искомый момент времени;
@@ -953,15 +979,15 @@ gboolean               hyscan_db_channel_get_data              (HyScanDB        
  * \param ltime указатель на переменную для сохранения "левой" метки времени данных или NULL;
  * \param rtime указатель на переменную для сохранения "правой" метки времени данных или NULL.
  *
- * \return TRUE - если данные найдены, FALSE - в случае ошибки.
+ * \return Статус поиска индекса данных.
  *
  */
 HYSCAN_API
-gboolean               hyscan_db_channel_find_data             (HyScanDB              *db,
+HyScanDBFindStatus     hyscan_db_channel_find_data             (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint64                 time,
-                                                                gint32                *lindex,
-                                                                gint32                *rindex,
+                                                                guint32               *lindex,
+                                                                guint32               *rindex,
                                                                 gint64                *ltime,
                                                                 gint64                *rtime);
 

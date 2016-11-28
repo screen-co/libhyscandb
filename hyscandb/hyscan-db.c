@@ -345,6 +345,21 @@ hyscan_db_channel_remove (HyScanDB    *db,
   return FALSE;
 }
 
+GDateTime *
+hyscan_db_channel_get_ctime (HyScanDB *db,
+                             gint32    channel_id)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), NULL);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_get_ctime != NULL)
+    return iface->channel_get_ctime (db, channel_id);
+
+  return NULL;
+}
+
 void
 hyscan_db_channel_finalize (HyScanDB *db,
                             gint32    channel_id)
@@ -439,8 +454,8 @@ hyscan_db_channel_set_save_size (HyScanDB *db,
 gboolean
 hyscan_db_channel_get_data_range (HyScanDB *db,
                                   gint32    channel_id,
-                                  gint32   *first_index,
-                                  gint32   *last_index)
+                                  guint32  *first_index,
+                                  guint32  *last_index)
 {
   HyScanDBInterface *iface;
 
@@ -459,7 +474,7 @@ hyscan_db_channel_add_data (HyScanDB      *db,
                             gint64         time,
                             gconstpointer  data,
                             guint32        size,
-                            gint32        *index)
+                            guint32       *index)
 {
   HyScanDBInterface *iface;
 
@@ -475,7 +490,7 @@ hyscan_db_channel_add_data (HyScanDB      *db,
 gboolean
 hyscan_db_channel_get_data (HyScanDB *db,
                             gint32    channel_id,
-                            gint32    index,
+                            guint32   index,
                             gpointer  buffer,
                             guint32  *buffer_size,
                             gint64   *time)
@@ -491,12 +506,12 @@ hyscan_db_channel_get_data (HyScanDB *db,
   return FALSE;
 }
 
-gboolean
+HyScanDBFindStatus
 hyscan_db_channel_find_data (HyScanDB *db,
                              gint32    channel_id,
                              gint64    time,
-                             gint32   *lindex,
-                             gint32   *rindex,
+                             guint32  *lindex,
+                             guint32  *rindex,
                              gint64   *ltime,
                              gint64   *rtime)
 {

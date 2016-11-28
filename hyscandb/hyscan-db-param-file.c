@@ -126,7 +126,7 @@ hyscan_db_param_file_object_constructed (GObject *object)
          сигнализируем о ней. */
       if (error->code != G_FILE_ERROR_NOENT)
         {
-          g_warning ("HyScanDBParamFile: %s: %s", priv->param_file, error->message);
+          g_warning ("HyScanDBParamFile: can't load parameters file '%s'", priv->param_file);
           g_clear_pointer (&priv->params, g_key_file_unref);
         }
       g_error_free (error);
@@ -226,48 +226,38 @@ hyscan_db_param_file_params_flush (GKeyFile      *params,
   gchar *data;
   gsize dsize;
   gssize wsize;
-
-  GError *error;
+  gboolean status = FALSE;
 
   data = g_key_file_to_data (params, &dsize, NULL);
 
   /* Обнуляем файл. */
-  error = NULL;
-  if (!g_seekable_truncate (G_SEEKABLE (ofd), 0, NULL, &error))
+  if (!g_seekable_truncate (G_SEEKABLE (ofd), 0, NULL, NULL))
     {
-      g_warning ("HyScanDBParamFile: %s", error->message);
+      g_warning ("HyScanDBParamFile: can't update parameters");
       goto exit;
     }
 
   /* Записываем в него новые данные. */
   wsize = dsize;
-  error = NULL;
-  if (g_output_stream_write (ofd, data, dsize, NULL, &error) != wsize)
+  if (g_output_stream_write (ofd, data, dsize, NULL, NULL) != wsize)
     {
-      if (error != NULL)
-        g_warning ("HyScanDBParamFile: %s", error->message);
-      else
-        g_warning ("HyScanDBParamFile: can't flush parameters");
+      g_warning ("HyScanDBParamFile: can't write parameters");
       goto exit;
     }
 
   /* Очищаем IO буфер. */
-  error = NULL;
-  if (!g_output_stream_flush (ofd, NULL, &error))
+  if (!g_output_stream_flush (ofd, NULL, NULL))
     {
-       g_warning ("HyScanDBParamFile: %s", error->message);
+      g_warning ("HyScanDBParamFile: can't flush parameters");
       goto exit;
     }
+
+  status = TRUE;
 
 exit:
   g_free (data);
 
-  if (error == NULL)
-    return TRUE;
-  else
-    g_error_free (error);
-
-  return FALSE;
+  return status;
 }
 
 /* Функция создаёт новый объект HyScanDBParamFile. */

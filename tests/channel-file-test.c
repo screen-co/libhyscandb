@@ -10,17 +10,15 @@ int main( int argc, char **argv )
   gint64 time64;
   gint64 *times64;
 
-  gint32 index;
+  guint32 index;
   gchar *datap[DATA_PATTERNS];
   gchar *data;
-  gint32 i;
-  guint32 j, k;
 
-  gint32 first_index, last_index;
+  guint32 first_index, last_index;
 
   gchar *channel_name = NULL;
 
-  guint32 max_file_size = 1024 * 1024 * 1024;
+  guint64 max_file_size = 1024 * 1024 * 1024;
   guint32 data_size = 64 * 1024;
   guint32 total_records = 1000;
 
@@ -30,13 +28,15 @@ int main( int argc, char **argv )
   gint cur_cnts;
   gint all_cnts;
 
+  guint i, j, k;
+
   { // Разбор командной строки.
 
   GError          *error = NULL;
   GOptionContext  *context;
   GOptionEntry     entries[] =
   {
-    { "file-size", 'f', 0, G_OPTION_ARG_INT, &max_file_size, "Maximum data file size", NULL },
+    { "file-size", 'f', 0, G_OPTION_ARG_INT64, &max_file_size, "Maximum data file size", NULL },
     { "data-size", 'd', 0, G_OPTION_ARG_INT, &data_size, "Data record size", NULL },
     { "records", 'r', 0, G_OPTION_ARG_INT, &total_records, "Total records number", NULL },
     { NULL }
@@ -233,13 +233,17 @@ int main( int argc, char **argv )
   for( i = first_index; i <= last_index; i++ )
     {
 
-    gint32 lindex, rindex;
-    gint64 ltime, rtime;
+    HyScanDBFindStatus status;
+    guint32 lindex = 0;
+    guint32 rindex = 0;
+    gint64 ltime = 0;
+    gint64 rtime = 0;
 
     time64 = times64[i];
 
-    if( !hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime ) )
-      g_warning( "hyscan_db_channel_find failed" );
+    status = hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime );
+    if( status != HYSCAN_DB_FIND_OK )
+      g_warning( "hyscan_db_channel_find failed 1" );
 
     if( ltime != rtime || ltime != time64 )
       g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " mismatch ( %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
@@ -255,14 +259,18 @@ int main( int argc, char **argv )
   for( k = 0; k < 10 * total_records; k++ )
     {
 
-    gint32 rindex, lindex;
-    gint64 ltime, rtime;
+    HyScanDBFindStatus status;
+    guint32 lindex = 0;
+    guint32 rindex = 0;
+    gint64 ltime = 0;
+    gint64 rtime = 0;
 
     i = g_random_int_range( first_index, last_index + 1 );
     time64 = times64[i];
 
-    if( !hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime ) )
-      g_warning( "hyscan_db_channel_find failed" );
+    status = hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime );
+    if( status != HYSCAN_DB_FIND_OK )
+      g_warning( "hyscan_db_channel_find failed 2" );
 
     if( ltime != rtime || ltime != time64 )
       g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " mismatch ( %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
@@ -278,17 +286,24 @@ int main( int argc, char **argv )
   for( k = 0; k < 10 * total_records; k++ )
     {
 
-    gint32 rindex, lindex;
-    gint64 ltime, rtime;
+    HyScanDBFindStatus status;
+    guint32 lindex = 0;
+    guint32 rindex = 0;
+    gint64 ltime = 0;
+    gint64 rtime = 0;
 
     i = g_random_int_range( first_index, last_index + 1 );
     time64 = times64[i] - 1;
 
-    if( !hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime ) )
-      g_warning( "hyscan_db_channel_find failed" );
+    status = hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime );
+    if( status == HYSCAN_DB_FIND_FAIL )
+      g_warning( "hyscan_db_channel_find failed 3" );
 
-    if( i == first_index && ( lindex != G_MININT32 || rindex != first_index ) )
+    if( i == first_index && status != HYSCAN_DB_FIND_LESS )
       g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
+
+    if( status == HYSCAN_DB_FIND_LESS )
+      continue;
 
     if( i != first_index && lindex != rindex - 1 )
       g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
@@ -304,17 +319,24 @@ int main( int argc, char **argv )
   for( k = 0; k < 10 * total_records; k++ )
     {
 
-    gint32 rindex, lindex;
-    gint64 ltime, rtime;
+    HyScanDBFindStatus status;
+    guint32 lindex = 0;
+    guint32 rindex = 0;
+    gint64 ltime = 0;
+    gint64 rtime = 0;
 
     i = g_random_int_range( first_index, last_index + 1 );
     time64 = times64[i] + 1;
 
-    if( !hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime ) )
-      g_warning( "hyscan_db_channel_find failed" );
+    status = hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime );
+    if( status == HYSCAN_DB_FIND_FAIL )
+      g_warning( "hyscan_db_channel_find failed 4" );
 
-    if( i == last_index && ( lindex != last_index || rindex != G_MAXINT32 ) )
+    if( i == last_index && status != HYSCAN_DB_FIND_GREATER )
       g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
+
+    if( status == HYSCAN_DB_FIND_GREATER )
+      continue;
 
     if( i != last_index && lindex != rindex - 1 )
       g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
