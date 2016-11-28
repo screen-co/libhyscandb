@@ -16,6 +16,11 @@
 #include <gio/gio.h>
 #include <string.h>
 
+#ifdef G_OS_WIN32
+#include <windows.h>
+#endif
+
+#define DB_LOCK_FILE           "hyscan.db"             /* Название файла блокировки доступа к системе хранения. */
 #define PROJECT_ID_FILE        "project.id"            /* Название файла идентификатора проекта. */
 #define PROJECT_SCHEMA_FILE    "project.sch"           /* Название файла со схемой данных проекта. */
 #define TRACK_ID_FILE          "track.id"              /* Название файла идентификатора галса. */
@@ -118,6 +123,15 @@ struct _HyScanDBFilePrivate
   gchar               *path;                   /* Путь к каталогу с проектами. */
   guint                mod_count;              /* Номер изменения объекта. */
 
+  gchar               *flock_name;             /* Имя файла блокировки. */
+#ifdef G_OS_UNIX
+  FILE                *flock;                  /* Дескриптор файла блокировки. */
+#endif
+#ifdef G_OS_WIN32
+  HANDLE               flock;                  /* Дескриптор файла блокировки */
+#endif
+  gboolean             flocked;                /* Признак блокировки доступа. */
+
   GHashTable          *projects;               /* Список открытых проектов. */
   GHashTable          *tracks;                 /* Список открытых галсов. */
   GHashTable          *channels;               /* Список открытых каналов данных. */
@@ -131,6 +145,7 @@ static void            hyscan_db_file_set_property             (GObject         
                                                                 guint                  prop_id,
                                                                 const GValue          *value,
                                                                 GParamSpec            *pspec);
+static void            hyscan_db_file_object_constructed       (GObject               *object);
 static void            hyscan_db_file_object_finalize          (GObject               *object);
 
 static gboolean        hyscan_db_file_check_name               (const gchar           *name,
@@ -176,6 +191,8 @@ hyscan_db_file_class_init (HyScanDBFileClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   object_class->set_property = hyscan_db_file_set_property;
+
+  object_class->constructed = hyscan_db_file_object_constructed;
   object_class->finalize = hyscan_db_file_object_finalize;
 
   g_object_class_install_property (object_class, PROP_PATH,
@@ -186,17 +203,7 @@ hyscan_db_file_class_init (HyScanDBFileClass *klass)
 static void
 hyscan_db_file_init (HyScanDBFile *dbf)
 {
-  HyScanDBFilePrivate *priv;
-
   dbf->priv = hyscan_db_file_get_instance_private (dbf);
-  priv = dbf->priv;
-
-  priv->projects = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_project_info);
-  priv->tracks = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_track_info);
-  priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_channel_info);
-  priv->params = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_param_info);
-
-  g_rw_lock_init (&priv->lock);
 }
 
 static void
@@ -221,6 +228,79 @@ hyscan_db_file_set_property (GObject      *object,
 }
 
 static void
+hyscan_db_file_object_constructed (GObject *object)
+{
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (object);
+  HyScanDBFilePrivate *priv = dbf->priv;
+
+#ifdef G_OS_WIN32
+  wchar_t *wflock_name;
+  DWORD written;
+  OVERLAPPED overlapped = {0};
+#endif
+
+  priv->projects = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_project_info);
+  priv->tracks = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_track_info);
+  priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_channel_info);
+  priv->params = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_param_info);
+
+  g_rw_lock_init (&priv->lock);
+
+  priv->flock_name = g_build_filename (priv->path, DB_LOCK_FILE, NULL);
+
+#ifdef G_OS_UNIX
+  priv->flock = fopen (priv->flock_name, "a");
+  if (priv->flock == NULL)
+    {
+      g_warning ("HyScanDBFile: can't create lock on db directory '%s'", priv->path);
+      return;
+    }
+
+  if (lockf (fileno (priv->flock), F_TLOCK, 0) != 0)
+    {
+      g_clear_pointer (&priv->flock, fclose);
+      g_warning ("HyScanDBFile: can't lock db directory '%s'", priv->path);
+      return;
+    }
+
+  priv->flocked = TRUE;
+#endif
+
+#ifdef G_OS_WIN32
+  wflock_name = g_utf8_to_utf16 (priv->flock_name, -1, NULL, NULL, NULL);
+  priv->flock = CreateFileW (wflock_name,
+                             GENERIC_READ | GENERIC_WRITE,
+                             FILE_SHARE_READ | FILE_SHARE_WRITE,
+                             NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  g_free (wflock_name);
+
+  if (priv->flock == INVALID_HANDLE_VALUE)
+    {
+      g_warning ("HyScanDBFile: can't create lock on db directory '%s'", priv->path);
+      return;
+    }
+
+  if (!WriteFile (priv->flock, "HYSCAN", 6, &written, NULL) || (written != 6))
+    {
+      CloseHandle (priv->flock);
+      g_warning ("HyScanDBFile: can't write to lock file %s'", priv->path);
+      return;
+    }
+
+  overlapped.Offset = 0;
+  overlapped.OffsetHigh = 0;
+  if (!LockFileEx (priv->flock, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 6, 0, &overlapped))
+    {
+      CloseHandle (priv->flock);
+      g_warning ("HyScanDBFile: can't lock db directory '%s'", priv->path);
+      return;
+    }
+
+  priv->flocked = TRUE;
+#endif
+}
+
+static void
 hyscan_db_file_object_finalize (GObject *object)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (object);
@@ -234,7 +314,26 @@ hyscan_db_file_object_finalize (GObject *object)
 
   g_rw_lock_clear (&priv->lock);
 
+#ifdef G_OS_UNIX
+  if (priv->flocked)
+    fclose (priv->flock);
+#endif
+
+#ifdef G_OS_WIN32
+  if (priv->flocked)
+    {
+      OVERLAPPED overlapped = {0};
+
+      overlapped.Offset = 0;
+      overlapped.OffsetHigh = 0;
+      UnlockFileEx (priv->flock, 0, 6, 0, &overlapped);
+
+      CloseHandle (priv->flock);
+    }
+#endif
+
   g_free (priv->path);
+  g_free (priv->flock_name);
 
   G_OBJECT_CLASS (hyscan_db_file_parent_class)->finalize (object);
 }
@@ -621,9 +720,14 @@ hyscan_db_file_get_uri (HyScanDB *db)
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
 
-  GFile *path = g_file_new_for_path (priv->path);
-  gchar *uri = g_file_get_uri (path);
+  GFile *path;
+  gchar *uri;
 
+  if (!priv->flocked)
+    return NULL;
+
+  path = g_file_new_for_path (priv->path);
+  uri = g_file_get_uri (path);
   g_object_unref (path);
 
   return uri;
@@ -643,6 +747,9 @@ hyscan_db_file_get_mod_count (HyScanDB *db,
   HyScanDBFileParamInfo *param_info;
 
   guint64 mod_count = 0;
+
+  if (!priv->flocked)
+    return 0;
 
   g_rw_lock_reader_lock (&priv->lock);
 
@@ -703,6 +810,9 @@ hyscan_db_file_is_exist (HyScanDB    *db,
 
   gboolean exist = FALSE;
 
+  if (!priv->flocked)
+    return FALSE;
+
   g_rw_lock_reader_lock (&priv->lock);
 
   /* Проверяем существование проекта. */
@@ -761,6 +871,9 @@ hyscan_db_file_project_list (HyScanDB *db)
   gchar **projects = NULL;
   gint i = 0;
 
+  if (!priv->flocked)
+    return NULL;
+
   /* Открываем каталог с проектами. */
   if ((db_dir = g_dir_open (priv->path, 0, NULL)) == NULL)
     {
@@ -816,6 +929,9 @@ hyscan_db_file_project_open (HyScanDB    *db,
   HyScanDBFileObjectInfo object_info;
 
   gint64 ctime;
+
+  if (!priv->flocked)
+    return -1;
 
   g_rw_lock_writer_lock (&priv->lock);
 
@@ -888,6 +1004,9 @@ hyscan_db_file_project_create (HyScanDB    *db,
   gchar *project_path = NULL;
   gchar *project_param_file = NULL;
   gchar *project_schema_file = NULL;
+
+  if (!priv->flocked)
+    return -1;
 
   /* Проверяем название проекта. */
   if (!hyscan_db_file_check_name (project_name, FALSE))
@@ -970,6 +1089,9 @@ hyscan_db_file_project_remove (HyScanDB    *db,
   GHashTableIter iter;
   gpointer key, value;
 
+  if (!priv->flocked)
+    return FALSE;
+
   g_rw_lock_writer_lock (&priv->lock);
 
   object_info.project_name = project_name;
@@ -1048,6 +1170,9 @@ hyscan_db_file_project_get_ctime (HyScanDB *db,
   HyScanDBFileProjectInfo *project_info;
   GDateTime *ctime = NULL;
 
+  if (!priv->flocked)
+    return NULL;
+
   g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
@@ -1074,6 +1199,9 @@ hyscan_db_file_track_list (HyScanDB *db,
   const gchar *track_name;
   gchar **tracks = NULL;
   gint i = 0;
+
+  if (!priv->flocked)
+    return NULL;
 
   g_rw_lock_reader_lock (&priv->lock);
 
@@ -1203,6 +1331,9 @@ hyscan_db_file_track_open (HyScanDB    *db,
 
   gint32 id;
 
+  if (!priv->flocked)
+    return -1;
+
   g_rw_lock_writer_lock (&priv->lock);
   id = hyscan_db_file_open_track_int (db, project_id, track_name, TRUE);
   g_rw_lock_writer_unlock (&priv->lock);
@@ -1232,6 +1363,9 @@ hyscan_db_file_track_create (HyScanDB    *db,
   gchar *track_id_file = NULL;
   gchar *track_param_file = NULL;
   gchar *track_schema_file = NULL;
+
+  if (!priv->flocked)
+    return -1;
 
   /* Проверяем название галса. */
   if (!hyscan_db_file_check_name (track_name, FALSE))
@@ -1330,6 +1464,9 @@ hyscan_db_file_track_remove (HyScanDB    *db,
   GHashTableIter iter;
   gpointer key, value;
 
+  if (!priv->flocked)
+    return FALSE;
+
   g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
@@ -1403,6 +1540,9 @@ hyscan_db_file_track_get_ctime (HyScanDB *db,
   HyScanDBFileTrackInfo *track_info;
   GDateTime *ctime = NULL;
 
+  if (!priv->flocked)
+    return NULL;
+
   g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем галс в списке открытых. */
@@ -1429,6 +1569,9 @@ hyscan_db_file_channel_list (HyScanDB *db,
   const gchar *file_name;
   gchar **channels = NULL;
   gint i = 0;
+
+  if (!priv->flocked)
+    return NULL;
 
   g_rw_lock_reader_lock (&priv->lock);
 
@@ -1636,6 +1779,11 @@ hyscan_db_file_channel_open (HyScanDB    *db,
                              gint32       track_id,
                              const gchar *channel_name)
 {
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
+
+  if (!dbf->priv->flocked)
+    return -1;
+
   return hyscan_db_file_open_channel_int (db, track_id, channel_name, NULL, TRUE);
 }
 
@@ -1646,6 +1794,11 @@ hyscan_db_file_channel_create (HyScanDB    *db,
                                const gchar *channel_name,
                                const gchar *schema_id)
 {
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
+
+  if (!dbf->priv->flocked)
+    return -1;
+
   /* Проверяем название канала данных. */
   if (g_strcmp0 (channel_name, TRACK_PARAMETERS_ID) == 0)
     {
@@ -1678,6 +1831,9 @@ hyscan_db_file_channel_remove (HyScanDB    *db,
 
   GHashTableIter iter;
   gpointer key, value;
+
+  if (!priv->flocked)
+    return FALSE;
 
   g_rw_lock_writer_lock (&priv->lock);
 
@@ -1756,6 +1912,9 @@ hyscan_db_file_channel_get_ctime (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   GDateTime *ctime = NULL;
 
+  if (!priv->flocked)
+    return NULL;
+
   g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
@@ -1779,6 +1938,9 @@ hyscan_db_file_channel_finalize (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   HyScanDBFileParamInfo *param_info;
   HyScanDBFileObjectInfo object_info;
+
+  if (!priv->flocked)
+    return;
 
   g_rw_lock_writer_lock (&priv->lock);
 
@@ -1815,6 +1977,9 @@ hyscan_db_file_channel_is_writable (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   gboolean writable = FALSE;
 
+  if (!priv->flocked)
+    return FALSE;
+
   g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
@@ -1841,6 +2006,9 @@ hyscan_db_file_channel_set_chunk_size (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
 
+  if (!priv->flocked)
+    return FALSE;
+
   g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
@@ -1864,6 +2032,9 @@ hyscan_db_file_channel_set_save_time (HyScanDB *db,
 
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
+
+  if (!priv->flocked)
+    return FALSE;
 
   g_rw_lock_reader_lock (&priv->lock);
 
@@ -1889,6 +2060,9 @@ hyscan_db_file_channel_set_save_size (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
 
+  if (!priv->flocked)
+    return FALSE;
+
   g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
@@ -1913,6 +2087,9 @@ hyscan_db_file_channel_get_data_range (HyScanDB *db,
 
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
+
+  if (!priv->flocked)
+    return FALSE;
 
   g_rw_lock_reader_lock (&priv->lock);
 
@@ -1940,6 +2117,9 @@ hyscan_db_file_channel_add_data (HyScanDB      *db,
 
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
+
+  if (!priv->flocked)
+    return FALSE;
 
   g_rw_lock_reader_lock (&priv->lock);
 
@@ -1972,6 +2152,9 @@ hyscan_db_file_channel_get_data (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   gboolean status = FALSE;
 
+  if (!priv->flocked)
+    return FALSE;
+
   g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
@@ -2000,6 +2183,9 @@ hyscan_db_file_channel_find_data (HyScanDB *db,
   HyScanDBFileChannelInfo *channel_info;
   HyScanDBFindStatus status = HYSCAN_DB_FIND_FAIL;
 
+  if (!priv->flocked)
+    return FALSE;
+
   g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
@@ -2022,6 +2208,9 @@ hyscan_db_file_project_param_list (HyScanDB *db,
 
   HyScanDBFileProjectInfo *project_info;
   gchar **list = NULL;
+
+  if (!priv->flocked)
+    return NULL;
 
   g_rw_lock_reader_lock (&priv->lock);
 
@@ -2051,6 +2240,9 @@ hyscan_db_file_project_param_open (HyScanDB    *db,
   gchar *param_file = NULL;
   gchar *schema_file = NULL;
   gint32 id = -1;
+
+  if (!priv->flocked)
+    return -1;
 
   /* Проверяем название группы параметров. */
   if (!hyscan_db_file_check_name (group_name, FALSE))
@@ -2133,6 +2325,9 @@ hyscan_db_file_project_param_remove (HyScanDB    *db,
 
   gboolean status = FALSE;
 
+  if (!priv->flocked)
+    return FALSE;
+
   g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
@@ -2193,6 +2388,9 @@ hyscan_db_file_track_param_open (HyScanDB    *db,
   gchar *param_file = NULL;
   gchar *schema_file = NULL;
   gint32 id = -1;
+
+  if (!priv->flocked)
+    return -1;
 
   g_rw_lock_writer_lock (&priv->lock);
 
@@ -2282,6 +2480,9 @@ hyscan_db_file_channel_param_open (HyScanDB    *db,
   gchar *schema_file = NULL;
   gint32 id = -1;
 
+  if (!priv->flocked)
+    return -1;
+
   g_rw_lock_writer_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
@@ -2363,6 +2564,9 @@ hyscan_db_file_param_object_list (HyScanDB *db,
   HyScanDBFileParamInfo *param_info;
   gchar **list = NULL;
 
+  if (!priv->flocked)
+    return NULL;
+
   g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем группу параметров в списке открытых. */
@@ -2388,9 +2592,12 @@ hyscan_db_file_param_object_create (HyScanDB    *db,
   HyScanDBFileParamInfo *param_info;
   gboolean status = FALSE;
 
+  if (!priv->flocked)
+    return FALSE;
+
   /* Проверяем название объекта. */
   if (!hyscan_db_file_check_name (object_name, TRUE))
-    return status;
+    return FALSE;
 
   g_rw_lock_reader_lock (&priv->lock);
 
@@ -2425,6 +2632,9 @@ hyscan_db_file_param_object_remove (HyScanDB    *db,
   HyScanDBFileParamInfo *param_info;
   gboolean status = FALSE;
 
+  if (!priv->flocked)
+    return FALSE;
+
   g_rw_lock_reader_lock (&priv->lock);
 
   /* Ищем группу параметров в списке открытых. */
@@ -2457,6 +2667,9 @@ hyscan_db_file_param_object_get_schema (HyScanDB    *db,
 
   HyScanDBFileParamInfo *param_info;
   HyScanDataSchema *schema = NULL;
+
+  if (!priv->flocked)
+    return NULL;
 
   g_rw_lock_reader_lock (&priv->lock);
 
@@ -2501,6 +2714,9 @@ hyscan_db_file_param_set (HyScanDB            *db,
 
   HyScanDBFileParamInfo *param_info;
   gboolean status = FALSE;
+
+  if (!priv->flocked)
+    return FALSE;
 
   g_rw_lock_reader_lock (&priv->lock);
 
@@ -2562,6 +2778,9 @@ hyscan_db_file_param_get (HyScanDB            *db,
 
   HyScanDBFileParamInfo *param_info;
   gboolean status = FALSE;
+
+  if (!priv->flocked)
+    return FALSE;
 
   g_rw_lock_reader_lock (&priv->lock);
 
@@ -2724,6 +2943,9 @@ hyscan_db_file_close (HyScanDB *db,
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
 
+  if (!priv->flocked)
+    return;
+
   g_rw_lock_writer_lock (&priv->lock);
 
   if (hyscan_db_file_project_close (priv, id))
@@ -2740,6 +2962,18 @@ hyscan_db_file_close (HyScanDB *db,
 
 exit:
   g_rw_lock_writer_unlock (&priv->lock);
+}
+
+HyScanDBFile *
+hyscan_db_file_new (const gchar *path)
+{
+  HyScanDBFile *db;
+
+  db = g_object_new (HYSCAN_TYPE_DB_FILE, "path", path, NULL);
+  if (!db->priv->flocked)
+    g_clear_object (&db);
+
+  return db;
 }
 
 static void
