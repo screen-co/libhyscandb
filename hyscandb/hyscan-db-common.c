@@ -46,7 +46,7 @@ hyscan_db_new (const gchar *uri)
           g_dir_close (dir);
         }
 
-      return g_object_new (HYSCAN_TYPE_DB_FILE, "path", path, NULL);
+      return HYSCAN_DB (hyscan_db_file_new (path));
     }
 
   /* Протоколы shm:// и tcp:// */

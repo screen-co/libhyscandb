@@ -43,7 +43,9 @@ struct _HyScanDBFileClass
   GObjectClass parent_class;
 };
 
-GType hyscan_db_file_get_type (void);
+GType          hyscan_db_file_get_type (void);
+
+HyScanDBFile  *hyscan_db_file_new      (const gchar   *path);
 
 G_END_DECLS
 
