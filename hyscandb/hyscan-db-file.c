@@ -23,6 +23,7 @@
 #define DB_LOCK_FILE           "hyscan.db"             /* Название файла блокировки доступа к системе хранения. */
 #define PROJECT_ID_FILE        "project.id"            /* Название файла идентификатора проекта. */
 #define PROJECT_SCHEMA_FILE    "project.sch"           /* Название файла со схемой данных проекта. */
+#define PROJECT_PARAMETERS_DIR "project.prm"           /* Название каталога для хранения параметров проекта. */
 #define TRACK_ID_FILE          "track.id"              /* Название файла идентификатора галса. */
 #define TRACK_SCHEMA_FILE      "track.sch"             /* Название файла со схемой данных. */
 #define TRACK_PARAMETERS_FILE  "track.prm"             /* Название файла с параметрами галса. */
@@ -57,6 +58,7 @@ typedef struct
 
   gchar               *project_name;           /* Название проекта. */
   gchar               *path;                   /* Путь к каталогу с проектом. */
+  gchar               *param_path;             /* Путь к каталогу с параметрами. */
 
   gint64               ctime;                  /* Время создания проекта. */
 } HyScanDBFileProjectInfo;
@@ -345,6 +347,12 @@ hyscan_db_file_check_name (const gchar *name,
 {
   gint i;
 
+  /* Проверка на спец имена. */
+  if (g_strcmp0 (name, PROJECT_ID_FILE) == 0)
+    return FALSE;
+  if (g_strcmp0 (name, PROJECT_PARAMETERS_DIR) == 0)
+    return FALSE;
+
   for (i = 0; name[i] != '\0'; i++)
     {
       gboolean match = FALSE;
@@ -379,6 +387,7 @@ hyscan_db_remove_project_info (gpointer value)
 
   g_free (project_info->project_name);
   g_free (project_info->path);
+  g_free (project_info->param_path);
 
   g_free (project_info);
 }
@@ -972,6 +981,7 @@ hyscan_db_file_project_open (HyScanDB    *db,
       project_info->mod_count = 1;
       project_info->project_name = g_strdup (project_name);
       project_info->path = project_path;
+      project_info->param_path = g_build_filename (project_path, PROJECT_PARAMETERS_DIR, NULL);
       project_info->ctime = ctime;
       project_path = NULL;
       id = nid;
@@ -1002,6 +1012,7 @@ hyscan_db_file_project_create (HyScanDB    *db,
   gint64 ctime;
   HyScanDBFileID id;
   gchar *project_path = NULL;
+  gchar *param_path = NULL;
   gchar *project_param_file = NULL;
   gchar *project_schema_file = NULL;
 
@@ -1019,8 +1030,9 @@ hyscan_db_file_project_create (HyScanDB    *db,
   id.version = GUINT32_TO_LE (FILE_VERSION);
   id.ctime = GUINT64_TO_LE (ctime);
   project_path = g_build_filename (priv->path, project_name, NULL);
+  param_path = g_build_filename (project_path, PROJECT_PARAMETERS_DIR, NULL);
   project_param_file = g_build_filename (priv->path, project_name, PROJECT_ID_FILE, NULL);
-  project_schema_file = g_build_filename (priv->path,project_name, PROJECT_SCHEMA_FILE, NULL);
+  project_schema_file = g_build_filename (param_path, PROJECT_SCHEMA_FILE, NULL);
 
   /* Проверяем, что каталога с названием проекта нет. */
   if (g_file_test (project_path, G_FILE_TEST_IS_DIR))
@@ -1031,7 +1043,7 @@ hyscan_db_file_project_create (HyScanDB    *db,
     }
 
   /* Создаём каталог для проекта. */
-  if (g_mkdir_with_parents (project_path, 0777) != 0)
+  if (g_mkdir_with_parents (param_path, 0777) != 0)
     {
       g_warning ("HyScanDBFile: can't create project '%s' directory", project_name);
       goto exit;
@@ -1063,6 +1075,7 @@ exit:
   g_free (project_schema_file);
   g_free (project_param_file);
   g_free (project_path);
+  g_free (param_path);
 
   if (status)
     return hyscan_db_file_project_open (db, project_name);
@@ -2217,7 +2230,7 @@ hyscan_db_file_project_param_list (HyScanDB *db,
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
   if (project_info != NULL)
-    list = hyscan_db_file_get_directory_param_list (project_info->path);
+    list = hyscan_db_file_get_directory_param_list (project_info->param_path);
 
   g_rw_lock_reader_unlock (&priv->lock);
 
@@ -2281,9 +2294,9 @@ hyscan_db_file_project_param_open (HyScanDB    *db,
   /* Открываем группу параметров для работы. */
   else
     {
-      param_file = g_strdup_printf ("%s%s%s.%s", project_info->path, G_DIR_SEPARATOR_S,
+      param_file = g_strdup_printf ("%s%s%s.%s", project_info->param_path, G_DIR_SEPARATOR_S,
                                                  group_name, PARAMETERS_FILE_EXT);
-      schema_file = g_build_filename (project_info->path, PROJECT_SCHEMA_FILE, NULL);
+      schema_file = g_build_filename (project_info->param_path, PROJECT_SCHEMA_FILE, NULL);
       param_info = g_new (HyScanDBFileParamInfo, 1);
       param_info->ref_count = 1;
       param_info->mod_count = 1;
@@ -2352,7 +2365,7 @@ hyscan_db_file_project_param_remove (HyScanDB    *db,
     }
 
   /* Удаляем файл с параметрами. */
-  param_file = g_strdup_printf ("%s%s%s.%s", project_info->path, G_DIR_SEPARATOR_S,
+  param_file = g_strdup_printf ("%s%s%s.%s", project_info->param_path, G_DIR_SEPARATOR_S,
                                 group_name, PARAMETERS_FILE_EXT);
   if (g_unlink (param_file) != 0)
     {
