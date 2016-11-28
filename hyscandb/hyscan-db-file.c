@@ -16,6 +16,10 @@
 #include <gio/gio.h>
 #include <string.h>
 
+#ifdef G_OS_WIN32
+#include <windows.h>
+#endif
+
 #define DB_LOCK_FILE           "hyscan.db"             /* Название файла блокировки доступа к системе хранения. */
 #define PROJECT_ID_FILE        "project.id"            /* Название файла идентификатора проекта. */
 #define PROJECT_SCHEMA_FILE    "project.sch"           /* Название файла со схемой данных проекта. */
@@ -121,7 +125,10 @@ struct _HyScanDBFilePrivate
 
   gchar               *flock_name;             /* Имя файла блокировки. */
 #ifdef G_OS_UNIX
-  FILE                *flock;                  /* Блокировка доступа к каталогу с проектами. */
+  FILE                *flock;                  /* Дескриптор файла блокировки. */
+#endif
+#ifdef G_OS_WIN32
+  HANDLE               flock;                  /* Дескриптор файла блокировки */
 #endif
   gboolean             flocked;                /* Признак блокировки доступа. */
 
@@ -226,6 +233,12 @@ hyscan_db_file_object_constructed (GObject *object)
   HyScanDBFile *dbf = HYSCAN_DB_FILE (object);
   HyScanDBFilePrivate *priv = dbf->priv;
 
+#ifdef G_OS_WIN32
+  wchar_t *wflock_name;
+  DWORD written;
+  OVERLAPPED overlapped = {0};
+#endif
+
   priv->projects = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_project_info);
   priv->tracks = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_track_info);
   priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_channel_info);
@@ -252,6 +265,39 @@ hyscan_db_file_object_constructed (GObject *object)
 
   priv->flocked = TRUE;
 #endif
+
+#ifdef G_OS_WIN32
+  wflock_name = g_utf8_to_utf16 (priv->flock_name, -1, NULL, NULL, NULL);
+  priv->flock = CreateFileW (wflock_name,
+                             GENERIC_READ | GENERIC_WRITE,
+                             FILE_SHARE_READ | FILE_SHARE_WRITE,
+                             NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  g_free (wflock_name);
+
+  if (priv->flock == INVALID_HANDLE_VALUE)
+    {
+      g_warning ("HyScanDBFile: can't create lock on db directory '%s'", priv->path);
+      return;
+    }
+
+  if (!WriteFile (priv->flock, "HYSCAN", 6, &written, NULL) || (written != 6))
+    {
+      CloseHandle (priv->flock);
+      g_warning ("HyScanDBFile: can't write to lock file %s'", priv->path);
+      return;
+    }
+
+  overlapped.Offset = 0;
+  overlapped.OffsetHigh = 0;
+  if (!LockFileEx (priv->flock, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 6, 0, &overlapped))
+    {
+      CloseHandle (priv->flock);
+      g_warning ("HyScanDBFile: can't lock db directory '%s'", priv->path);
+      return;
+    }
+
+  priv->flocked = TRUE;
+#endif
 }
 
 static void
@@ -269,7 +315,21 @@ hyscan_db_file_object_finalize (GObject *object)
   g_rw_lock_clear (&priv->lock);
 
 #ifdef G_OS_UNIX
-  g_clear_pointer (&priv->flock, fclose);
+  if (priv->flocked)
+    fclose (priv->flock);
+#endif
+
+#ifdef G_OS_WIN32
+  if (priv->flocked)
+    {
+      OVERLAPPED overlapped = {0};
+
+      overlapped.Offset = 0;
+      overlapped.OffsetHigh = 0;
+      UnlockFileEx (priv->flock, 0, 6, 0, &overlapped);
+
+      CloseHandle (priv->flock);
+    }
 #endif
 
   g_free (priv->path);
