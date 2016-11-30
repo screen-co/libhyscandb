@@ -1210,7 +1210,7 @@ hyscan_db_channel_file_find_channel_data (HyScanDBChannelFile *channel,
   HyScanDBChannelFileIndex *db_index;
   HyScanDBFindStatus status = HYSCAN_DB_FIND_FAIL;
 
-  g_return_val_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel), HYSCAN_DB_FIND_FAIL);
 
   priv = channel->priv;
 
@@ -1223,7 +1223,7 @@ hyscan_db_channel_file_find_channel_data (HyScanDBChannelFile *channel,
   if (priv->n_parts == 0)
     {
       g_mutex_unlock (&priv->lock);
-      return FALSE;
+      return HYSCAN_DB_FIND_FAIL;
     }
 
   /* Проверяем границу начала данных. */

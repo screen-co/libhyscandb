@@ -517,13 +517,13 @@ hyscan_db_channel_find_data (HyScanDB *db,
 {
   HyScanDBInterface *iface;
 
-  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+  g_return_val_if_fail (HYSCAN_IS_DB (db), HYSCAN_DB_FIND_FAIL);
 
   iface = HYSCAN_DB_GET_IFACE (db);
   if (iface->channel_find_data != NULL)
     return iface->channel_find_data (db, channel_id, time, lindex, rindex, ltime, rtime);
 
-  return FALSE;
+  return HYSCAN_DB_FIND_FAIL;
 }
 
 gchar **

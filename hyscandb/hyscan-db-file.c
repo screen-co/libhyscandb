@@ -2197,7 +2197,7 @@ hyscan_db_file_channel_find_data (HyScanDB *db,
   HyScanDBFindStatus status = HYSCAN_DB_FIND_FAIL;
 
   if (!priv->flocked)
-    return FALSE;
+    return HYSCAN_DB_FIND_FAIL;
 
   g_rw_lock_reader_lock (&priv->lock);
 
