@@ -36,22 +36,22 @@ struct _HyScanDBParamFilePrivate
   GMutex               lock;           /* Блокировка многопоточного доступа. */
 };
 
-static void                    hyscan_db_param_file_set_property       (GObject               *object,
-                                                                        guint                  prop_id,
-                                                                        const GValue          *value,
-                                                                        GParamSpec            *pspec);
-static void                    hyscan_db_param_file_object_constructed (GObject               *object);
-static void                    hyscan_db_param_file_object_finalize    (GObject               *object);
+static void                    hyscan_db_param_file_set_property       (GObject                 *object,
+                                                                        guint                    prop_id,
+                                                                        const GValue            *value,
+                                                                        GParamSpec              *pspec);
+static void                    hyscan_db_param_file_object_constructed (GObject                 *object);
+static void                    hyscan_db_param_file_object_finalize    (GObject                 *object);
 
-static HyScanDataSchema       *hyscan_db_param_file_schema_lookup      (GHashTable            *schemas,
-                                                                        const gchar           *schema_file,
-                                                                        const gchar           *schema_id);
+static HyScanDataSchema       *hyscan_db_param_file_schema_lookup      (GHashTable              *schemas,
+                                                                        const gchar             *schema_file,
+                                                                        const gchar             *schema_id);
 
-static gboolean                hyscan_db_param_file_compare_types      (HyScanDataSchemaType   param_type,
-                                                                        GVariantClass          value_type);
+static gboolean                hyscan_db_param_file_compare_types      (HyScanDataSchemaKeyType  param_type,
+                                                                        GVariantClass            value_type);
 
-static gboolean                hyscan_db_param_file_params_flush       (GKeyFile              *params,
-                                                                        GOutputStream         *ofd);
+static gboolean                hyscan_db_param_file_params_flush       (GKeyFile                *params,
+                                                                        GOutputStream           *ofd);
 
 G_DEFINE_TYPE_WITH_PRIVATE (HyScanDBParamFile, hyscan_db_param_file, G_TYPE_OBJECT)
 
@@ -178,35 +178,35 @@ hyscan_db_param_file_schema_lookup (GHashTable       *schemas,
 
 /* Функция сравнивает тип параметра схемы и тип значения GVariant. */
 static gboolean
-hyscan_db_param_file_compare_types (HyScanDataSchemaType param_type,
-                                    GVariantClass        value_type)
+hyscan_db_param_file_compare_types (HyScanDataSchemaKeyType param_type,
+                                    GVariantClass           value_type)
 {
-  if (param_type == HYSCAN_DATA_SCHEMA_TYPE_INVALID)
+  if (param_type == HYSCAN_DATA_SCHEMA_KEY_INVALID)
     return FALSE;
 
   switch (param_type)
     {
-    case HYSCAN_DATA_SCHEMA_TYPE_BOOLEAN:
+    case HYSCAN_DATA_SCHEMA_KEY_BOOLEAN:
       if (value_type == G_VARIANT_CLASS_BOOLEAN)
         return TRUE;
       break;
 
-    case HYSCAN_DATA_SCHEMA_TYPE_INTEGER:
+    case HYSCAN_DATA_SCHEMA_KEY_INTEGER:
       if (value_type == G_VARIANT_CLASS_INT64)
         return TRUE;
       break;
 
-    case HYSCAN_DATA_SCHEMA_TYPE_DOUBLE:
+    case HYSCAN_DATA_SCHEMA_KEY_DOUBLE:
       if (value_type == G_VARIANT_CLASS_DOUBLE)
         return TRUE;
       break;
 
-    case HYSCAN_DATA_SCHEMA_TYPE_STRING:
+    case HYSCAN_DATA_SCHEMA_KEY_STRING:
       if (value_type == G_VARIANT_CLASS_STRING)
         return TRUE;
       break;
 
-    case HYSCAN_DATA_SCHEMA_TYPE_ENUM:
+    case HYSCAN_DATA_SCHEMA_KEY_ENUM:
       if (value_type == G_VARIANT_CLASS_INT64)
         return TRUE;
       break;
@@ -436,7 +436,7 @@ hyscan_db_param_file_set (HyScanDBParamFile   *param,
 
   gchar *schema_id = NULL;
   HyScanDataSchema *schema = NULL;
-  HyScanDataSchemaType param_type;
+  HyScanDataSchemaKeyType param_type;
   GVariantClass value_type;
   gboolean status = FALSE;
 
@@ -462,8 +462,11 @@ hyscan_db_param_file_set (HyScanDBParamFile   *param,
   /* Проверяем параметы. */
   for (i = 0; param_names[i] != NULL; i++)
     {
+      HyScanDataSchemaKeyAccess access;
+
       /* Доступность на запись. */
-      if (hyscan_data_schema_key_is_readonly (schema, param_names[i]))
+      access = hyscan_data_schema_key_get_access (schema, param_names[i]);
+      if (access == HYSCAN_DATA_SCHEMA_ACCESS_READONLY)
         goto exit;
 
       /* Установка значения по умолчанию. */
@@ -570,18 +573,29 @@ hyscan_db_param_file_get (HyScanDBParamFile   *param,
 
   /* Проверяем параметы. */
   for (i = 0; param_names[i] != NULL; i++)
-    if (!hyscan_data_schema_has_key (schema, param_names[i]))
-      goto exit;
+    {
+      HyScanDataSchemaKeyAccess access;
+
+      /* Доступность на чтение. */
+      access = hyscan_data_schema_key_get_access (schema, param_names[i]);
+      if (access == HYSCAN_DATA_SCHEMA_ACCESS_WRITEONLY)
+        goto exit;
+
+      if (!hyscan_data_schema_has_key (schema, param_names[i]))
+        goto exit;
+    }
 
   /* Считываем значения параметров. */
   for (i = 0; param_names[i] != NULL; i++)
     {
-      HyScanDataSchemaType param_type;
+      HyScanDataSchemaKeyType param_type;
+      HyScanDataSchemaKeyAccess access;
       GVariant *value;
 
       /* Для параметров "только для чтения" или если значение не установлено
        * возвращаем значение по умолчанию. */
-      if (hyscan_data_schema_key_is_readonly (schema, param_names[i]) ||
+      access = hyscan_data_schema_key_get_access (schema, param_names[i]);
+      if ((access == HYSCAN_DATA_SCHEMA_ACCESS_READONLY) ||
           !g_key_file_has_key (priv->params, object_name, param_names[i], NULL))
         {
           param_values[i] = hyscan_data_schema_key_get_default (schema, param_names[i]);
@@ -591,20 +605,20 @@ hyscan_db_param_file_get (HyScanDBParamFile   *param,
       param_type = hyscan_data_schema_key_get_type (schema, param_names[i]);
       switch (param_type)
         {
-        case HYSCAN_DATA_SCHEMA_TYPE_BOOLEAN:
+        case HYSCAN_DATA_SCHEMA_KEY_BOOLEAN:
           value = g_variant_new_boolean (g_key_file_get_boolean (priv->params, object_name, param_names[i], NULL));
           break;
 
-        case HYSCAN_DATA_SCHEMA_TYPE_INTEGER:
-        case HYSCAN_DATA_SCHEMA_TYPE_ENUM:
+        case HYSCAN_DATA_SCHEMA_KEY_INTEGER:
+        case HYSCAN_DATA_SCHEMA_KEY_ENUM:
           value = g_variant_new_int64 (g_key_file_get_int64 (priv->params, object_name, param_names[i], NULL));
           break;
 
-        case HYSCAN_DATA_SCHEMA_TYPE_DOUBLE:
+        case HYSCAN_DATA_SCHEMA_KEY_DOUBLE:
           value = g_variant_new_double (g_key_file_get_double (priv->params, object_name, param_names[i], NULL));
           break;
 
-        case HYSCAN_DATA_SCHEMA_TYPE_STRING:
+        case HYSCAN_DATA_SCHEMA_KEY_STRING:
           value = g_variant_new_take_string (g_key_file_get_string (priv->params, object_name, param_names[i], NULL));
           break;
 
