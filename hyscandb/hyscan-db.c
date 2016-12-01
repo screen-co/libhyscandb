@@ -820,7 +820,7 @@ hyscan_db_param_get_string (HyScanDB    *db,
   names[0] = param_name;
   names[1] = NULL;
 
-  if (!hyscan_db_param_get (db, param_id, object_name, names, values))
+  if (!hyscan_db_param_get (db, param_id, object_name, names, values) || (values[0] == NULL))
     return NULL;
 
   param_value = g_variant_dup_string (values[0], NULL);
