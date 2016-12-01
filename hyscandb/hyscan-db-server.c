@@ -1344,7 +1344,7 @@ hyscan_db_server_rpc_proc_param_object_get_schema (guint32   session,
   schema = hyscan_db_param_object_get_schema (priv->db, param_id, object_name);
   if (schema != NULL)
     {
-      schema_data = hyscan_data_schema_get_data (schema, NULL);
+      schema_data = hyscan_data_schema_get_data (schema, NULL, NULL);
       schema_id = hyscan_data_schema_get_id (schema);
 
       if (urpc_data_set_string (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_OBJECT_SCHEMA, schema_data) != 0)
