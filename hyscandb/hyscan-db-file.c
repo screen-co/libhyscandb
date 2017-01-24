@@ -1366,7 +1366,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
   HyScanDBFilePrivate *priv = dbf->priv;
 
   HyScanDBFileProjectInfo *project_info;
-  HyScanDBParamFile *params;
+  HyScanDBParamFile *params = NULL;
 
   gint32 track_id = -1;
 
@@ -1400,7 +1400,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
   track_param_file = g_build_filename (project_info->path, track_name, TRACK_PARAMETERS_FILE, NULL);
   track_schema_file = g_build_filename (project_info->path, track_name, TRACK_SCHEMA_FILE, NULL);
 
-  /* Проверяем, что каталога с названием проекта нет. */
+  /* Проверяем, что каталога с названием галса нет. */
   if (g_file_test (track_path, G_FILE_TEST_IS_DIR))
     {
       track_id = 0;
@@ -1408,7 +1408,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
       goto exit;
     }
 
-  /* Создаём каталог для проекта. */
+  /* Создаём каталог для галса. */
   if (g_mkdir_with_parents (track_path, 0777) != 0)
     {
       g_warning ("HyScanDBFile: can't create track '%s.s%s' directory",
@@ -1439,8 +1439,8 @@ hyscan_db_file_track_create (HyScanDB    *db,
   if (schema_id != NULL)
     {
       params = hyscan_db_param_file_new (track_param_file, track_schema_file);
-      hyscan_db_param_file_object_create (params, TRACK_PARAMETERS_ID, schema_id);
-      g_object_unref (params);
+      if (!hyscan_db_param_file_object_create (params, TRACK_PARAMETERS_ID, schema_id))
+        goto exit;
     }
 
   /* Открываем галс. */
@@ -1450,6 +1450,8 @@ hyscan_db_file_track_create (HyScanDB    *db,
 
 exit:
   g_rw_lock_writer_unlock (&priv->lock);
+
+  g_clear_object (&params);
 
   g_free (track_schema_file);
   g_free (track_param_file);
