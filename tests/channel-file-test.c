@@ -47,7 +47,7 @@ int main( int argc, char **argv )
   g_option_context_add_main_entries( context, entries, NULL );
   g_option_context_set_ignore_unknown_options( context, FALSE );
   if( !g_option_context_parse( context, &argc, &argv, &error ) )
-    { g_message( error->message ); return -1; }
+    { g_print( "%s\n", error->message ); return -1; }
 
   if( argc < 2 )
     { g_print( "%s", g_option_context_get_help( context, FALSE, NULL ) ); return 0; }
