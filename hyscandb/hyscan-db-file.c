@@ -1750,30 +1750,31 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
           HyScanDBFileParamInfo *param_info;
           HyScanDBParamFile *param;
 
-          gchar *track_param_file;
-          gchar *track_schema_file;
-
-          track_param_file = g_build_filename (track_info->path, TRACK_PARAMETERS_FILE, NULL);
-          track_schema_file = g_build_filename (track_info->path, TRACK_SCHEMA_FILE, NULL);
-
-          /* Полное имя параметров канала данных. */
           object_info.project_name = track_info->project_name;
           object_info.track_name = track_info->track_name;
           object_info.group_name = TRACK_GROUP_ID;
+          object_info.object_name = "*";
 
-          /* Ищем группу параметров в списке открытых. */
+          /* Если кто-то уже использует параметры галса, создаём через этот объект
+           * или создаём временный. */
           param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
           if (param_info != NULL)
-            param = g_object_ref (param_info->param);
+            {
+              param = g_object_ref (param_info->param);
+            }
           else
-            param = hyscan_db_param_file_new (track_param_file, track_schema_file);
+            {
+              gchar *track_param_file = g_build_filename (track_info->path, TRACK_PARAMETERS_FILE, NULL);
+              gchar *track_schema_file = g_build_filename (track_info->path, TRACK_SCHEMA_FILE, NULL);
+
+              param = hyscan_db_param_file_new (track_param_file, track_schema_file);
+
+              g_free (track_schema_file);
+              g_free (track_param_file);
+            }
 
           /* Создаём объект в группе параметров с именем канала данных и указанной схемой. */
           hyscan_db_param_file_object_create (param, channel_name, schema_id);
-
-          g_free (track_schema_file);
-          g_free (track_param_file);
-
           g_object_unref (param);
         }
 
@@ -1836,11 +1837,10 @@ hyscan_db_file_channel_remove (HyScanDB    *db,
   HyScanDBFilePrivate *priv = dbf->priv;
 
   HyScanDBFileTrackInfo *track_info;
+  HyScanDBFileParamInfo *param_info;
   HyScanDBFileObjectInfo object_info;
 
   HyScanDBParamFile *param = NULL;
-  gchar *track_param_file;
-  gchar *track_schema_file;
 
   gboolean status = FALSE;
 
@@ -1871,40 +1871,32 @@ hyscan_db_file_channel_remove (HyScanDB    *db,
       g_hash_table_iter_remove (&iter);
     }
 
-  /* Полное имя параметров канала данных. */
+  /* Удаляем объект в группе параметров с именем канала данных. */
   object_info.project_name = track_info->project_name;
   object_info.track_name = track_info->track_name;
   object_info.group_name = TRACK_GROUP_ID;
-  object_info.object_name = channel_name;
+  object_info.object_name = "*";
 
-  /* Ищем параметры канала данных в списке открытых, при необходимости закрываем. */
-  g_hash_table_iter_init (&iter, priv->params);
-  while (g_hash_table_iter_next (&iter, &key, &value))
+  /* Если кто-то уже использует параметры галса, удаляем через этот объект
+   * или создаём временный. */
+  param_info = g_hash_table_find (priv->params, hyscan_db_check_param_by_object_name, &object_info);
+  if (param_info != NULL)
     {
-      HyScanDBFileParamInfo *param_info;
-
-      if (!hyscan_db_check_param_by_object_name (key, value, &object_info))
-        continue;
-
-      /* Если параметры канала данных были открыты, используем их для удаления объекта. */
-      param_info = value;
       param = g_object_ref (param_info->param);
+    }
+  else
+    {
+      gchar *param_file = g_build_filename (track_info->path, TRACK_PARAMETERS_FILE, NULL);
+      gchar *schema_file = g_build_filename (track_info->path, TRACK_SCHEMA_FILE, NULL);
 
-      g_hash_table_iter_remove (&iter);
+      param = hyscan_db_param_file_new (param_file, schema_file);
+
+      g_free (param_file);
+      g_free (schema_file);
     }
 
-  /* Удаляем объект с параметрами канала данных. */
-  track_param_file = g_build_filename (track_info->path, TRACK_PARAMETERS_FILE, NULL);
-  track_schema_file = g_build_filename (track_info->path, TRACK_SCHEMA_FILE, NULL);
-  if (param == NULL)
-    param = hyscan_db_param_file_new (track_param_file, track_schema_file);
-
-  /* Удаляем объект в группе параметров с именем канала данных. */
   hyscan_db_param_file_object_remove (param, channel_name);
   g_object_unref (param);
-
-  g_free (track_schema_file);
-  g_free (track_param_file);
 
   /* Удаляем файлы канала данных. */
   status = hyscan_db_channel_remove_channel_files (track_info->path, channel_name);
@@ -2709,7 +2701,8 @@ hyscan_db_file_param_object_get_schema (HyScanDB    *db,
     }
 
   schema = hyscan_db_param_file_object_get_schema (param_info->param, object_name);
-  g_object_ref (schema);
+  if (schema != NULL)
+    g_object_ref (schema);
 
 exit:
   g_rw_lock_reader_unlock (&priv->lock);
@@ -2886,10 +2879,17 @@ hyscan_db_file_channel_close (HyScanDBFilePrivate *priv,
       if (param_info != NULL)
         param_info->channel_object_wid = -1;
 
-      /* Если в канал так и не записали данные, удаляем его параметры. */
+      /* Если в канал так и не записали данные, удаляем его параметры и закрываем все дескрипторы. */
       if (!hyscan_db_channel_file_get_channel_data_range (channel_info->channel, NULL, NULL))
         {
           HyScanDBParamFile *param;
+
+          gchar *project_name;
+          gchar *track_name;
+          gchar *channel_name;
+
+          GHashTableIter iter;
+          gpointer key, value;
 
           object_info.project_name = channel_info->project_name;
           object_info.track_name = channel_info->track_name;
@@ -2915,8 +2915,30 @@ hyscan_db_file_channel_close (HyScanDBFilePrivate *priv,
             }
 
           hyscan_db_param_file_object_remove (param, channel_info->channel_name);
-
           g_object_unref (param);
+
+          project_name = g_strdup (channel_info->project_name);
+          track_name = g_strdup (channel_info->track_name);
+          channel_name = g_strdup (channel_info->channel_name);
+          object_info.project_name = project_name;
+          object_info.track_name = track_name;
+          object_info.group_name = channel_name;
+
+          /* Ищем канал в списке открытых, при необходимости закрываем. */
+          g_hash_table_iter_init (&iter, priv->channels);
+          while (g_hash_table_iter_next (&iter, &key, &value))
+            {
+              if (!hyscan_db_check_channel_by_object_name (key, value, &object_info))
+                continue;
+
+              g_hash_table_iter_remove (&iter);
+            }
+
+          g_free (project_name);
+          g_free (track_name);
+          g_free (channel_name);
+
+          return TRUE;
         }
 
       channel_info->wid = -1;
