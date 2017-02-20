@@ -55,6 +55,9 @@ GType hyscan_db_param_file_get_type (void);
 HyScanDBParamFile     *hyscan_db_param_file_new                (const gchar           *param_file,
                                                                 const gchar           *schema_file);
 
+/* Функция проверяет была создан новый файл параметров или использовался существующий. */
+gboolean               hyscan_db_param_file_is_new             (HyScanDBParamFile     *param);
+
 /* Функция возвращает список объектов. */
 gchar                **hyscan_db_param_file_object_list        (HyScanDBParamFile     *param);
 

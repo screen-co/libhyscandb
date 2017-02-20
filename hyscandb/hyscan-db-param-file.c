@@ -30,6 +30,7 @@ struct _HyScanDBParamFilePrivate
   GHashTable          *objects;        /* Список объектов. */
   GKeyFile            *params;         /* Параметры. */
 
+  gboolean             new_file;       /* Признак нового файла. */
   GFile               *fd;             /* Объект работы с файлом параметров. */
   GOutputStream       *ofd;            /* Поток записи файла параметров. */
 
@@ -128,6 +129,10 @@ hyscan_db_param_file_object_constructed (GObject *object)
         {
           g_warning ("HyScanDBParamFile: can't load parameters file '%s'", priv->param_file);
           g_clear_pointer (&priv->params, g_key_file_unref);
+        }
+      else
+        {
+          priv->new_file = TRUE;
         }
       g_error_free (error);
     }
@@ -268,6 +273,15 @@ hyscan_db_param_file_new (const gchar *param_file,
   return g_object_new (HYSCAN_TYPE_DB_PARAM_FILE, "param-file", param_file,
                                                   "schema-file", schema_file,
                                                   NULL);
+}
+
+/* Функция проверяет была создан новый файл параметров или использовался существующий. */
+gboolean
+hyscan_db_param_file_is_new (HyScanDBParamFile *param)
+{
+  g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
+
+  return param->priv->new_file;
 }
 
 /* Функция возвращает список объектов. */

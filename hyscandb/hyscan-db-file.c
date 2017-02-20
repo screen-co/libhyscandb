@@ -2301,7 +2301,8 @@ hyscan_db_file_project_param_open (HyScanDB    *db,
       param_info->track_object_wid = -1;
       param_info->channel_object_wid = -1;
       param_info->param = hyscan_db_param_file_new (param_file, schema_file);
-      g_atomic_int_inc (&project_info->mod_count);
+      if (hyscan_db_param_file_is_new (param_info->param))
+        g_atomic_int_inc (&project_info->mod_count);
     }
 
   g_hash_table_insert (priv->params, GINT_TO_POINTER (id), param_info);
