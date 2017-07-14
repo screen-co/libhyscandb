@@ -1993,7 +1993,7 @@ hyscan_db_file_channel_is_writable (HyScanDB *db,
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
 
   /* Проверяем режим доступа. */
-  if (channel_info->wid > 0)
+  if ((channel_info != NULL) && (channel_info->wid > 0))
     writable = TRUE;
 
   g_rw_lock_writer_unlock (&priv->lock);
