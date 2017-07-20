@@ -708,12 +708,16 @@ hyscan_db_param_set_string (HyScanDB    *db,
   names[0] = param_name;
   names[1] = NULL;
 
-  values[0] = g_variant_new_string (param_value);
+  if (param_value != NULL)
+    values[0] = g_variant_new_string (param_value);
+  else
+    values[0] = NULL;
 
   if (hyscan_db_param_set (db, param_id, object_name, names, values))
     return TRUE;
 
-  g_variant_unref (values[0]);
+  if (values[0] != NULL)
+    g_variant_unref (values[0]);
 
   return FALSE;
 }

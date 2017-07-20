@@ -1187,7 +1187,7 @@ gboolean               hyscan_db_param_set_double              (HyScanDB        
  * \param param_id идентификатор группы параметров;
  * \param object_name название объекта;
  * \param param_name название параметра.
- * \param param_value значение параметра - строка с нулём на конце.
+ * \param param_value значение параметра - строка с нулём на конце или NULL.
  *
  * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
  *
