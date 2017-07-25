@@ -2647,7 +2647,7 @@ hyscan_db_file_param_object_remove (HyScanDB    *db,
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
-  if (param_info != NULL)
+  if (param_info == NULL)
     goto exit;
 
   /* Удалять объекты в группе параметров галса нельзя. */
