@@ -13,6 +13,10 @@ add_custom_command (OUTPUT ${CMAKE_BINARY_DIR}/resources/db-logic-resources.c
                     DEPENDS db-logic-resources.xml
                     VERBATIM)
 
+set (TEST_LIBRARIES ${GLIB2_LIBRARIES}
+                    ${LIBXML2_LIBRARIES}
+                    hyscandb)
+
 if (UNIX)
   add_executable (channel-file-test channel-file-test.c)
 endif ()
@@ -20,7 +24,7 @@ add_executable (db-logic-test db-logic-test.c ${CMAKE_BINARY_DIR}/resources/db-l
 add_executable (simple-db-server simple-db-server.c)
 
 if (UNIX)
-  target_link_libraries (channel-file-test ${GLIB2_LIBRARIES} hyscandb)
+  target_link_libraries (channel-file-test ${TEST_LIBRARIES})
 endif ()
-target_link_libraries (db-logic-test ${GLIB2_LIBRARIES} ${LIBXML2_LIBRARIES} hyscandb)
-target_link_libraries (simple-db-server ${GLIB2_LIBRARIES} ${LIBXML2_LIBRARIES} hyscandb)
+target_link_libraries (db-logic-test ${TEST_LIBRARIES})
+target_link_libraries (simple-db-server ${TEST_LIBRARIES})
