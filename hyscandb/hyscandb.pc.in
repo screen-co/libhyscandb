@@ -1,0 +1,11 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/lib
+includedir=${prefix}/include/hyscan-@HYSCAN_MAJOR_VERSION@/hyscandb
+
+Name: HyScanDB
+Version: @HYSCAN_MAJOR_VERSION@.@HYSCAN_DB_VERSION@
+Description: HyScan DB library
+
+Requires: hyscantypes-@HYSCAN_MAJOR_VERSION@
+Libs: -L${libdir} -lhyscandb-@HYSCAN_MAJOR_VERSION@
+Cflags: -I${includedir}

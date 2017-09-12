@@ -1,5 +1,5 @@
 
-add_library (hyscandb SHARED
+add_library (${HYSCAN_DB_LIBRARY} SHARED
              hyscan-db.c
              hyscan-db-common.c
              hyscan-db-file.c
@@ -8,6 +8,31 @@ add_library (hyscandb SHARED
              hyscan-db-channel-file.c
              hyscan-db-param-file.c)
 
-target_link_libraries (hyscandb ${GLIB2_LIBRARIES} ${HYSCAN_LIBRARIES})
+target_link_libraries (${HYSCAN_DB_LIBRARY} ${GLIB2_LIBRARIES} ${HYSCAN_LIBRARIES} ${URPC_LIBRARIES})
 
-set_target_properties (hyscandb PROPERTIES DEFINE_SYMBOL "HYSCAN_API_EXPORTS")
+set_target_properties (${HYSCAN_DB_LIBRARY} PROPERTIES DEFINE_SYMBOL "HYSCAN_API_EXPORTS")
+set_target_properties (${HYSCAN_DB_LIBRARY} PROPERTIES SOVERSION ${HYSCAN_DB_VERSION})
+
+configure_file (hyscandb.pc.in
+                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hyscandb-${HYSCAN_MAJOR_VERSION}.pc"
+                @ONLY)
+
+install (TARGETS ${HYSCAN_DB_LIBRARY}
+         COMPONENT runtime
+         RUNTIME DESTINATION bin
+         LIBRARY DESTINATION lib
+         ARCHIVE DESTINATION lib
+         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+
+install (FILES "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hyscandb-${HYSCAN_MAJOR_VERSION}.pc"
+         COMPONENT development
+         DESTINATION "lib/pkgconfig"
+         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+
+install (FILES hyscan-db.h
+               hyscan-db-file.h
+               hyscan-db-client.h
+               hyscan-db-server.h
+         COMPONENT development
+         DESTINATION "include/hyscan-${HYSCAN_MAJOR_VERSION}/hyscandb"
+         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
