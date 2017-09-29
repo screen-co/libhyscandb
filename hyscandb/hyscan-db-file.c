@@ -1411,7 +1411,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
   /* Создаём каталог для галса. */
   if (g_mkdir_with_parents (track_path, 0777) != 0)
     {
-      g_warning ("HyScanDBFile: can't create track '%s.s%s' directory",
+      g_warning ("HyScanDBFile: can't create track '%s.%s' directory",
                  project_info->project_name, track_name);
       goto exit;
     }
