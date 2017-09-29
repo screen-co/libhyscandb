@@ -1315,6 +1315,7 @@ hyscan_db_file_open_track_int (HyScanDB    *db,
 
       track_info = g_new (HyScanDBFileTrackInfo, 1);
       track_info->ref_count = 1;
+      track_info->mod_count = 1;
       track_info->project_name = g_strdup (project_info->project_name);
       track_info->track_name = g_strdup (track_name);
       track_info->path = track_path;
@@ -1579,6 +1580,10 @@ hyscan_db_file_channel_list (HyScanDB *db,
   HyScanDBFilePrivate *priv = dbf->priv;
 
   HyScanDBFileTrackInfo *track_info;
+  HyScanDBFileChannelInfo *channel_info;
+
+  GHashTableIter iter;
+  gpointer key, value;
 
   GDir *db_dir = NULL;
   const gchar *file_name;
@@ -1632,7 +1637,33 @@ hyscan_db_file_channel_list (HyScanDB *db,
       channels[i] = channel_name;
       i++;
       channels[i] = NULL;
+    }
 
+  /* Добавляем в список каналов созданные, но ещё пустые. */
+  g_hash_table_iter_init (&iter, priv->channels);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      gboolean skip_channel = FALSE;
+      channel_info = value;
+
+      /* Каналы в текущем галсе. */
+      if (g_strcmp0 (track_info->track_name, channel_info->track_name) != 0)
+        continue;
+
+      /* Пропускаем канал, если он уже есть в списке. */
+      for (i = 0; channels[i] != NULL; i++)
+        if (g_strcmp0 (channels[i], channel_info->channel_name) == 0)
+          {
+            skip_channel = TRUE;
+            break;
+          }
+
+      if (skip_channel)
+        continue;
+
+      channels = g_realloc (channels, 16 *(((i + 1) / 16) + 1) *sizeof (gchar *));
+      channels[i] = g_strdup (channel_info->channel_name);
+      channels[i + 1] = NULL;
     }
 
 exit:
