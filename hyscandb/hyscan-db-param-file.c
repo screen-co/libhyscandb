@@ -502,7 +502,7 @@ hyscan_db_param_file_set (HyScanDBParamFile *param,
         continue;
 
       /* Ошибка в типе нового значения параметра. */
-      param_type = hyscan_data_schema_key_get_type (schema, param_names[i]);
+      param_type = hyscan_data_schema_key_get_value_type (schema, param_names[i]);
       value_type = g_variant_classify (param_values[i]);
       if (!hyscan_db_param_file_compare_types (param_type, value_type))
         goto exit;
@@ -645,7 +645,7 @@ hyscan_db_param_file_get (HyScanDBParamFile *param,
         }
       else
         {
-          param_type = hyscan_data_schema_key_get_type (schema, param_names[i]);
+          param_type = hyscan_data_schema_key_get_value_type (schema, param_names[i]);
           switch (param_type)
             {
             case HYSCAN_DATA_SCHEMA_KEY_BOOLEAN:
