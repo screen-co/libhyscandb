@@ -151,6 +151,7 @@
 #define __HYSCAN_DB_H__
 
 #include <hyscan-api.h>
+#include <hyscan-param-list.h>
 #include <hyscan-data-schema.h>
 
 G_BEGIN_DECLS
@@ -322,14 +323,12 @@ struct _HyScanDBInterface
   gboolean             (*param_set)                            (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
-                                                                const gchar *const    *param_names,
-                                                                GVariant             **param_values);
+                                                                HyScanParamList       *param_list);
 
   gboolean             (*param_get)                            (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
-                                                                const gchar *const    *param_names,
-                                                                GVariant             **param_values);
+                                                                HyScanParamList       *param_list);
 
   void                 (*close)                                (HyScanDB              *db,
                                                                 gint32                 id);
@@ -1071,15 +1070,10 @@ HyScanDataSchema      *hyscan_db_param_object_get_schema       (HyScanDB        
  * При установке значений параметров галсов или каналов данных, название объекта
  * должно быть NULL.
  *
- * Если в качестве значения пераметра передать NULL, будет установлено значение
- * по умолчанию, определённое в схеме данных. Объект \link HyScanDB \endlink
- * становится владельцем всех объектов GVariant с новыми значениями.
- *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор группы параметров;
  * \param object_name название объекта;
- * \param param_names NULL терминированный список названий параметров;
- * \param param_values список новых значений.
+ * \param param_list список параметров для записи.
  *
  * \return TRUE - если значения установлены, FALSE - в случае ошибки.
  *
@@ -1088,8 +1082,7 @@ HYSCAN_API
 gboolean               hyscan_db_param_set                     (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
-                                                                const gchar *const    *param_names,
-                                                                GVariant             **param_values);
+                                                                HyScanParamList       *param_list);
 
 /**
  *
@@ -1099,15 +1092,10 @@ gboolean               hyscan_db_param_set                     (HyScanDB        
  * При считывании значений параметров галсов или каналов данных, название объекта
  * должно быть NULL.
  *
- * Пользователь должен самостоятельно выделить память для переменной param_values,
- * в которую будут записаны указатели на GVariant. После использования, пользователь
- * должен освободить память, используемую объектами GVariant функцией g_variant_unref.
- *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор группы параметров;
  * \param object_name название объекта;
- * \param param_names NULL терминированный список названий параметров;
- * \param param_values список для значений параметров.
+ * \param param_list список параметров для чтения.
  *
  * \return TRUE - если значения считаны, FALSE - в случае ошибки.
  *
@@ -1116,208 +1104,7 @@ HYSCAN_API
 gboolean               hyscan_db_param_get                     (HyScanDB              *db,
                                                                 gint32                 param_id,
                                                                 const gchar           *object_name,
-                                                                const gchar *const    *param_names,
-                                                                GVariant             **param_values);
-
-/**
- *
- * Функция устанавливает значение параметра типа boolean.
- *
- * \param db указатель на интерфейс \link HyScanDB \endlink;
- * \param param_id идентификатор группы параметров;
- * \param object_name название объекта;
- * \param param_name название параметра.
- * \param param_value значение параметра.
- *
- * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_db_param_set_boolean             (HyScanDB              *db,
-                                                                gint32                 param_id,
-                                                                const gchar           *object_name,
-                                                                const gchar           *param_name,
-                                                                gboolean               param_value);
-
-/**
- *
- * Функция устанавливает значение параметра типа integer.
- *
- * \param db указатель на интерфейс \link HyScanDB \endlink;
- * \param param_id идентификатор группы параметров;
- * \param object_name название объекта;
- * \param param_name название параметра.
- * \param param_value значение параметра.
- *
- * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_db_param_set_integer             (HyScanDB              *db,
-                                                                gint32                 param_id,
-                                                                const gchar           *object_name,
-                                                                const gchar           *param_name,
-                                                                gint64                 param_value);
-
-/**
- *
- * Функция устанавливает значение параметра типа double.
- *
- * \param db указатель на интерфейс \link HyScanDB \endlink;
- * \param param_id идентификатор группы параметров;
- * \param object_name название объекта;
- * \param param_name название параметра.
- * \param param_value значение параметра.
- *
- * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_db_param_set_double              (HyScanDB              *db,
-                                                                gint32                 param_id,
-                                                                const gchar           *object_name,
-                                                                const gchar           *param_name,
-                                                                gdouble                param_value);
-
-/**
- *
- * Функция устанавливает значение параметра типа string.
- *
- * \param db указатель на интерфейс \link HyScanDB \endlink;
- * \param param_id идентификатор группы параметров;
- * \param object_name название объекта;
- * \param param_name название параметра.
- * \param param_value значение параметра - строка с нулём на конце или NULL.
- *
- * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_db_param_set_string              (HyScanDB              *db,
-                                                                gint32                 param_id,
-                                                                const gchar           *object_name,
-                                                                const gchar           *param_name,
-                                                                const gchar           *param_value);
-
-/**
- *
- * Функция устанавливает значение параметра типа enum.
- *
- * \param db указатель на интерфейс \link HyScanDB \endlink;
- * \param param_id идентификатор группы параметров;
- * \param object_name название объекта;
- * \param param_name название параметра.
- * \param param_value значение параметра.
- *
- * \return TRUE - если значение параметра успешно установлено, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_db_param_set_enum                (HyScanDB              *db,
-                                                                gint32                 param_id,
-                                                                const gchar           *object_name,
-                                                                const gchar           *param_name,
-                                                                gint64                 param_value);
-
-/**
- *
- * Функция считывает и возвращает значение параметра типа boolean.
- *
- * \param db указатель на интерфейс \link HyScanDB \endlink;
- * \param param_id идентификатор группы параметров;
- * \param object_name название объекта;
- * \param param_name название параметра;
- * \param param_value указатель на переменную для значения параметра.
- *
- * \return TRUE - если значение считано, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_db_param_get_boolean             (HyScanDB              *db,
-                                                                gint32                 param_id,
-                                                                const gchar           *object_name,
-                                                                const gchar           *param_name,
-                                                                gboolean              *param_value);
-
-/**
- *
- * Функция считывает и возвращает значение параметра типа integer.
- *
- * \param db указатель на интерфейс \link HyScanDB \endlink;
- * \param param_id идентификатор группы параметров;
- * \param object_name название объекта;
- * \param param_name название параметра;
- * \param param_value указатель на переменную для значения параметра.
- *
- * \return TRUE - если значение считано, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_db_param_get_integer             (HyScanDB              *db,
-                                                                gint32                 param_id,
-                                                                const gchar           *object_name,
-                                                                const gchar           *param_name,
-                                                                gint64                *param_value);
-
-/**
- *
- * Функция считывает и возвращает значение параметра типа double.
- *
- * \param db указатель на интерфейс \link HyScanDB \endlink;
- * \param param_id идентификатор группы параметров;
- * \param object_name название объекта;
- * \param param_name название параметра;
- * \param param_value указатель на переменную для значения параметра.
- *
- * \return TRUE - если значение считано, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_db_param_get_double              (HyScanDB              *db,
-                                                                gint32                 param_id,
-                                                                const gchar           *object_name,
-                                                                const gchar           *param_name,
-                                                                gdouble               *param_value);
-
-/**
- *
- * Функция считывает и возвращает значение параметра типа string.
- *
- * Память выделенная под строку должна быть освобождена после использования (см. g_free).
- *
- * \param db указатель на интерфейс \link HyScanDB \endlink;
- * \param param_id идентификатор группы параметров;
- * \param object_name название объекта;
- * \param param_name название параметра.
- *
- * \return Значение параметра или NULL - в случае ошибки.
- *
- */
-HYSCAN_API
-gchar                 *hyscan_db_param_get_string             (HyScanDB               *db,
-                                                               gint32                  param_id,
-                                                               const gchar            *object_name,
-                                                               const gchar            *param_name);
-
-/**
- *
- * Функция считывает и возвращает значение параметра типа enum.
- *
- * \param db указатель на интерфейс \link HyScanDB \endlink;
- * \param param_id идентификатор группы параметров;
- * \param object_name название объекта;
- * \param param_name название параметра;
- * \param param_value указатель на переменную для значения параметра.
- *
- * \return TRUE - если значение считано, FALSE - в случае ошибки.
- *
- */
-HYSCAN_API
-gboolean               hyscan_db_param_get_enum                (HyScanDB              *db,
-                                                                gint32                 param_id,
-                                                                const gchar           *object_name,
-                                                                const gchar           *param_name,
-                                                                gint64                *param_value);
+                                                                HyScanParamList       *param_list);
 
 /**
  *

@@ -159,17 +159,18 @@ clear_parameters (HyScanDB *db,
                   guint32   param_id,
                   gchar    *object_name)
 {
-  const gchar *names[7] = { NULL };
-  GVariant *values[7] = { NULL };
+  HyScanParamList *list = hyscan_param_list_new ();
 
-  names[0] = "/boolean";
-  names[1] = "/integer";
-  names[2] = "/double";
-  names[3] = "/string";
-  names[4] = "/null";
-  names[5] = "/enum";
+  hyscan_param_list_set (list, "/boolean", NULL);
+  hyscan_param_list_set (list, "/integer", NULL);
+  hyscan_param_list_set (list, "/double", NULL);
+  hyscan_param_list_set (list, "/string", NULL);
+  hyscan_param_list_set (list, "/null", NULL);
+  hyscan_param_list_set (list, "/enum", NULL);
 
-  hyscan_db_param_set (db, param_id, object_name, names, values);
+  hyscan_db_param_set (db, param_id, object_name, list);
+
+  g_object_unref (list);
 }
 
 /* Функция устанавливает значения параметров в группе. */
@@ -180,38 +181,20 @@ set_parameters (HyScanDB *db,
                 guint32   param_id,
                 gchar    *object_name)
 {
-  gboolean bvalue = BOOLEAN_VALUE (value);
-  gint64 ivalue = INTEGER_VALUE (value);
-  gdouble dvalue = DOUBLE_VALUE (value);
-  gchar *svalue = STRING_VALUE (value);
-  gint64 evalue = ENUM_VALUE (value);
+  HyScanParamList *list = hyscan_param_list_new ();
+  gchar *string_value = STRING_VALUE (value);
 
-  const gchar *names[7] = { NULL };
-  GVariant *values[7] = { NULL };
+  hyscan_param_list_set_boolean (list, "/boolean", BOOLEAN_VALUE (value));
+  hyscan_param_list_set_integer (list, "/integer", INTEGER_VALUE (value));
+  hyscan_param_list_set_double (list, "/double", DOUBLE_VALUE (value));
+  hyscan_param_list_set_string (list, "/string", string_value);
+  hyscan_param_list_set_enum (list, "/enum", ENUM_VALUE (value));
+  hyscan_param_list_set (list, "/null", NULL);
 
-  names[0] = "/boolean";
-  names[1] = "/integer";
-  names[2] = "/double";
-  names[3] = "/string";
-  names[4] = "/null";
-  names[5] = "/enum";
+  hyscan_db_param_set (db, param_id, object_name, list);
 
-  values[0] = g_variant_new_boolean (bvalue);
-  values[1] = g_variant_new_int64 (ivalue);
-  values[2] = g_variant_new_double (dvalue);
-  values[3] = g_variant_new_string (svalue);
-  values[4] = g_variant_new_take_string (svalue);
-  values[5] = g_variant_new_int64 (evalue);
-
-  if (!hyscan_db_param_set (db, param_id, object_name, names, values))
-    {
-      g_variant_unref (values[0]);
-      g_variant_unref (values[1]);
-      g_variant_unref (values[2]);
-      g_variant_unref (values[3]);
-      g_variant_unref (values[4]);
-      g_variant_unref (values[5]);
-    }
+  g_object_unref (list);
+  g_free (string_value);
 }
 
 /* Функция проверяет значения параметров в группе. */
@@ -222,23 +205,14 @@ check_parameters (HyScanDB *db,
                   guint32   param_id,
                   gchar    *object_name)
 {
-  gboolean     orig_bvalue,  bvalue;
-  gint64       orig_ivalue,  ivalue;
-  gdouble      orig_dvalue,  dvalue;
-  const gchar *svalue;
-  const gchar *nvalue = NULL;
+  HyScanParamList *list = hyscan_param_list_new ();
+
+  gboolean     orig_bvalue;
+  gint64       orig_ivalue;
+  gdouble      orig_dvalue;
   gchar       *orig_svalue;
-  gint64       orig_evalue,  evalue;
-
-  const gchar *names[7] = { NULL };
-  GVariant *values[7] = { NULL };
-
-  names[0] = "/boolean";
-  names[1] = "/integer";
-  names[2] = "/double";
-  names[3] = "/string";
-  names[4] = "/null";
-  names[5] = "/enum";
+  gint64       orig_evalue;
+  const gchar *nvalue = NULL;
 
   orig_bvalue = BOOLEAN_VALUE (value);
   orig_ivalue = INTEGER_VALUE (value);
@@ -246,37 +220,31 @@ check_parameters (HyScanDB *db,
   orig_svalue = STRING_VALUE (value);
   orig_evalue = ENUM_VALUE (value);
 
-  if (!hyscan_db_param_get (db, param_id, object_name, names, values))
+  hyscan_param_list_add (list, "/boolean");
+  hyscan_param_list_add (list, "/integer");
+  hyscan_param_list_add (list, "/double");
+  hyscan_param_list_add (list, "/string");
+  hyscan_param_list_add (list, "/null");
+  hyscan_param_list_add (list, "/enum");
+
+  if (!hyscan_db_param_get (db, param_id, object_name, list))
     g_error ("%s: can't get parameters", error_prefix);
 
-  bvalue = g_variant_get_boolean (values[0]);
-  ivalue = g_variant_get_int64 (values[1]);
-  dvalue = g_variant_get_double (values[2]);
-  svalue = g_variant_get_string (values[3], NULL);
-  if (values[4] != NULL)
-    nvalue = g_variant_get_string (values[4], NULL);
-  evalue = g_variant_get_int64 (values[5]);
-
-  if (bvalue != orig_bvalue)
+  if (hyscan_param_list_get_boolean (list, "/boolean") != orig_bvalue)
     g_error ("%s: error in boolean parameter", error_prefix);
-  if (ivalue != orig_ivalue)
+  if (hyscan_param_list_get_integer (list, "/integer") != orig_ivalue)
     g_error ("%s: error in integer parameter", error_prefix);
-  if (ABS (dvalue - orig_dvalue) > 0.000001)
+  if (ABS (hyscan_param_list_get_double (list, "/double") - orig_dvalue) > 1e-10)
     g_error ("%s: error in double parameter", error_prefix);
-  if (g_strcmp0 (svalue, orig_svalue) != 0)
+  if (g_strcmp0 (hyscan_param_list_get_string (list, "/string"), orig_svalue) != 0)
     g_error ("%s: error in string parameter", error_prefix);
+  nvalue = hyscan_param_list_get_string (list, "/null");
   if (nvalue != NULL && g_strcmp0 (nvalue, orig_svalue) != 0)
     g_error ("%s: error in null string parameter %s", error_prefix, nvalue);
-  if (evalue != orig_evalue)
+  if (hyscan_param_list_get_enum (list, "/enum") != orig_evalue)
     g_error ("%s: error in enum parameter", error_prefix);
 
-  g_variant_unref (values[0]);
-  g_variant_unref (values[1]);
-  g_variant_unref (values[2]);
-  g_variant_unref (values[3]);
-  g_clear_pointer (&values[4], g_variant_unref);
-  g_variant_unref (values[5]);
-
+  g_object_unref (list);
   g_free (orig_svalue);
 }
 

@@ -441,10 +441,9 @@ exit:
 
 /* Функция устанавливает значение параметра. */
 gboolean
-hyscan_db_param_file_set (HyScanDBParamFile   *param,
-                          const gchar         *object_name,
-                          const gchar *const  *param_names,
-                          GVariant           **param_values)
+hyscan_db_param_file_set (HyScanDBParamFile *param,
+                          const gchar       *object_name,
+                          HyScanParamList   *param_list)
 {
   HyScanDBParamFilePrivate *priv;
 
@@ -454,7 +453,10 @@ hyscan_db_param_file_set (HyScanDBParamFile   *param,
   GVariantClass value_type;
   gboolean status = FALSE;
 
-  gint i;
+  const gchar * const *param_names;
+  GVariant **param_values = NULL;
+  guint n_param_names;
+  guint i;
 
   g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
 
@@ -473,8 +475,17 @@ hyscan_db_param_file_set (HyScanDBParamFile   *param,
   if (schema == NULL)
     goto exit;
 
+  /* Список устанавливаемых параметров. */
+  param_names = hyscan_param_list_params (param_list);
+  if (param_names == NULL)
+    goto exit;
+
+  /* Список значений параметров. */
+  n_param_names = g_strv_length ((gchar **)param_names);
+  param_values = g_new0 (GVariant *, n_param_names);
+
   /* Проверяем параметы. */
-  for (i = 0; param_names[i] != NULL; i++)
+  for (i = 0; i < n_param_names; i++)
     {
       HyScanDataSchemaKeyAccess access;
 
@@ -482,6 +493,9 @@ hyscan_db_param_file_set (HyScanDBParamFile   *param,
       access = hyscan_data_schema_key_get_access (schema, param_names[i]);
       if (access == HYSCAN_DATA_SCHEMA_ACCESS_READONLY)
         goto exit;
+
+      /* Новое значение параметра. */
+      param_values[i]= hyscan_param_list_get (param_list, param_names[i]);
 
       /* Установка значения по умолчанию. */
       if (param_values[i] == NULL)
@@ -499,7 +513,7 @@ hyscan_db_param_file_set (HyScanDBParamFile   *param,
     }
 
   /* Изменяем параметы. */
-  for (i = 0; param_names[i] != NULL; i++)
+  for (i = 0; i < n_param_names; i++)
     {
       /* Сбрасываем значение параметра до состояния по умолчанию. */
       if (param_values[i] == NULL)
@@ -548,6 +562,12 @@ hyscan_db_param_file_set (HyScanDBParamFile   *param,
 
 exit:
   g_mutex_unlock (&priv->lock);
+
+  if (!status && (param_values != NULL))
+    for (i = 0; i < n_param_names; i++)
+      g_clear_pointer (&param_values[i], g_variant_unref);
+
+  g_free (param_values);
   g_free (schema_id);
 
   return status;
@@ -555,10 +575,9 @@ exit:
 
 /* Функция считывает значение параметра. */
 gboolean
-hyscan_db_param_file_get (HyScanDBParamFile   *param,
-                          const gchar         *object_name,
-                          const gchar *const  *param_names,
-                          GVariant           **param_values)
+hyscan_db_param_file_get (HyScanDBParamFile *param,
+                          const gchar       *object_name,
+                          HyScanParamList   *param_list)
 {
   HyScanDBParamFilePrivate *priv;
 
@@ -566,7 +585,9 @@ hyscan_db_param_file_get (HyScanDBParamFile   *param,
   HyScanDataSchema *schema = NULL;
   gboolean status = FALSE;
 
-  gint i;
+  const gchar * const *param_names;
+  guint n_param_names;
+  guint i;
 
   g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
 
@@ -585,8 +606,14 @@ hyscan_db_param_file_get (HyScanDBParamFile   *param,
   if (schema == NULL)
     goto exit;
 
+  /* Список устанавливаемых параметров. */
+  param_names = hyscan_param_list_params (param_list);
+  if (param_names == NULL)
+    goto exit;
+
   /* Проверяем параметы. */
-  for (i = 0; param_names[i] != NULL; i++)
+  n_param_names = g_strv_length ((gchar **)param_names);
+  for (i = 0; i < n_param_names; i++)
     {
       HyScanDataSchemaKeyAccess access;
 
@@ -604,7 +631,7 @@ hyscan_db_param_file_get (HyScanDBParamFile   *param,
     {
       HyScanDataSchemaKeyType param_type;
       HyScanDataSchemaKeyAccess access;
-      GVariant *value;
+      GVariant *param_value;
 
       /* Для параметров "только для чтения" или если значение не установлено
        * возвращаем значение по умолчанию. */
@@ -612,36 +639,39 @@ hyscan_db_param_file_get (HyScanDBParamFile   *param,
       if ((access == HYSCAN_DATA_SCHEMA_ACCESS_READONLY) ||
           !g_key_file_has_key (priv->params, object_name, param_names[i], NULL))
         {
-          param_values[i] = hyscan_data_schema_key_get_default (schema, param_names[i]);
-          continue;
+          param_value = hyscan_data_schema_key_get_default (schema, param_names[i]);
+          hyscan_param_list_set (param_list, param_names[i], param_value);
+          g_clear_pointer (&param_value, g_variant_unref);
         }
-
-      param_type = hyscan_data_schema_key_get_type (schema, param_names[i]);
-      switch (param_type)
+      else
         {
-        case HYSCAN_DATA_SCHEMA_KEY_BOOLEAN:
-          value = g_variant_new_boolean (g_key_file_get_boolean (priv->params, object_name, param_names[i], NULL));
-          break;
+          param_type = hyscan_data_schema_key_get_type (schema, param_names[i]);
+          switch (param_type)
+            {
+            case HYSCAN_DATA_SCHEMA_KEY_BOOLEAN:
+              param_value = g_variant_new_boolean (g_key_file_get_boolean (priv->params, object_name, param_names[i], NULL));
+              break;
 
-        case HYSCAN_DATA_SCHEMA_KEY_INTEGER:
-        case HYSCAN_DATA_SCHEMA_KEY_ENUM:
-          value = g_variant_new_int64 (g_key_file_get_int64 (priv->params, object_name, param_names[i], NULL));
-          break;
+            case HYSCAN_DATA_SCHEMA_KEY_INTEGER:
+            case HYSCAN_DATA_SCHEMA_KEY_ENUM:
+              param_value = g_variant_new_int64 (g_key_file_get_int64 (priv->params, object_name, param_names[i], NULL));
+              break;
 
-        case HYSCAN_DATA_SCHEMA_KEY_DOUBLE:
-          value = g_variant_new_double (g_key_file_get_double (priv->params, object_name, param_names[i], NULL));
-          break;
+            case HYSCAN_DATA_SCHEMA_KEY_DOUBLE:
+              param_value = g_variant_new_double (g_key_file_get_double (priv->params, object_name, param_names[i], NULL));
+              break;
 
-        case HYSCAN_DATA_SCHEMA_KEY_STRING:
-          value = g_variant_new_take_string (g_key_file_get_string (priv->params, object_name, param_names[i], NULL));
-          break;
+            case HYSCAN_DATA_SCHEMA_KEY_STRING:
+              param_value = g_variant_new_take_string (g_key_file_get_string (priv->params, object_name, param_names[i], NULL));
+              break;
 
-        default:
-          value = NULL;
-          break;
+            default:
+              param_value = NULL;
+              break;
+            }
+
+          hyscan_param_list_set (param_list, param_names[i], param_value);
         }
-
-      param_values[i] = value;
     }
 
   status = TRUE;

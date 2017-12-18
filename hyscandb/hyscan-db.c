@@ -591,11 +591,10 @@ hyscan_db_param_object_get_schema (HyScanDB    *db,
 }
 
 gboolean
-hyscan_db_param_set (HyScanDB             *db,
-                     gint32                param_id,
-                     const gchar          *object_name,
-                     const gchar *const   *param_names,
-                     GVariant            **param_values)
+hyscan_db_param_set (HyScanDB        *db,
+                     gint32           param_id,
+                     const gchar     *object_name,
+                     HyScanParamList *param_list)
 {
   HyScanDBInterface *iface;
 
@@ -603,17 +602,16 @@ hyscan_db_param_set (HyScanDB             *db,
 
   iface = HYSCAN_DB_GET_IFACE (db);
   if (iface->param_set != NULL)
-    return iface->param_set (db, param_id, object_name, param_names, param_values);
+    return iface->param_set (db, param_id, object_name, param_list);
 
   return FALSE;
 }
 
 gboolean
-hyscan_db_param_get (HyScanDB             *db,
-                     gint32                param_id,
-                     const gchar          *object_name,
-                     const gchar *const   *param_names,
-                     GVariant            **param_values)
+hyscan_db_param_get (HyScanDB        *db,
+                     gint32           param_id,
+                     const gchar     *object_name,
+                     HyScanParamList *param_list)
 {
   HyScanDBInterface *iface;
 
@@ -621,238 +619,9 @@ hyscan_db_param_get (HyScanDB             *db,
 
   iface = HYSCAN_DB_GET_IFACE (db);
   if (iface->param_get != NULL)
-    return iface->param_get (db, param_id, object_name, param_names, param_values);
+    return iface->param_get (db, param_id, object_name, param_list);
 
   return FALSE;
-}
-
-gboolean
-hyscan_db_param_set_boolean (HyScanDB    *db,
-                             gint32       param_id,
-                             const gchar *object_name,
-                             const gchar *param_name,
-                             gboolean     param_value)
-{
-  const gchar *names[2];
-  GVariant *values[1];
-
-  names[0] = param_name;
-  names[1] = NULL;
-
-  values[0] = g_variant_new_boolean (param_value);
-
-  if (hyscan_db_param_set (db, param_id, object_name, names, values))
-    return TRUE;
-
-  g_variant_unref (values[0]);
-
-  return FALSE;
-}
-
-gboolean
-hyscan_db_param_set_integer (HyScanDB    *db,
-                             gint32       param_id,
-                             const gchar *object_name,
-                             const gchar *param_name,
-                             gint64       param_value)
-{
-  const gchar *names[2];
-  GVariant *values[1];
-
-  names[0] = param_name;
-  names[1] = NULL;
-
-  values[0] = g_variant_new_int64 (param_value);
-
-  if (hyscan_db_param_set (db, param_id, object_name, names, values))
-    return TRUE;
-
-  g_variant_unref (values[0]);
-
-  return FALSE;
-}
-
-gboolean
-hyscan_db_param_set_double (HyScanDB    *db,
-                            gint32       param_id,
-                            const gchar *object_name,
-                            const gchar *param_name,
-                            gdouble      param_value)
-{
-  const gchar *names[2];
-  GVariant *values[1];
-
-  names[0] = param_name;
-  names[1] = NULL;
-
-  values[0] = g_variant_new_double (param_value);
-
-  if (hyscan_db_param_set (db, param_id, object_name, names, values))
-    return TRUE;
-
-  g_variant_unref (values[0]);
-
-  return FALSE;
-}
-
-gboolean
-hyscan_db_param_set_string (HyScanDB    *db,
-                            gint32       param_id,
-                            const gchar *object_name,
-                            const gchar *param_name,
-                            const gchar *param_value)
-{
-  const gchar *names[2];
-  GVariant *values[1];
-
-  names[0] = param_name;
-  names[1] = NULL;
-
-  if (param_value != NULL)
-    values[0] = g_variant_new_string (param_value);
-  else
-    values[0] = NULL;
-
-  if (hyscan_db_param_set (db, param_id, object_name, names, values))
-    return TRUE;
-
-  if (values[0] != NULL)
-    g_variant_unref (values[0]);
-
-  return FALSE;
-}
-
-gboolean
-hyscan_db_param_set_enum (HyScanDB    *db,
-                          gint32       param_id,
-                          const gchar *object_name,
-                          const gchar *param_name,
-                          gint64       param_value)
-{
-  const gchar *names[2];
-  GVariant *values[1];
-
-  names[0] = param_name;
-  names[1] = NULL;
-
-  values[0] = g_variant_new_int64 (param_value);
-
-  if (hyscan_db_param_set (db, param_id, object_name, names, values))
-    return TRUE;
-
-  g_variant_unref (values[0]);
-
-  return FALSE;
-}
-
-gboolean
-hyscan_db_param_get_boolean (HyScanDB    *db,
-                             gint32       param_id,
-                             const gchar *object_name,
-                             const gchar *param_name,
-                             gboolean    *param_value)
-{
-  const gchar *names[2];
-  GVariant *values[1];
-
-  names[0] = param_name;
-  names[1] = NULL;
-
-  if (!hyscan_db_param_get (db, param_id, object_name, names, values))
-    return FALSE;
-
-  *param_value = g_variant_get_boolean (values[0]);
-  g_variant_unref (values[0]);
-
-  return TRUE;
-}
-
-gboolean
-hyscan_db_param_get_integer (HyScanDB    *db,
-                             gint32       param_id,
-                             const gchar *object_name,
-                             const gchar *param_name,
-                             gint64      *param_value)
-{
-  const gchar *names[2];
-  GVariant *values[1];
-
-  names[0] = param_name;
-  names[1] = NULL;
-
-  if (!hyscan_db_param_get (db, param_id, object_name, names, values))
-    return FALSE;
-
-  *param_value = g_variant_get_int64 (values[0]);
-  g_variant_unref (values[0]);
-
-  return TRUE;
-}
-
-gboolean
-hyscan_db_param_get_double (HyScanDB    *db,
-                            gint32       param_id,
-                            const gchar *object_name,
-                            const gchar *param_name,
-                            gdouble     *param_value)
-{
-  const gchar *names[2];
-  GVariant *values[1];
-
-  names[0] = param_name;
-  names[1] = NULL;
-
-  if (!hyscan_db_param_get (db, param_id, object_name, names, values))
-    return FALSE;
-
-  *param_value = g_variant_get_double (values[0]);
-  g_variant_unref (values[0]);
-
-  return TRUE;
-}
-
-gchar *
-hyscan_db_param_get_string (HyScanDB    *db,
-                            gint32       param_id,
-                            const gchar *object_name,
-                            const gchar *param_name)
-{
-  const gchar *names[2];
-  GVariant *values[1];
-  gchar *param_value;
-
-  names[0] = param_name;
-  names[1] = NULL;
-
-  if (!hyscan_db_param_get (db, param_id, object_name, names, values) || (values[0] == NULL))
-    return NULL;
-
-  param_value = g_variant_dup_string (values[0], NULL);
-  g_variant_unref (values[0]);
-
-  return param_value;
-}
-
-gboolean
-hyscan_db_param_get_enum (HyScanDB    *db,
-                          gint32       param_id,
-                          const gchar *object_name,
-                          const gchar *param_name,
-                          gint64      *param_value)
-{
-  const gchar *names[2];
-  GVariant *values[1];
-
-  names[0] = param_name;
-  names[1] = NULL;
-
-  if (!hyscan_db_param_get (db, param_id, object_name, names, values))
-    return FALSE;
-
-  *param_value = g_variant_get_int64 (values[0]);
-  g_variant_unref (values[0]);
-
-  return TRUE;
 }
 
 void

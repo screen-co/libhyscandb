@@ -2767,11 +2767,10 @@ exit:
 }
 
 static gboolean
-hyscan_db_file_param_set (HyScanDB            *db,
-                          gint32               param_id,
-                          const gchar         *object_name,
-                          const gchar *const  *param_names,
-                          GVariant           **param_values)
+hyscan_db_file_param_set (HyScanDB        *db,
+                          gint32           param_id,
+                          const gchar     *object_name,
+                          HyScanParamList *param_list)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -2820,7 +2819,7 @@ hyscan_db_file_param_set (HyScanDB            *db,
       object_name = param_info->object_name;
     }
 
-  status = hyscan_db_param_file_set (param_info->param, object_name, param_names, param_values);
+  status = hyscan_db_param_file_set (param_info->param, object_name, param_list);
   if (status)
     g_atomic_int_inc (&param_info->mod_count);
 
@@ -2831,11 +2830,10 @@ exit:
 }
 
 static gboolean
-hyscan_db_file_param_get (HyScanDB            *db,
-                          gint32               param_id,
-                          const gchar         *object_name,
-                          const gchar *const  *param_names,
-                          GVariant           **param_values)
+hyscan_db_file_param_get (HyScanDB        *db,
+                          gint32           param_id,
+                          const gchar     *object_name,
+                          HyScanParamList *param_list)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -2868,7 +2866,7 @@ hyscan_db_file_param_get (HyScanDB            *db,
       object_name = param_info->object_name;
     }
 
-  status = hyscan_db_param_file_get (param_info->param, object_name, param_names, param_values);
+  status = hyscan_db_param_file_get (param_info->param, object_name, param_list);
 
 exit:
   g_mutex_unlock (&priv->lock);

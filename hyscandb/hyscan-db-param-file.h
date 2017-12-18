@@ -22,6 +22,7 @@
 #ifndef __HYSCAN_DB_PARAM_FILE_H__
 #define __HYSCAN_DB_PARAM_FILE_H__
 
+#include <hyscan-param-list.h>
 #include <hyscan-data-schema.h>
 
 G_BEGIN_DECLS
@@ -79,14 +80,12 @@ gboolean               hyscan_db_param_file_object_remove      (HyScanDBParamFil
 /* Функция устанавливает значение параметра. */
 gboolean               hyscan_db_param_file_set                (HyScanDBParamFile     *param,
                                                                 const gchar           *object_name,
-                                                                const gchar *const    *param_names,
-                                                                GVariant             **param_values);
+                                                                HyScanParamList       *param_list);
 
 /* Функция считывает значение параметра. */
 gboolean               hyscan_db_param_file_get                (HyScanDBParamFile     *param,
                                                                 const gchar           *object_name,
-                                                                const gchar *const    *param_names,
-                                                                GVariant             **param_values);
+                                                                HyScanParamList       *param_list);
 
 G_END_DECLS
 
