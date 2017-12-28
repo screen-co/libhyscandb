@@ -150,7 +150,7 @@
 #ifndef __HYSCAN_DB_H__
 #define __HYSCAN_DB_H__
 
-#include <hyscan-api.h>
+#include <hyscan-buffer.h>
 #include <hyscan-param-list.h>
 #include <hyscan-data-schema.h>
 
@@ -285,15 +285,13 @@ struct _HyScanDBInterface
   gboolean             (*channel_add_data)                     (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint64                 time,
-                                                                gconstpointer          data,
-                                                                guint32                size,
+                                                                HyScanBuffer          *buffer,
                                                                 guint32               *index);
 
   gboolean             (*channel_get_data)                     (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 guint32                index,
-                                                                gpointer               buffer,
-                                                                guint32               *buffer_size,
+                                                                HyScanBuffer          *buffer,
                                                                 gint64                *time);
 
   gint32               (*channel_find_data)                    (HyScanDB              *db,
@@ -915,8 +913,7 @@ gboolean               hyscan_db_channel_get_data_range        (HyScanDB        
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор канала данных;
  * \param time метка времени в микросекундах;
- * \param data указатель на записываемые данные;
- * \param size размер записываемых данных;
+ * \param buffer указатель на буфер данных;
  * \param index указатель на переменную для сохранения индекса данных или NULL.
  *
  * \return TRUE - если данные успешно записаны, FALSE - в случае ошибки.
@@ -926,35 +923,28 @@ HYSCAN_API
 gboolean               hyscan_db_channel_add_data              (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 gint64                 time,
-                                                                gconstpointer          data,
-                                                                guint32                size,
+                                                                HyScanBuffer          *buffer,
                                                                 guint32               *index);
 
 /**
  *
  * Функция считывает записанные данные по номеру индекса.
  *
- * Перед вызовом функции в переменную buffer_size должен быть записан размер буфера. После успешного
- * чтения данных в переменную buffer_size будет записан действительный размер считанных данных. Размер
- * считанных данных может быть ограничен размером буфера. Для того чтобы определить размер данных без
- * их чтения, необходимо вызвать функцию с переменной buffer = NULL.
- *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param channel_id идентификатор канала данных;
  * \param index индекс считываемых данных;
- * \param buffer указатель на область памяти в которую считываются данные или NULL;
- * \param buffer_size указатель на переменную с размером области памяти для данных;
+ * \param buffer указатель на буфер данных;
  * \param time указатель на переменную для сохранения метки времени считанных данных или NULL.
  *
  * \return TRUE - если данные успешно считаны, FALSE - в случае ошибки.
  *
  */
+
 HYSCAN_API
 gboolean               hyscan_db_channel_get_data              (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 guint32                index,
-                                                                gpointer               buffer,
-                                                                guint32               *buffer_size,
+                                                                HyScanBuffer          *buffer,
                                                                 gint64                *time);
 
 /**
@@ -1010,7 +1000,8 @@ gchar                **hyscan_db_param_object_list             (HyScanDB        
 
 /**
  *
- * Функция создаёт объект в группе параметров проекта.
+ * Функция создаёт объект в группе параметров проекта. Если объект с указанным
+ * именем уже существует, функция вернёт FALSE.
  *
  * \param db указатель на интерфейс \link HyScanDB \endlink;
  * \param param_id идентификатор группы параметров;

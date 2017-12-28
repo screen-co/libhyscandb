@@ -3,15 +3,6 @@
 #include <libxml/parser.h>
 #include <stdio.h>
 
-static gboolean
-acl_logger (const gchar *function_name,
-            gpointer     key_data)
-{
-  g_info ("call: %s", function_name);
-
-  return TRUE;
-}
-
 int
 main (int    argc,
       char **argv)
@@ -68,7 +59,7 @@ main (int    argc,
   db = hyscan_db_new (db_uri);
   g_free (db_uri);
 
-  server = hyscan_db_server_new (server_uri, db, n_threads, n_clients, acl_logger);
+  server = hyscan_db_server_new (server_uri, db, n_threads, n_clients);
 
   if (!hyscan_db_server_start (server))
     g_error ("can't start db server");

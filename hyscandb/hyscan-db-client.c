@@ -1415,15 +1415,17 @@ exit:
 }
 
 static gboolean
-hyscan_db_client_channel_add_data (HyScanDB      *db,
-                                   gint32         channel_id,
-                                   gint64         time,
-                                   gconstpointer  data,
-                                   guint32        size,
-                                   guint32       *index)
+hyscan_db_client_channel_add_data (HyScanDB     *db,
+                                   gint32        channel_id,
+                                   gint64        time,
+                                   HyScanBuffer *buffer,
+                                   guint32      *index)
 {
   HyScanDBClient *dbc = HYSCAN_DB_CLIENT (db);
   HyScanDBClientPrivate *priv = dbc->priv;
+
+  gpointer data;
+  guint32 data_size;
 
   uRpcData *urpc_data;
   guint32 exec_status;
@@ -1431,6 +1433,10 @@ hyscan_db_client_channel_add_data (HyScanDB      *db,
   gboolean status = FALSE;
 
   if (priv->rpc == NULL)
+    return FALSE;
+
+  data = hyscan_buffer_get_data (buffer, &data_size);
+  if (data == NULL)
     return FALSE;
 
   urpc_data = urpc_client_lock (priv->rpc);
@@ -1443,7 +1449,7 @@ hyscan_db_client_channel_add_data (HyScanDB      *db,
   if (urpc_data_set_int64 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_TIME, time) != 0)
     hyscan_db_client_set_error ("time");
 
-  if (urpc_data_set (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_DATA, data, size) == NULL)
+  if (urpc_data_set (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_DATA, data, data_size) == NULL)
     hyscan_db_client_set_error ("data");
 
   if (urpc_client_exec (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_ADD_DATA) != URPC_STATUS_OK)
@@ -1468,15 +1474,17 @@ exit:
 }
 
 static gboolean
-hyscan_db_client_channel_get_data (HyScanDB *db,
-                                   gint32    channel_id,
-                                   guint32   index,
-                                   gpointer  buffer,
-                                   guint32  *buffer_size,
-                                   gint64   *time)
+hyscan_db_client_channel_get_data (HyScanDB     *db,
+                                   gint32        channel_id,
+                                   guint32       index,
+                                   HyScanBuffer *buffer,
+                                   gint64       *time)
 {
   HyScanDBClient *dbc = HYSCAN_DB_CLIENT (db);
   HyScanDBClientPrivate *priv = dbc->priv;
+
+  gpointer data;
+  guint32 data_size;
 
   uRpcData *urpc_data;
   guint32 exec_status;
@@ -1496,12 +1504,6 @@ hyscan_db_client_channel_get_data (HyScanDB *db,
   if (urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_INDEX, index) != 0)
     hyscan_db_client_set_error ("index");
 
-  if (buffer != NULL)
-    {
-      if (urpc_data_set_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_SIZE, *buffer_size) != 0)
-        hyscan_db_client_set_error ("buffer_size");
-    }
-
   if (urpc_client_exec (priv->rpc, HYSCAN_DB_RPC_PROC_CHANNEL_GET_DATA) != URPC_STATUS_OK)
     hyscan_db_client_exec_error ();
 
@@ -1510,24 +1512,11 @@ hyscan_db_client_channel_get_data (HyScanDB *db,
   if (exec_status != HYSCAN_DB_RPC_STATUS_OK)
     goto exit;
 
-  if (buffer != NULL)
-    {
-      guint32 data_size;
-      gpointer data;
-      data = urpc_data_get (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_DATA, &data_size);
-      if (data == NULL)
-        hyscan_db_client_get_error ("data");
-      if (data_size > *buffer_size)
-        data_size = *buffer_size;
-      else
-        *buffer_size = data_size;
-      memcpy (buffer, data, data_size);
-    }
-  else
-    {
-      if (urpc_data_get_uint32 (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_SIZE, buffer_size) != 0)
-        hyscan_db_client_get_error ("buffer_size");
-    }
+  data = urpc_data_get (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_DATA, &data_size);
+  if (data == NULL)
+    hyscan_db_client_get_error ("data");
+
+  hyscan_buffer_set_data (buffer, HYSCAN_DATA_BLOB, data, data_size);
 
   if (time != NULL)
     {

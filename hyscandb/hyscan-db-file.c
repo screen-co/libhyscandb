@@ -2167,12 +2167,11 @@ hyscan_db_file_channel_get_data_range (HyScanDB *db,
 
 /* Функция записывает новые данные канала. */
 static gboolean
-hyscan_db_file_channel_add_data (HyScanDB      *db,
-                                 gint32         channel_id,
-                                 gint64         time,
-                                 gconstpointer  data,
-                                 guint32        size,
-                                 guint32       *index)
+hyscan_db_file_channel_add_data (HyScanDB     *db,
+                                 gint32        channel_id,
+                                 gint64        time,
+                                 HyScanBuffer *buffer,
+                                 guint32      *index)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -2189,7 +2188,7 @@ hyscan_db_file_channel_add_data (HyScanDB      *db,
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL && channel_info->wid == channel_id)
     {
-      status = hyscan_db_channel_file_add_channel_data (channel_info->channel, time, data, size, index);
+      status = hyscan_db_channel_file_add_channel_data (channel_info->channel, time, buffer, index);
       if (status)
         g_atomic_int_inc (&channel_info->mod_count);
     }
@@ -2201,12 +2200,11 @@ hyscan_db_file_channel_add_data (HyScanDB      *db,
 
 /* Функция считывает данные. */
 static gboolean
-hyscan_db_file_channel_get_data (HyScanDB *db,
-                                 gint32    channel_id,
-                                 guint32   index,
-                                 gpointer  buffer,
-                                 guint32  *buffer_size,
-                                 gint64   *time)
+hyscan_db_file_channel_get_data (HyScanDB     *db,
+                                 gint32        channel_id,
+                                 guint32       index,
+                                 HyScanBuffer *buffer,
+                                 gint64       *time)
 {
   HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
   HyScanDBFilePrivate *priv = dbf->priv;
@@ -2222,7 +2220,7 @@ hyscan_db_file_channel_get_data (HyScanDB *db,
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
-    status = hyscan_db_channel_file_get_channel_data (channel_info->channel, index, buffer, buffer_size, time);
+    status = hyscan_db_channel_file_get_channel_data (channel_info->channel, index, buffer, time);
 
   g_mutex_unlock (&priv->lock);
 

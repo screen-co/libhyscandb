@@ -13,10 +13,7 @@
  * хранения данных HyScan в зависимости от указанного адреса.
  *
  * Сервер базы данных транслирует все вызовы интерфейса \link HyScanDB \endlink в объект db,
- * указанный при создании сервера. Дополнительно можно указать функцию, которая будет вызываться
- * перед исполнением запроса от клиента #hyscan_db_server_acl. Если функция вернёт TRUE сервер
- * продолжит выполнения запроса, иначе возвратит клиенту ошибку. Данная функция может использоваться
- * для разграничения доступа к базе данных.
+ * указанный при создании сервера.
  *
  * После создания сервера его необходимо запустить функцией #hyscan_db_server_start.
  *
@@ -30,22 +27,6 @@
 #include <hyscan-db.h>
 
 G_BEGIN_DECLS
-
-/**
- *
- * Прототип функции контроля доступа к серверу. В функцию передаётся название запрашиваемой
- * клиентом процедуры интерфейса \link HyScanDB \endlink и указатель на информацию о пользователе
- * (см. описание библиотеки uRPC). Функция должна вернуть значение TRUE, если пользователю разрешено
- * выполнение запроса или FALSE, если запрещено.
- *
- * \param function_name имя запрашиваемой процедуры \link HyScanDB \endlink;
- * \param key_data информация о пользователе.
- *
- * \return TRUE - если выполнение запроса разрешено, FALSE - если запрещено.
- *
- */
-typedef gboolean       (*hyscan_db_server_acl)         (const gchar           *function_name,
-                                                        gpointer               key_data);
 
 #define HYSCAN_TYPE_DB_SERVER             (hyscan_db_server_get_type ())
 #define HYSCAN_DB_SERVER(obj)             (G_TYPE_CHECK_INSTANCE_CAST ((obj), HYSCAN_TYPE_DB_SERVER, HyScanDBServer))
@@ -80,8 +61,7 @@ GType                  hyscan_db_server_get_type       (void);
  * \param uri адрес сервера;
  * \param db объект в который транслируются запросы клиентов;
  * \param n_threads число потоков сервера;
- * \param n_clients максимальное число одновременно подключенных клиентов;
- * \param acl_fn функция проверки доступа к базе данных.
+ * \param n_clients максимальное число одновременно подключенных клиентов.
  *
  * \return Указатель на объект \link HyScanDBServer \endlink.
  *
@@ -90,8 +70,7 @@ HYSCAN_API
 HyScanDBServer        *hyscan_db_server_new            (const gchar           *uri,
                                                         HyScanDB              *db,
                                                         guint                  n_threads,
-                                                        guint                  n_clients,
-                                                        hyscan_db_server_acl   acl_fn);
+                                                        guint                  n_clients);
 
 /**
  *

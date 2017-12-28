@@ -934,8 +934,7 @@ exit:
 gboolean
 hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
                                          gint64               time,
-                                         gconstpointer        data,
-                                         guint32              size,
+                                         HyScanBuffer        *buffer,
                                          guint32             *index)
 {
   HyScanDBChannelFilePrivate *priv;
@@ -943,6 +942,9 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
   HyScanDBChannelFilePart *fpart;
   HyScanDBChannelFileIndex *db_index;
   HyScanDBChannelFileIndexRec rec_index;
+
+  gpointer data;
+  guint32 size;
 
   gboolean status = FALSE;
   gssize iosize;
@@ -959,6 +961,9 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
       g_warning ("HyScanDBChannelFile: channel '%s': read only mode", priv->name);
       return FALSE;
     }
+
+  /* Записываемые данные. */
+  data = hyscan_buffer_get_data (buffer, &size);
 
   /* Время не может быть отрицательным. */
   if (time < 0)
@@ -1121,13 +1126,15 @@ exit:
 gboolean
 hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
                                          guint32              index,
-                                         gpointer             buffer,
-                                         guint32             *buffer_size,
+                                         HyScanBuffer        *buffer,
                                          gint64              *time)
 {
   HyScanDBChannelFilePrivate *priv;
 
   HyScanDBChannelFileIndex *db_index;
+
+  gpointer data;
+  guint32 size;
 
   gboolean status = FALSE;
   gssize iosize;
@@ -1148,37 +1155,29 @@ hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
   if (db_index == NULL)
     goto exit;
 
-  /* Считываем данные. */
-  if (buffer != NULL)
+  /* Позиционируем указатель на запись. */
+  if (!g_seekable_seek (G_SEEKABLE (db_index->part->ifdd), db_index->offset, G_SEEK_SET, NULL, NULL))
     {
-      /* Позиционируем указатель на запись. */
-      if (!g_seekable_seek (G_SEEKABLE (db_index->part->ifdd), db_index->offset, G_SEEK_SET, NULL, NULL))
-        {
-          g_warning ("HyScanDBChannelFile: channel '%s': can't seek to data", priv->name);
-          priv->fail = TRUE;
-          goto exit;
-        }
-
-      /* Считываем данные. */
-      iosize = MIN (*buffer_size, db_index->size);
-      if (g_input_stream_read (db_index->part->ifdd, buffer, iosize, NULL, NULL) != iosize)
-        {
-          g_warning ("HyScanDBChannelFile: channel '%s': can't read data", priv->name);
-          priv->fail = TRUE;
-          goto exit;
-        }
+      g_warning ("HyScanDBChannelFile: channel '%s': can't seek to data", priv->name);
+      priv->fail = TRUE;
+      goto exit;
     }
-  else
+
+  /* Считываем данные. */
+  hyscan_buffer_set_data_type (buffer, HYSCAN_DATA_BLOB);
+  hyscan_buffer_set_size (buffer, db_index->size);
+  data = hyscan_buffer_get_data (buffer, &size);
+  iosize = size;
+  if (g_input_stream_read (db_index->part->ifdd, data, iosize, NULL, NULL) != iosize)
     {
-      iosize = db_index->size;
+      g_warning ("HyScanDBChannelFile: channel '%s': can't read data", priv->name);
+      priv->fail = TRUE;
+      goto exit;
     }
 
   /* Метка времени данных. */
   if (time != NULL)
     *time = db_index->time;
-
-  /* Размер данных. */
-  *buffer_size = iosize;
 
   status = TRUE;
 

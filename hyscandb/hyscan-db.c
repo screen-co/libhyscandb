@@ -469,12 +469,11 @@ hyscan_db_channel_get_data_range (HyScanDB *db,
 }
 
 gboolean
-hyscan_db_channel_add_data (HyScanDB      *db,
-                            gint32         channel_id,
-                            gint64         time,
-                            gconstpointer  data,
-                            guint32        size,
-                            guint32       *index)
+hyscan_db_channel_add_data (HyScanDB     *db,
+                            gint32        channel_id,
+                            gint64        time,
+                            HyScanBuffer *buffer,
+                            guint32      *index)
 {
   HyScanDBInterface *iface;
 
@@ -482,18 +481,17 @@ hyscan_db_channel_add_data (HyScanDB      *db,
 
   iface = HYSCAN_DB_GET_IFACE (db);
   if (iface->channel_add_data != NULL)
-    return iface->channel_add_data (db, channel_id, time, data, size, index);
+    return iface->channel_add_data (db, channel_id, time, buffer, index);
 
   return FALSE;
 }
 
 gboolean
-hyscan_db_channel_get_data (HyScanDB *db,
-                            gint32    channel_id,
-                            guint32   index,
-                            gpointer  buffer,
-                            guint32  *buffer_size,
-                            gint64   *time)
+hyscan_db_channel_get_data (HyScanDB     *db,
+                            gint32        channel_id,
+                            guint32       index,
+                            HyScanBuffer *buffer,
+                            gint64       *time)
 {
   HyScanDBInterface *iface;
 
@@ -501,7 +499,7 @@ hyscan_db_channel_get_data (HyScanDB *db,
 
   iface = HYSCAN_DB_GET_IFACE (db);
   if (iface->channel_get_data != NULL)
-    return iface->channel_get_data (db, channel_id, index, buffer, buffer_size, time);
+    return iface->channel_get_data (db, channel_id, index, buffer, time);
 
   return FALSE;
 }

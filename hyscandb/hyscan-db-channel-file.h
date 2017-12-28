@@ -104,15 +104,13 @@ gboolean   hyscan_db_channel_file_get_channel_data_range   (HyScanDBChannelFile 
 /* Функция записывает новые данные. */
 gboolean   hyscan_db_channel_file_add_channel_data         (HyScanDBChannelFile *channel,
                                                             gint64               time,
-                                                            gconstpointer        data,
-                                                            guint32              size,
+                                                            HyScanBuffer        *buffer,
                                                             guint32             *index);
 
 /* Функция считывает данные. */
 gboolean   hyscan_db_channel_file_get_channel_data         (HyScanDBChannelFile *channel,
                                                             guint32              index,
-                                                            gpointer             buffer,
-                                                            guint32             *buffer_size,
+                                                            HyScanBuffer        *buffer,
                                                             gint64              *time);
 
 /* Функция ищет данные по метке времени. */
