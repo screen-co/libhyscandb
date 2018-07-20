@@ -143,7 +143,7 @@ struct _HyScanDBFilePrivate
   GHashTable          *channels;               /* Список открытых каналов данных. */
   GHashTable          *params;                 /* Список открытых групп параметров. */
 
-  GRWLock              lock;                   /* Блокировка многопоточного доступа. */
+  GMutex               lock;                   /* Блокировка многопоточного доступа. */
 };
 
 static void            hyscan_db_file_interface_init           (HyScanDBInterface     *iface);
@@ -250,7 +250,7 @@ hyscan_db_file_object_constructed (GObject *object)
   priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_channel_info);
   priv->params = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, hyscan_db_remove_param_info);
 
-  g_rw_lock_init (&priv->lock);
+  g_mutex_init (&priv->lock);
 
   priv->flock_name = g_build_filename (priv->path, DB_LOCK_FILE, NULL);
 
@@ -318,7 +318,7 @@ hyscan_db_file_object_finalize (GObject *object)
   g_hash_table_destroy (priv->tracks);
   g_hash_table_destroy (priv->projects);
 
-  g_rw_lock_clear (&priv->lock);
+  g_mutex_clear (&priv->lock);
 
 #ifdef G_OS_UNIX
   if (priv->flocked)
@@ -770,7 +770,7 @@ hyscan_db_file_get_mod_count (HyScanDB *db,
   if (!priv->flocked)
     return 0;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   if (id == 0)
     {
@@ -807,7 +807,7 @@ hyscan_db_file_get_mod_count (HyScanDB *db,
     }
 
 exit:
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return mod_count;
 }
@@ -832,7 +832,7 @@ hyscan_db_file_is_exist (HyScanDB    *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Проверяем существование проекта. */
   project_path = g_build_filename (priv->path, project_name, NULL);
@@ -871,7 +871,7 @@ hyscan_db_file_is_exist (HyScanDB    *db,
     exist = TRUE;
 
 exit:
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
   g_free (project_path);
   g_free (track_path);
 
@@ -901,7 +901,7 @@ hyscan_db_file_project_list (HyScanDB *db)
 
   projects = g_array_new (TRUE, TRUE, sizeof (gchar *));
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Проверяем все найденые каталоги - содержат они проект или нет. */
   while ((project_name = g_dir_read_name (db_dir)) != NULL)
@@ -922,7 +922,7 @@ hyscan_db_file_project_list (HyScanDB *db)
       g_array_append_val (projects, project_name);
     }
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_dir_close (db_dir);
 
@@ -955,7 +955,7 @@ hyscan_db_file_project_open (HyScanDB    *db,
   if (!priv->flocked)
     return -1;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Генерация нового идентификатора открываемого объекта. */
   nid = hyscan_db_file_create_id (priv);
@@ -1003,7 +1003,7 @@ hyscan_db_file_project_open (HyScanDB    *db,
   g_hash_table_insert (priv->projects, GINT_TO_POINTER (id), project_info);
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (project_path);
 
@@ -1036,7 +1036,7 @@ hyscan_db_file_project_create (HyScanDB    *db,
   if (!hyscan_db_file_check_name (project_name, FALSE))
     return -1;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   ctime = g_get_real_time () / G_USEC_PER_SEC;
   id.magic = GUINT32_TO_LE (PROJECT_FILE_MAGIC);
@@ -1083,7 +1083,7 @@ hyscan_db_file_project_create (HyScanDB    *db,
   status = TRUE;
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (project_schema_file);
   g_free (project_param_file);
@@ -1118,7 +1118,7 @@ hyscan_db_file_project_remove (HyScanDB    *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   object_info.project_name = project_name;
   object_info.track_name = "*";
@@ -1178,7 +1178,7 @@ hyscan_db_file_project_remove (HyScanDB    *db,
   g_atomic_int_inc (&priv->mod_count);
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (project_path);
 
@@ -1199,14 +1199,14 @@ hyscan_db_file_project_get_ctime (HyScanDB *db,
   if (!priv->flocked)
     return NULL;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
   if (project_info != NULL)
     ctime = g_date_time_new_from_unix_local (project_info->ctime);
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return ctime;
 }
@@ -1228,7 +1228,7 @@ hyscan_db_file_track_list (HyScanDB *db,
   if (!priv->flocked)
     return NULL;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   tracks = g_array_new (TRUE, TRUE, sizeof (gchar *));
 
@@ -1265,7 +1265,7 @@ hyscan_db_file_track_list (HyScanDB *db,
   g_dir_close (db_dir);
 
 exit:
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   if (tracks->len == 0)
     {
@@ -1366,9 +1366,9 @@ hyscan_db_file_track_open (HyScanDB    *db,
   if (!priv->flocked)
     return -1;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
   id = hyscan_db_file_open_track_int (db, project_id, track_name, TRUE);
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return id;
 }
@@ -1403,7 +1403,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
   if (!hyscan_db_file_check_name (track_name, FALSE))
     return -1;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
@@ -1468,7 +1468,7 @@ hyscan_db_file_track_create (HyScanDB    *db,
   g_atomic_int_inc (&project_info->mod_count);
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_clear_object (&params);
 
@@ -1501,7 +1501,7 @@ hyscan_db_file_track_remove (HyScanDB    *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
@@ -1556,7 +1556,7 @@ hyscan_db_file_track_remove (HyScanDB    *db,
   g_atomic_int_inc (&project_info->mod_count);
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   g_free (track_path);
 
@@ -1577,14 +1577,14 @@ hyscan_db_file_track_get_ctime (HyScanDB *db,
   if (!priv->flocked)
     return NULL;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем галс в списке открытых. */
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
   if (track_info != NULL)
     ctime = g_date_time_new_from_unix_local (track_info->ctime);
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return ctime;
 }
@@ -1609,7 +1609,7 @@ hyscan_db_file_channel_list (HyScanDB *db,
   if (!priv->flocked)
     return NULL;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   channels = g_array_new (TRUE, TRUE, sizeof (gchar *));
 
@@ -1687,7 +1687,7 @@ hyscan_db_file_channel_list (HyScanDB *db,
   g_dir_close (db_dir);
 
 exit:
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   if (channels->len == 0)
     {
@@ -1716,7 +1716,7 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
   HyScanDBFileChannelInfo *channel_info;
   HyScanDBFileObjectInfo object_info;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем галс в списке открытых. */
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
@@ -1839,7 +1839,7 @@ hyscan_db_file_open_channel_int (HyScanDB    *db,
   g_hash_table_insert (priv->channels, GINT_TO_POINTER (id), channel_info);
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return id;
 }
@@ -1905,7 +1905,7 @@ hyscan_db_file_channel_remove (HyScanDB    *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем галс в списке открытых. */
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
@@ -1958,7 +1958,7 @@ hyscan_db_file_channel_remove (HyScanDB    *db,
   g_atomic_int_inc (&track_info->mod_count);
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -1977,14 +1977,14 @@ hyscan_db_file_channel_get_ctime (HyScanDB *db,
   if (!priv->flocked)
     return NULL;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     ctime = g_date_time_new_from_unix_local (channel_info->ctime);
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return ctime;
 }
@@ -2004,7 +2004,7 @@ hyscan_db_file_channel_finalize (HyScanDB *db,
   if (!priv->flocked)
     return;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
@@ -2025,7 +2025,7 @@ hyscan_db_file_channel_finalize (HyScanDB *db,
       channel_info->wid = -1;
     }
 
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 }
 
 /* Функция возвращает режим доступа к каналу данных. */
@@ -2042,7 +2042,7 @@ hyscan_db_file_channel_is_writable (HyScanDB *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
@@ -2051,7 +2051,7 @@ hyscan_db_file_channel_is_writable (HyScanDB *db,
   if ((channel_info != NULL) && (channel_info->wid > 0))
     writable = TRUE;
 
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return writable;
 }
@@ -2071,14 +2071,14 @@ hyscan_db_file_channel_set_chunk_size (HyScanDB *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_set_channel_chunk_size (channel_info->channel, chunk_size);
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -2098,14 +2098,14 @@ hyscan_db_file_channel_set_save_time (HyScanDB *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_set_channel_save_time (channel_info->channel, save_time);
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -2125,14 +2125,14 @@ hyscan_db_file_channel_set_save_size (HyScanDB *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_set_channel_save_size (channel_info->channel, save_size);
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -2153,14 +2153,14 @@ hyscan_db_file_channel_get_data_range (HyScanDB *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_get_channel_data_range (channel_info->channel, first_index, last_index);
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -2183,7 +2183,7 @@ hyscan_db_file_channel_add_data (HyScanDB      *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
@@ -2194,7 +2194,7 @@ hyscan_db_file_channel_add_data (HyScanDB      *db,
         g_atomic_int_inc (&channel_info->mod_count);
     }
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -2217,14 +2217,14 @@ hyscan_db_file_channel_get_data (HyScanDB *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_get_channel_data (channel_info->channel, index, buffer, buffer_size, time);
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -2248,14 +2248,14 @@ hyscan_db_file_channel_find_data (HyScanDB *db,
   if (!priv->flocked)
     return HYSCAN_DB_FIND_FAIL;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
   if (channel_info != NULL)
     status = hyscan_db_channel_file_find_channel_data (channel_info->channel, time, lindex, rindex, ltime, rtime);
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -2274,14 +2274,14 @@ hyscan_db_file_project_param_list (HyScanDB *db,
   if (!priv->flocked)
     return NULL;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
   if (project_info != NULL)
     list = hyscan_db_file_get_directory_param_list (project_info->param_path);
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return list;
 }
@@ -2310,7 +2310,7 @@ hyscan_db_file_project_param_open (HyScanDB    *db,
   if (!hyscan_db_file_check_name (group_name, FALSE))
     return id;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
@@ -2363,7 +2363,7 @@ hyscan_db_file_project_param_open (HyScanDB    *db,
   g_hash_table_insert (priv->params, GINT_TO_POINTER (id), param_info);
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
   g_free (param_file);
   g_free (schema_file);
 
@@ -2391,7 +2391,7 @@ hyscan_db_file_project_param_remove (HyScanDB    *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем проект в списке открытых. */
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
@@ -2428,7 +2428,7 @@ hyscan_db_file_project_param_remove (HyScanDB    *db,
   status = TRUE;
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
   g_free (param_file);
 
   return status;
@@ -2455,7 +2455,7 @@ hyscan_db_file_track_param_open (HyScanDB    *db,
   if (!priv->flocked)
     return -1;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем галс в списке открытых. */
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
@@ -2520,7 +2520,7 @@ hyscan_db_file_track_param_open (HyScanDB    *db,
   g_hash_table_insert (priv->params, GINT_TO_POINTER (id), param_info);
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return id;
 }
@@ -2546,7 +2546,7 @@ hyscan_db_file_channel_param_open (HyScanDB    *db,
   if (!priv->flocked)
     return -1;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем канал данных в списке открытых. */
   channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
@@ -2611,7 +2611,7 @@ hyscan_db_file_channel_param_open (HyScanDB    *db,
   g_hash_table_insert (priv->params, GINT_TO_POINTER (id), param_info);
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return id;
 }
@@ -2630,14 +2630,14 @@ hyscan_db_file_param_object_list (HyScanDB *db,
   if (!priv->flocked)
     return NULL;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
   if (param_info != NULL)
     list = hyscan_db_param_file_object_list (param_info->param);
 
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return list;
 }
@@ -2662,7 +2662,7 @@ hyscan_db_file_param_object_create (HyScanDB    *db,
   if (!hyscan_db_file_check_name (object_name, TRUE))
     return FALSE;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
@@ -2678,7 +2678,7 @@ hyscan_db_file_param_object_create (HyScanDB    *db,
     g_atomic_int_inc (&param_info->mod_count);
 
 exit:
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -2698,7 +2698,7 @@ hyscan_db_file_param_object_remove (HyScanDB    *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
@@ -2714,7 +2714,7 @@ hyscan_db_file_param_object_remove (HyScanDB    *db,
     g_atomic_int_inc (&param_info->mod_count);
 
 exit:
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -2734,7 +2734,7 @@ hyscan_db_file_param_object_get_schema (HyScanDB    *db,
   if (!priv->flocked)
     return NULL;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
@@ -2761,7 +2761,7 @@ hyscan_db_file_param_object_get_schema (HyScanDB    *db,
     g_object_ref (schema);
 
 exit:
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return schema;
 }
@@ -2782,7 +2782,7 @@ hyscan_db_file_param_set (HyScanDB            *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
@@ -2825,7 +2825,7 @@ hyscan_db_file_param_set (HyScanDB            *db,
     g_atomic_int_inc (&param_info->mod_count);
 
 exit:
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -2846,7 +2846,7 @@ hyscan_db_file_param_get (HyScanDB            *db,
   if (!priv->flocked)
     return FALSE;
 
-  g_rw_lock_reader_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   /* Ищем группу параметров в списке открытых. */
   param_info = g_hash_table_lookup (priv->params, GINT_TO_POINTER (param_id));
@@ -2871,7 +2871,7 @@ hyscan_db_file_param_get (HyScanDB            *db,
   status = hyscan_db_param_file_get (param_info->param, object_name, param_names, param_values);
 
 exit:
-  g_rw_lock_reader_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 
   return status;
 }
@@ -3039,7 +3039,7 @@ hyscan_db_file_close (HyScanDB *db,
   if (!priv->flocked)
     return;
 
-  g_rw_lock_writer_lock (&priv->lock);
+  g_mutex_lock (&priv->lock);
 
   if (hyscan_db_file_project_close (priv, id))
     goto exit;
@@ -3054,7 +3054,7 @@ hyscan_db_file_close (HyScanDB *db,
     goto exit;
 
 exit:
-  g_rw_lock_writer_unlock (&priv->lock);
+  g_mutex_unlock (&priv->lock);
 }
 
 HyScanDBFile *
