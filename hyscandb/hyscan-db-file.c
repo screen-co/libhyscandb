@@ -627,9 +627,8 @@ static gchar **
 hyscan_db_file_get_directory_param_list (const gchar *path)
 {
   GDir *dir;
+  GArray *params;
   const gchar *name;
-  gchar **params = NULL;
-  gint i = 0;
 
   /* Открываем каталог с группами параметров. */
   if ((dir = g_dir_open (path, 0, NULL)) == NULL)
@@ -638,11 +637,14 @@ hyscan_db_file_get_directory_param_list (const gchar *path)
       return NULL;
     }
 
+  params = g_array_new (TRUE, TRUE, sizeof (gchar *));
+
   /* Выбираем все файлы с расширением PARAMETERS_FILE_EXT. */
   while ((name = g_dir_read_name (dir)) != NULL)
     {
       gchar *sub_path;
-      gchar **group_name;
+      gchar *group_name;
+      gchar **splited_group_name;
 
       /* Пропускаем все файлы с расширением не PARAMETERS_FILE_EXT. */
       if (!g_str_has_suffix (name, PARAMETERS_FILE_EXT))
@@ -658,25 +660,29 @@ hyscan_db_file_get_directory_param_list (const gchar *path)
       g_free (sub_path);
 
       /* Название группы параметров. */
-      group_name = g_strsplit (name, ".", 2);
-      if (g_strv_length (group_name) != 2 || strlen (group_name[0]) + strlen (group_name[1]) != strlen (name) - 1)
-        {
-          g_strfreev (group_name);
-          continue;
-        }
+      splited_group_name = g_strsplit (name, ".", 2);
+      if (splited_group_name == NULL)
+        continue;
 
       /* Список групп параметров. */
-      params = g_realloc (params, 16 * (((i + 1) / 16) + 1) * sizeof (gchar *));
-      params[i] = g_strdup (group_name[0]);
-      i++;
-      params[i] = NULL;
+      if (g_strcmp0 (splited_group_name[1], PARAMETERS_FILE_EXT) == 0)
+        {
+          group_name = g_strdup (splited_group_name[0]);
+          g_array_append_val (params, group_name);
+        }
 
-      g_strfreev (group_name);
+      g_strfreev (splited_group_name);
     }
 
   g_dir_close (dir);
 
-  return params;
+  if (params->len == 0)
+    {
+      g_array_unref (params);
+      return NULL;
+    }
+
+  return (gchar**)g_array_free (params, FALSE);
 }
 
 /* Функция рекурсивно удаляет каталог со всеми его файлами и подкаталогами. */
@@ -880,9 +886,8 @@ hyscan_db_file_project_list (HyScanDB *db)
   HyScanDBFilePrivate *priv = dbf->priv;
 
   GDir *db_dir;
+  GArray *projects;
   const gchar *project_name;
-  gchar **projects = NULL;
-  gint i = 0;
 
   if (!priv->flocked)
     return NULL;
@@ -894,14 +899,15 @@ hyscan_db_file_project_list (HyScanDB *db)
       return NULL;
     }
 
+  projects = g_array_new (TRUE, TRUE, sizeof (gchar *));
+
   g_rw_lock_reader_lock (&priv->lock);
 
   /* Проверяем все найденые каталоги - содержат они проект или нет. */
   while ((project_name = g_dir_read_name (db_dir)) != NULL)
     {
-
-      gboolean status = FALSE;
       gchar *project_path;
+      gboolean status;
 
       /* Проверяем содержит каталог проект или нет. */
       project_path = g_build_filename (priv->path, project_name, NULL);
@@ -912,18 +918,21 @@ hyscan_db_file_project_list (HyScanDB *db)
         continue;
 
       /* Список проектов. */
-      projects = g_realloc (projects, 16 * (((i + 1) / 16) + 1) * sizeof (gchar *));
-      projects[i] = g_strdup (project_name);
-      i++;
-      projects[i] = NULL;
-
+      project_name = g_strdup (project_name);
+      g_array_append_val (projects, project_name);
     }
 
   g_rw_lock_reader_unlock (&priv->lock);
 
-  g_clear_pointer (&db_dir, g_dir_close);
+  g_dir_close (db_dir);
 
-  return projects;
+  if (projects->len == 0)
+    {
+      g_array_unref (projects);
+      return NULL;
+    }
+
+  return (gchar**)g_array_free (projects, FALSE);
 }
 
 /* Функция открывает проект для работы. */
@@ -1212,15 +1221,16 @@ hyscan_db_file_track_list (HyScanDB *db,
 
   HyScanDBFileProjectInfo *project_info;
 
-  GDir *db_dir = NULL;
+  GDir *db_dir;
+  GArray *tracks;
   const gchar *track_name;
-  gchar **tracks = NULL;
-  gint i = 0;
 
   if (!priv->flocked)
     return NULL;
 
   g_rw_lock_reader_lock (&priv->lock);
+
+  tracks = g_array_new (TRUE, TRUE, sizeof (gchar *));
 
   project_info = g_hash_table_lookup (priv->projects, GINT_TO_POINTER (project_id));
   if (project_info == NULL)
@@ -1248,18 +1258,22 @@ hyscan_db_file_track_list (HyScanDB *db,
         continue;
 
       /* Список галсов. */
-      tracks = g_realloc (tracks, 16 * (((i + 1) / 16) + 1) *sizeof (gchar *));
-      tracks[i] = g_strdup (track_name);
-      i++;
-      tracks[i] = NULL;
+      track_name = g_strdup (track_name);
+      g_array_append_val (tracks, track_name);
     }
+
+  g_dir_close (db_dir);
 
 exit:
   g_rw_lock_reader_unlock (&priv->lock);
 
-  g_clear_pointer (&db_dir, g_dir_close);
+  if (tracks->len == 0)
+    {
+      g_array_unref (tracks);
+      return NULL;
+    }
 
-  return tracks;
+  return (gchar**)g_array_free (tracks, FALSE);
 }
 
 /* Внутренняя функция открытия галса. */
@@ -1584,20 +1598,20 @@ hyscan_db_file_channel_list (HyScanDB *db,
   HyScanDBFilePrivate *priv = dbf->priv;
 
   HyScanDBFileTrackInfo *track_info;
-  HyScanDBFileChannelInfo *channel_info;
 
   GHashTableIter iter;
   gpointer key, value;
 
-  GDir *db_dir = NULL;
+  GDir *db_dir;
+  GArray *channels;
   const gchar *file_name;
-  gchar **channels = NULL;
-  gint i = 0;
 
   if (!priv->flocked)
     return NULL;
 
   g_rw_lock_reader_lock (&priv->lock);
+
+  channels = g_array_new (TRUE, TRUE, sizeof (gchar *));
 
   /* Ищем галс в списке открытых. */
   track_info = g_hash_table_lookup (priv->tracks, GINT_TO_POINTER (track_id));
@@ -1614,68 +1628,74 @@ hyscan_db_file_channel_list (HyScanDB *db,
   /* Проверяем все найденые файлы на совпадение с именем name.000000.d */
   while ((file_name = g_dir_read_name (db_dir)) != NULL)
     {
+      gchar **splited_channel_name;
+      gchar *channel_name;
+      gboolean status;
 
-      gboolean status = FALSE;
-      gchar **splited_channel_name = g_strsplit (file_name, ".", 2);
-      gchar *channel_name = NULL;
-
+      splited_channel_name = g_strsplit (file_name, ".", 2);
       if (splited_channel_name == NULL)
         continue;
 
       /* Если совпадение найдено проверяем, что существует канал с именем name. */
       if (g_strcmp0 (splited_channel_name[1], "000000.d") == 0)
         status = hyscan_db_channel_test (track_info->path, splited_channel_name[0]);
-
-      channel_name = splited_channel_name[0];
-      if (!status)
-        g_free (splited_channel_name[0]);
-      if (splited_channel_name[1] != NULL)
-        g_free (splited_channel_name[1]);
-      g_free (splited_channel_name);
-
-      if (!status)
-        continue;
+      else
+        status = FALSE;
 
       /* Список каналов. */
-      channels = g_realloc (channels, 16 *(((i + 1) / 16) + 1) *sizeof (gchar *));
-      channels[i] = channel_name;
-      i++;
-      channels[i] = NULL;
+      if (status)
+        {
+          channel_name = g_strdup (splited_channel_name[0]);
+          g_array_append_val (channels, channel_name);
+        }
+
+      g_strfreev (splited_channel_name);
     }
 
   /* Добавляем в список каналов созданные, но ещё пустые. */
   g_hash_table_iter_init (&iter, priv->channels);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      gboolean skip_channel = FALSE;
-      channel_info = value;
+      HyScanDBFileChannelInfo *channel_info;
+      gboolean skip_channel;
+      gchar *channel_name;
+      guint i;
 
       /* Каналы в текущем галсе. */
+      channel_info = value;
       if (g_strcmp0 (track_info->track_name, channel_info->track_name) != 0)
         continue;
 
       /* Пропускаем канал, если он уже есть в списке. */
-      for (i = 0; channels[i] != NULL; i++)
-        if (g_strcmp0 (channels[i], channel_info->channel_name) == 0)
-          {
-            skip_channel = TRUE;
-            break;
-          }
+      for (i = 0, skip_channel = FALSE; i < channels->len; i++)
+        {
+          channel_name = g_array_index (channels, gchar*, i);
+          if (g_strcmp0 (channel_name, channel_info->channel_name) == 0)
+            {
+              skip_channel = TRUE;
+              break;
+            }
+        }
 
       if (skip_channel)
         continue;
 
-      channels = g_realloc (channels, 16 *(((i + 1) / 16) + 1) *sizeof (gchar *));
-      channels[i] = g_strdup (channel_info->channel_name);
-      channels[i + 1] = NULL;
+      channel_name = g_strdup (channel_info->channel_name);
+      g_array_append_val (channels, channel_name);
     }
+
+  g_dir_close (db_dir);
 
 exit:
   g_rw_lock_reader_unlock (&priv->lock);
 
-  g_clear_pointer (&db_dir, g_dir_close);
+  if (channels->len == 0)
+    {
+      g_array_unref (channels);
+      return NULL;
+    }
 
-  return channels;
+  return (gchar**)g_array_free (channels, FALSE);
 }
 
 /* Функция создаёт или открывает существующий канал данных. */
