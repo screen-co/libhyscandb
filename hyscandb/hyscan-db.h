@@ -46,6 +46,8 @@
  * - работа с данными
  *   -# запись данных - #hyscan_db_channel_add_data
  *   -# чтение данных - #hyscan_db_channel_get_data
+ *   -# чтение размера данных - #hyscan_db_channel_get_data_size
+ *   -# чтение метки времени данных - #hyscan_db_channel_get_data_time
  *   -# поиск данных по времени - #hyscan_db_channel_find_data
  *   -# получение диапазона доступных данных - #hyscan_db_channel_get_data_range
  * - работа с параметрами
@@ -86,20 +88,7 @@
  * Если пользователь явным образом не установил значение параметра, будет использоваться значение по
  * умолчанию, определённое в схеме.
  *
- * Названия параметров и типы значений GVariant должны подчиняться правилам \link HyScanDataSchema \endlink.
- *
- * Для чтения/записи параметров типов boolean, integer, double, string и enum существуют вспомогательные функции:
- *
- * - #hyscan_db_param_set_boolean - установка значения параметра типа boolean;
- * - #hyscan_db_param_set_integer - установка значения параметра типа integer;
- * - #hyscan_db_param_set_double - установка значения параметра типа double;
- * - #hyscan_db_param_set_string - установка значения параметра типа string;
- * - #hyscan_db_param_set_enum - установка значения параметра типа enum;
- * - #hyscan_db_param_get_boolean - чтение значения параметра типа boolean;
- * - #hyscan_db_param_get_integer - чтение значения параметра типа integer;
- * - #hyscan_db_param_get_double - чтение значения параметра типа double;
- * - #hyscan_db_param_get_string - чтение значения параметра типа string;
- * - #hyscan_db_param_get_enum - чтение значения параметра типа enum.
+ * Названия параметров и типы значений должны подчиняться правилам \link HyScanDataSchema \endlink.
  *
  * Система хранения данных спроектирована таким образом, что не допускает запись в уже существующий канал данных.
  * Таким образом, запись данных возможна ТОЛЬКО во вновь созданный канал - #hyscan_db_channel_create. Аналогично,
@@ -293,6 +282,14 @@ struct _HyScanDBInterface
                                                                 guint32                index,
                                                                 HyScanBuffer          *buffer,
                                                                 gint64                *time);
+
+  guint32              (*channel_get_data_size)                (HyScanDB              *db,
+                                                                gint32                 channel_id,
+                                                                guint32                index);
+
+  gint64               (*channel_get_data_time)                (HyScanDB              *db,
+                                                                gint32                 channel_id,
+                                                                guint32                index);
 
   gint32               (*channel_find_data)                    (HyScanDB              *db,
                                                                 gint32                 channel_id,
@@ -939,13 +936,44 @@ gboolean               hyscan_db_channel_add_data              (HyScanDB        
  * \return TRUE - если данные успешно считаны, FALSE - в случае ошибки.
  *
  */
-
 HYSCAN_API
 gboolean               hyscan_db_channel_get_data              (HyScanDB              *db,
                                                                 gint32                 channel_id,
                                                                 guint32                index,
                                                                 HyScanBuffer          *buffer,
                                                                 gint64                *time);
+
+/**
+ *
+ * Функция считывает размер данных по номеру индекса.
+ *
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
+ * \param channel_id идентификатор канала данных;
+ * \param index индекс данных.
+ *
+ * \return Размер данных или ноль.
+ *
+ */
+HYSCAN_API
+guint32                hyscan_db_channel_get_data_size         (HyScanDB              *db,
+                                                                gint32                 channel_id,
+                                                                guint32                index);
+
+/**
+ *
+ * Функция считывает метку времени данных по номеру индекса.
+ *
+ * \param db указатель на интерфейс \link HyScanDB \endlink;
+ * \param channel_id идентификатор канала данных;
+ * \param index индекс данных.
+ *
+ * \return Метка времени или отрицательное число.
+ *
+ */
+HYSCAN_API
+gint64                 hyscan_db_channel_get_data_time         (HyScanDB              *db,
+                                                                gint32                 channel_id,
+                                                                guint32                index);
 
 /**
  *

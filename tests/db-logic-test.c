@@ -722,7 +722,7 @@ main (int argc, char **argv)
       for (k = 0; k < n_channels; k++)
         {
           mod_count = hyscan_db_get_mod_count (db, channel_id[i][j][k]);
-          if (!hyscan_db_channel_add_data (db, channel_id[i][j][k], 0, buffer_in, NULL))
+          if (!hyscan_db_channel_add_data (db, channel_id[i][j][k], 1000 * (k + 1), buffer_in, NULL))
             g_error ("can't add data to '%s.%s.%s'", projects[i], tracks[j], channels[k]);
           if (mod_count == hyscan_db_get_mod_count (db, channel_id[i][j][k]))
             g_error ("modification counter fail on data add to '%s.%s.%s'", projects[i], tracks[j], channels[k]);
@@ -862,7 +862,7 @@ main (int argc, char **argv)
       for (k = 0; k < n_channels; k++)
         {
           mod_count = hyscan_db_get_mod_count (db, channel_id[i][j][k]);
-          if (hyscan_db_channel_add_data (db, channel_id[i][j][k], 1, buffer_in, NULL))
+          if (hyscan_db_channel_add_data (db, channel_id[i][j][k], 1000 * (k + 2), buffer_in, NULL))
             g_error ("'%s.%s.%s' must be read only", projects[i], tracks[j], channels[k]);
           if (mod_count != hyscan_db_get_mod_count (db, channel_id[i][j][k]))
             g_error ("modification counter fail on data add to '%s.%s.%s'", projects[i], tracks[j], channels[k]);
@@ -941,11 +941,21 @@ main (int argc, char **argv)
         {
           gpointer data;
           guint32 size;
-          if (!hyscan_db_channel_get_data (db, channel_id[i][j][k], 0, buffer_out, NULL))
+          gint64 time;
+          if (!hyscan_db_channel_get_data (db, channel_id[i][j][k], 0, buffer_out, &time))
             g_error ("can't read data from 'Project %d.Track %d.Channel %d'", i + 1, j + 1, k + 1);
           data = hyscan_buffer_get_data (buffer_out, &size);
-          if ((data == NULL) || (size != hyscan_buffer_get_size (buffer_in)) || (g_strcmp0 (data, DATA_PATTERN) != 0))
-            g_error ("wrong 'Project %d.Track %d.Channel %d' data", i + 1, j + 1, k + 1);
+          if ((data == NULL) || (size != (strlen (DATA_PATTERN) + 1)) ||
+              (time != (1000 * (k + 1))) || (g_strcmp0 (data, DATA_PATTERN) != 0))
+            {
+              g_error ("wrong 'Project %d.Track %d.Channel %d' data", i + 1, j + 1, k + 1);
+            }
+          size = hyscan_db_channel_get_data_size (db, channel_id[i][j][k], 0);
+          if (size != (strlen (DATA_PATTERN) + 1))
+            g_error ("wrong '%s.%s.%s' data size", projects[i], tracks[j], channels[k]);
+          time = hyscan_db_channel_get_data_time (db, channel_id[i][j][k], 0);
+          if (time != (1000 * (k + 1)))
+            g_error ("wrong '%s.%s.%s' data time", projects[i], tracks[j], channels[k]);
         }
 
   /* Проверяем, что нет возможности записать данные в каналы. */
@@ -955,7 +965,7 @@ main (int argc, char **argv)
       for (k = 0; k < n_channels; k++)
         {
           mod_count = hyscan_db_get_mod_count (db, channel_id[i][j][k]);
-          if (hyscan_db_channel_add_data (db, channel_id[i][j][k], 1, buffer_in, NULL))
+          if (hyscan_db_channel_add_data (db, channel_id[i][j][k], 1000 * (k + 2), buffer_in, NULL))
             g_error ("'%s.%s.%s' must be read only", projects[i], tracks[j], channels[k]);
           if (mod_count != hyscan_db_get_mod_count (db, channel_id[i][j][k]))
             g_error ("modification counter fail on data add to '%s.%s.%s'", projects[i], tracks[j], channels[k]);
@@ -1246,11 +1256,21 @@ main (int argc, char **argv)
         {
           gpointer data;
           guint32 size;
-          if (!hyscan_db_channel_get_data (db, channel_id[i][j][k], 0, buffer_out, NULL))
+          gint64 time;
+          if (!hyscan_db_channel_get_data (db, channel_id[i][j][k], 0, buffer_out, &time))
             g_error ("can't read data from '%s.%s.%s'", projects[i], tracks[j], channels[k]);
           data = hyscan_buffer_get_data (buffer_out, &size);
-          if ((data == NULL) || (size != hyscan_buffer_get_size (buffer_in)) || (g_strcmp0 (data, DATA_PATTERN) != 0))
-            g_error ("wrong '%s.%s.%s' data", projects[i], tracks[j], channels[k]);
+          if ((data == NULL) || (size != (strlen (DATA_PATTERN) + 1)) ||
+              (time != (1000 * (k + 1))) || (g_strcmp0 (data, DATA_PATTERN) != 0))
+            {
+              g_error ("wrong '%s.%s.%s' data", projects[i], tracks[j], channels[k]);
+            }
+          size = hyscan_db_channel_get_data_size (db, channel_id[i][j][k], 0);
+          if (size != (strlen (DATA_PATTERN) + 1))
+            g_error ("wrong '%s.%s.%s' data size", projects[i], tracks[j], channels[k]);
+          time = hyscan_db_channel_get_data_time (db, channel_id[i][j][k], 0);
+          if (time != (1000 * (k + 1)))
+            g_error ("wrong '%s.%s.%s' data time", projects[i], tracks[j], channels[k]);
         }
 
   /* Проверяем, что нет возможности записать данные в каналы. */

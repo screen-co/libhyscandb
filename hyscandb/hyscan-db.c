@@ -504,6 +504,38 @@ hyscan_db_channel_get_data (HyScanDB     *db,
   return FALSE;
 }
 
+guint32
+hyscan_db_channel_get_data_size (HyScanDB     *db,
+                                 gint32        channel_id,
+                                 guint32       index)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_get_data_size != NULL)
+    return iface->channel_get_data_size (db, channel_id, index);
+
+  return 0;
+}
+
+gint64
+hyscan_db_channel_get_data_time (HyScanDB     *db,
+                                 gint32        channel_id,
+                                 guint32       index)
+{
+  HyScanDBInterface *iface;
+
+  g_return_val_if_fail (HYSCAN_IS_DB (db), FALSE);
+
+  iface = HYSCAN_DB_GET_IFACE (db);
+  if (iface->channel_get_data_time != NULL)
+    return iface->channel_get_data_time (db, channel_id, index);
+
+  return -1;
+}
+
 HyScanDBFindStatus
 hyscan_db_channel_find_data (HyScanDB *db,
                              gint32    channel_id,

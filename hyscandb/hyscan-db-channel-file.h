@@ -113,6 +113,14 @@ gboolean   hyscan_db_channel_file_get_channel_data         (HyScanDBChannelFile 
                                                             HyScanBuffer        *buffer,
                                                             gint64              *time);
 
+/* Функция считывает размер данных. */
+guint32    hyscan_db_channel_file_get_channel_data_size    (HyScanDBChannelFile *channel,
+                                                            guint32              index);
+
+/* Функция считывает метку времени данных. */
+gint64     hyscan_db_channel_file_get_channel_data_time    (HyScanDBChannelFile *channel,
+                                                            guint32              index);
+
 /* Функция ищет данные по метке времени. */
 HyScanDBFindStatus hyscan_db_channel_file_find_channel_data (HyScanDBChannelFile *channel,
                                                             gint64               time,

@@ -1164,7 +1164,6 @@ hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
     }
 
   /* Считываем данные. */
-  hyscan_buffer_set_data_type (buffer, HYSCAN_DATA_BLOB);
   hyscan_buffer_set_size (buffer, db_index->size);
   data = hyscan_buffer_get_data (buffer, &size);
   iosize = size;
@@ -1187,6 +1186,53 @@ exit:
   return status;
 }
 
+/* Функция считывает размер данных. */
+guint32
+hyscan_db_channel_file_get_channel_data_size (HyScanDBChannelFile *channel,
+                                              guint32              index)
+{
+  HyScanDBChannelFilePrivate *priv;
+
+  HyScanDBChannelFileIndex *db_index;
+
+  g_return_val_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel), FALSE);
+
+  priv = channel->priv;
+
+  if (priv->fail)
+    return FALSE;
+
+  /* Ищем требуемую запись. */
+  g_mutex_lock (&priv->lock);
+  db_index = hyscan_db_channel_file_read_index (priv, index);
+  g_mutex_unlock (&priv->lock);
+
+  return (db_index == NULL) ? 0 : db_index->size;
+}
+
+/* Функция считывает метку времени данных. */
+gint64
+hyscan_db_channel_file_get_channel_data_time (HyScanDBChannelFile *channel,
+                                              guint32              index)
+{
+  HyScanDBChannelFilePrivate *priv;
+
+  HyScanDBChannelFileIndex *db_index;
+
+  g_return_val_if_fail (HYSCAN_IS_DB_CHANNEL_FILE (channel), FALSE);
+
+  priv = channel->priv;
+
+  if (priv->fail)
+    return FALSE;
+
+  /* Ищем требуемую запись. */
+  g_mutex_lock (&priv->lock);
+  db_index = hyscan_db_channel_file_read_index (priv, index);
+  g_mutex_unlock (&priv->lock);
+
+  return (db_index == NULL) ? -1 : db_index->time;
+}
 
 /* Функция ищет данные по метке времени. */
 HyScanDBFindStatus

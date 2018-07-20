@@ -2227,6 +2227,60 @@ hyscan_db_file_channel_get_data (HyScanDB     *db,
   return status;
 }
 
+/* Функция считывает размер данных. */
+static guint32
+hyscan_db_file_channel_get_data_size (HyScanDB     *db,
+                                      gint32        channel_id,
+                                      guint32       index)
+{
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
+  HyScanDBFilePrivate *priv = dbf->priv;
+
+  HyScanDBFileChannelInfo *channel_info;
+  guint32 data_size = 0;
+
+  if (!priv->flocked)
+    return FALSE;
+
+  g_mutex_lock (&priv->lock);
+
+  /* Ищем канал данных в списке открытых. */
+  channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
+  if (channel_info != NULL)
+    data_size = hyscan_db_channel_file_get_channel_data_size (channel_info->channel, index);
+
+  g_mutex_unlock (&priv->lock);
+
+  return data_size;
+}
+
+/* Функция считывает метку времени данных. */
+static gint64
+hyscan_db_file_channel_get_data_time (HyScanDB     *db,
+                                      gint32        channel_id,
+                                      guint32       index)
+{
+  HyScanDBFile *dbf = HYSCAN_DB_FILE (db);
+  HyScanDBFilePrivate *priv = dbf->priv;
+
+  HyScanDBFileChannelInfo *channel_info;
+  gint64 data_time = -1;
+
+  if (!priv->flocked)
+    return FALSE;
+
+  g_mutex_lock (&priv->lock);
+
+  /* Ищем канал данных в списке открытых. */
+  channel_info = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (channel_id));
+  if (channel_info != NULL)
+    data_time = hyscan_db_channel_file_get_channel_data_time (channel_info->channel, index);
+
+  g_mutex_unlock (&priv->lock);
+
+  return data_time;
+}
+
 /* Функция ищет данные по метке времени. */
 static gboolean
 hyscan_db_file_channel_find_data (HyScanDB *db,
@@ -3104,6 +3158,8 @@ hyscan_db_file_interface_init (HyScanDBInterface *iface)
   iface->channel_get_data_range = hyscan_db_file_channel_get_data_range;
   iface->channel_add_data = hyscan_db_file_channel_add_data;
   iface->channel_get_data = hyscan_db_file_channel_get_data;
+  iface->channel_get_data_size = hyscan_db_file_channel_get_data_size;
+  iface->channel_get_data_time = hyscan_db_file_channel_get_data_time;
   iface->channel_find_data = hyscan_db_file_channel_find_data;
 
   iface->param_object_list = hyscan_db_file_param_object_list;
