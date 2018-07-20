@@ -16,6 +16,10 @@
 #include <gio/gio.h>
 #include <string.h>
 
+#ifdef G_OS_UNIX
+#include <sys/file.h>
+#endif
+
 #ifdef G_OS_WIN32
 #include <windows.h>
 #endif
@@ -258,7 +262,7 @@ hyscan_db_file_object_constructed (GObject *object)
       return;
     }
 
-  if (lockf (fileno (priv->flock), F_TLOCK, 0) != 0)
+  if (flock (fileno (priv->flock), LOCK_EX | LOCK_NB) != 0)
     {
       g_clear_pointer (&priv->flock, fclose);
       g_warning ("HyScanDBFile: can't lock db directory '%s'", priv->path);
