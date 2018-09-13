@@ -138,18 +138,15 @@ check_object_schema (HyScanDB         *db,
                      gchar            *object_name)
 {
   HyScanDataSchema *schema;
-  gchar **orig_list;
-  gchar **list;
+  const gchar * const *orig_list;
+  const gchar * const *list;
 
   schema = hyscan_db_param_object_get_schema (db, param_id, object_name);
 
   orig_list = hyscan_data_schema_list_keys (orig_schema);
   list = hyscan_data_schema_list_keys (schema);
 
-  check_list (error_prefix, orig_list, list);
-
-  g_strfreev (orig_list);
-  g_strfreev (list);
+  check_list (error_prefix, (gchar **)orig_list, (gchar **)list);
 
   g_object_unref (schema);
 }
