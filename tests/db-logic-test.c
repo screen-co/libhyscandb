@@ -1562,7 +1562,5 @@ main (int argc, char **argv)
   g_object_unref (buffer_in);
   g_object_unref (buffer_out);
 
-  xmlCleanupParser ();
-
   return 0;
 }

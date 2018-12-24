@@ -71,7 +71,5 @@ main (int    argc,
   g_object_unref (db);
   g_free (server_uri);
 
-  xmlCleanupParser ();
-
   return 0;
 }
