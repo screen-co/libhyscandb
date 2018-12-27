@@ -26,6 +26,10 @@
     <key id="enum" name="Enum" enum="enum">
       <default>3</default>
     </key>
+    <key id="readonly" name="Readonly" type="integer" access="r">
+      <default>2</default>
+    </key>
+
   </schema>
 
 </schemalist>

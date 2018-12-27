@@ -167,7 +167,8 @@ clear_parameters (HyScanDB *db,
   hyscan_param_list_set (list, "/null", NULL);
   hyscan_param_list_set (list, "/enum", NULL);
 
-  hyscan_db_param_set (db, param_id, object_name, list);
+  if (!hyscan_db_param_set (db, param_id, object_name, list))
+    g_error ("%s: can't clear parameters", error_prefix);
 
   g_object_unref (list);
 }
@@ -192,6 +193,12 @@ set_parameters (HyScanDB *db,
 
   hyscan_db_param_set (db, param_id, object_name, list);
 
+  hyscan_param_list_clear (list);
+  hyscan_param_list_set_integer (list, "/readonly", INTEGER_VALUE (value));
+
+  if (hyscan_db_param_set (db, param_id, object_name, list))
+    g_error ("%s: can set readonly parameter", error_prefix);
+
   g_object_unref (list);
   g_free (string_value);
 }
@@ -211,6 +218,7 @@ check_parameters (HyScanDB *db,
   gdouble      orig_dvalue;
   gchar       *orig_svalue;
   gint64       orig_evalue;
+  gint64       orig_rvalue;
   const gchar *nvalue = NULL;
 
   orig_bvalue = BOOLEAN_VALUE (value);
@@ -218,6 +226,7 @@ check_parameters (HyScanDB *db,
   orig_dvalue = DOUBLE_VALUE (value);
   orig_svalue = STRING_VALUE (value);
   orig_evalue = ENUM_VALUE (value);
+  orig_rvalue = INTEGER_VALUE (1);
 
   hyscan_param_list_add (list, "/boolean");
   hyscan_param_list_add (list, "/integer");
@@ -225,6 +234,7 @@ check_parameters (HyScanDB *db,
   hyscan_param_list_add (list, "/string");
   hyscan_param_list_add (list, "/null");
   hyscan_param_list_add (list, "/enum");
+  hyscan_param_list_add (list, "/readonly");
 
   if (!hyscan_db_param_get (db, param_id, object_name, list))
     g_error ("%s: can't get parameters", error_prefix);
@@ -242,6 +252,8 @@ check_parameters (HyScanDB *db,
     g_error ("%s: error in null string parameter %s", error_prefix, nvalue);
   if (hyscan_param_list_get_enum (list, "/enum") != orig_evalue)
     g_error ("%s: error in enum parameter", error_prefix);
+  if (hyscan_param_list_get_integer (list, "/readonly") != orig_rvalue)
+    g_error ("%s: error in readonly parameter", error_prefix);
 
   g_object_unref (list);
   g_free (orig_svalue);

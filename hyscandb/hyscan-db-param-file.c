@@ -491,7 +491,7 @@ hyscan_db_param_file_set (HyScanDBParamFile *param,
 
       /* Доступность на запись. */
       access = hyscan_data_schema_key_get_access (schema, param_names[i]);
-      if (access == HYSCAN_DATA_SCHEMA_ACCESS_READONLY)
+      if (!(access & HYSCAN_DATA_SCHEMA_ACCESS_WRITE))
         goto exit;
 
       /* Новое значение параметра. */
@@ -619,7 +619,7 @@ hyscan_db_param_file_get (HyScanDBParamFile *param,
 
       /* Доступность на чтение. */
       access = hyscan_data_schema_key_get_access (schema, param_names[i]);
-      if (access == HYSCAN_DATA_SCHEMA_ACCESS_WRITEONLY)
+      if (!(access & HYSCAN_DATA_SCHEMA_ACCESS_READ))
         goto exit;
 
       if (!hyscan_data_schema_has_key (schema, param_names[i]))
@@ -636,7 +636,7 @@ hyscan_db_param_file_get (HyScanDBParamFile *param,
       /* Для параметров "только для чтения" или если значение не установлено
        * возвращаем значение по умолчанию. */
       access = hyscan_data_schema_key_get_access (schema, param_names[i]);
-      if ((access == HYSCAN_DATA_SCHEMA_ACCESS_READONLY) ||
+      if (!((access & HYSCAN_DATA_SCHEMA_ACCESS_WRITE)) ||
           !g_key_file_has_key (priv->params, object_name, param_names[i], NULL))
         {
           param_value = hyscan_data_schema_key_get_default (schema, param_names[i]);

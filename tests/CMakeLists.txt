@@ -11,6 +11,7 @@ add_custom_command (OUTPUT "${CMAKE_BINARY_DIR}/resources/db-logic-resources.c"
                             db-logic-resources.xml
                     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
                     DEPENDS db-logic-resources.xml
+                    DEPENDS db-logic-schema.xml
                     VERBATIM)
 
 set (TEST_LIBRARIES ${GLIB2_LIBRARIES}
