@@ -213,7 +213,7 @@ hyscan_db_client_get_mod_count (HyScanDB *db,
   uRpcData *urpc_data;
   guint32 exec_status;
 
-  guint32 mod_count;
+  guint32 mod_count = 0;
 
   if (priv->rpc == NULL)
     return 0;
@@ -345,7 +345,7 @@ hyscan_db_client_project_open (HyScanDB    *db,
   uRpcData *urpc_data;
   guint32 exec_status;
 
-  gint32 project_id;
+  gint32 project_id = 0;
 
   if (priv->rpc == NULL)
     return -1;
@@ -387,7 +387,7 @@ hyscan_db_client_project_create (HyScanDB    *db,
   uRpcData *urpc_data;
   guint32 exec_status;
 
-  gint32 project_id;
+  gint32 project_id = 0;
 
   if (priv->rpc == NULL)
     return -1;
@@ -561,7 +561,7 @@ hyscan_db_client_project_open_param (HyScanDB    *db,
   uRpcData *urpc_data;
   guint32 exec_status;
 
-  gint32 param_id;
+  gint32 param_id = 0;
 
   if (priv->rpc == NULL)
     return -1;
@@ -692,7 +692,7 @@ hyscan_db_client_track_open (HyScanDB    *db,
   uRpcData *urpc_data;
   guint32 exec_status;
 
-  gint32 track_id;
+  gint32 track_id = 0;
 
   if (priv->rpc == NULL)
     return -1;
@@ -739,7 +739,7 @@ hyscan_db_client_track_create (HyScanDB    *db,
   uRpcData *urpc_data;
   guint32 exec_status;
 
-  gint32 track_id;
+  gint32 track_id = 0;
 
   if (priv->rpc == NULL)
     return -1;
@@ -877,7 +877,7 @@ hyscan_db_client_track_param_open (HyScanDB    *db,
   uRpcData *urpc_data;
   guint32 exec_status;
 
-  gint32 param_id;
+  gint32 param_id = 0;
 
   if (priv->rpc == NULL)
     return -1;
@@ -964,7 +964,7 @@ hyscan_db_client_channel_open (HyScanDB    *db,
   uRpcData *urpc_data;
   guint32 exec_status;
 
-  gint32 channel_id;
+  gint32 channel_id = 0;
 
   if (priv->rpc == NULL)
     return -1;
@@ -1010,7 +1010,7 @@ hyscan_db_client_channel_create (HyScanDB    *db,
   uRpcData *urpc_data;
   guint32 exec_status;
 
-  gint32 channel_id;
+  gint32 channel_id = 0;
 
   if (priv->rpc == NULL)
     return -1;
@@ -1142,7 +1142,7 @@ hyscan_db_client_channel_param_open (HyScanDB *db,
   uRpcData *urpc_data;
   guint32 exec_status;
 
-  gint32 param_id;
+  gint32 param_id = 0;
 
   if (priv->rpc == NULL)
     return -1;
