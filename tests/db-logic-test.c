@@ -1,7 +1,6 @@
 
 #include "hyscan-db.h"
 
-#include <libxml/parser.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
 #include <string.h>

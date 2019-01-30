@@ -1,6 +1,5 @@
 
 #include <hyscan-db-server.h>
-#include <libxml/parser.h>
 #include <stdio.h>
 
 int

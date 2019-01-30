@@ -15,7 +15,6 @@ add_custom_command (OUTPUT "${CMAKE_BINARY_DIR}/resources/db-logic-resources.c"
                     VERBATIM)
 
 set (TEST_LIBRARIES ${GLIB2_LIBRARIES}
-                    ${LIBXML2_LIBRARIES}
                     ${HYSCAN_LIBRARIES}
                     ${HYSCAN_DB_LIBRARY})
 
