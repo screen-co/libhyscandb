@@ -48,9 +48,6 @@ static HyScanDataSchema       *hyscan_db_param_file_schema_lookup      (GHashTab
                                                                         const gchar             *schema_file,
                                                                         const gchar             *schema_id);
 
-static gboolean                hyscan_db_param_file_compare_types      (HyScanDataSchemaKeyType  param_type,
-                                                                        GVariantClass            value_type);
-
 static gboolean                hyscan_db_param_file_params_flush       (GKeyFile                *params,
                                                                         GOutputStream           *ofd);
 
@@ -179,48 +176,6 @@ hyscan_db_param_file_schema_lookup (GHashTable       *schemas,
     g_hash_table_insert (schemas, g_strdup (schema_id), schema);
 
   return schema;
-}
-
-/* Функция сравнивает тип параметра схемы и тип значения GVariant. */
-static gboolean
-hyscan_db_param_file_compare_types (HyScanDataSchemaKeyType param_type,
-                                    GVariantClass           value_type)
-{
-  if (param_type == HYSCAN_DATA_SCHEMA_KEY_INVALID)
-    return FALSE;
-
-  switch (param_type)
-    {
-    case HYSCAN_DATA_SCHEMA_KEY_BOOLEAN:
-      if (value_type == G_VARIANT_CLASS_BOOLEAN)
-        return TRUE;
-      break;
-
-    case HYSCAN_DATA_SCHEMA_KEY_INTEGER:
-      if (value_type == G_VARIANT_CLASS_INT64)
-        return TRUE;
-      break;
-
-    case HYSCAN_DATA_SCHEMA_KEY_DOUBLE:
-      if (value_type == G_VARIANT_CLASS_DOUBLE)
-        return TRUE;
-      break;
-
-    case HYSCAN_DATA_SCHEMA_KEY_STRING:
-      if (value_type == G_VARIANT_CLASS_STRING)
-        return TRUE;
-      break;
-
-    case HYSCAN_DATA_SCHEMA_KEY_ENUM:
-      if (value_type == G_VARIANT_CLASS_INT64)
-        return TRUE;
-      break;
-
-    default:
-      break;
-    }
-
-  return FALSE;
 }
 
 /* Функция записывает значения параметров в INI файл. */
@@ -442,20 +397,16 @@ exit:
 /* Функция устанавливает значение параметра. */
 gboolean
 hyscan_db_param_file_set (HyScanDBParamFile *param,
-                          const gchar       *object_name,
-                          HyScanParamList   *param_list)
+                          const gchar       *object,
+                          HyScanParamList   *list)
 {
   HyScanDBParamFilePrivate *priv;
 
   gchar *schema_id = NULL;
   HyScanDataSchema *schema = NULL;
-  HyScanDataSchemaKeyType param_type;
-  GVariantClass value_type;
   gboolean status = FALSE;
 
-  const gchar * const *param_names;
-  GVariant **param_values = NULL;
-  guint n_param_names;
+  const gchar * const *names;
   guint i;
 
   g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
@@ -468,7 +419,7 @@ hyscan_db_param_file_set (HyScanDBParamFile *param,
     goto exit;
 
   /* Используемая схема */
-  schema_id = g_key_file_get_string (priv->params, object_name, "schema-id", NULL);
+  schema_id = g_key_file_get_string (priv->params, object, "schema-id", NULL);
   if (schema_id == NULL)
     goto exit;
   schema = hyscan_db_param_file_schema_lookup (priv->schemas, priv->schema_file, schema_id);
@@ -476,80 +427,89 @@ hyscan_db_param_file_set (HyScanDBParamFile *param,
     goto exit;
 
   /* Список устанавливаемых параметров. */
-  param_names = hyscan_param_list_params (param_list);
-  if (param_names == NULL)
+  names = hyscan_param_list_params (list);
+  if (names == NULL)
     goto exit;
 
-  /* Список значений параметров. */
-  n_param_names = g_strv_length ((gchar **)param_names);
-  param_values = g_new0 (GVariant *, n_param_names);
-
   /* Проверяем параметы. */
-  for (i = 0; i < n_param_names; i++)
+  for (i = 0; names[i] != NULL; i++)
     {
-      HyScanDataSchemaKeyAccess access;
+      GVariant *value = hyscan_param_list_get (list, names[i]);
 
-      /* Доступность на запись. */
-      access = hyscan_data_schema_key_get_access (schema, param_names[i]);
-      if (!(access & HYSCAN_DATA_SCHEMA_ACCESS_WRITE))
-        goto exit;
+      if (!hyscan_data_schema_key_check (schema, names[i], value) ||
+          !(hyscan_data_schema_key_get_access (schema, names[i]) & HYSCAN_DATA_SCHEMA_ACCESS_WRITE))
+        {
+          g_clear_pointer (&value, g_variant_unref);
+          goto exit;
+        }
 
-      /* Новое значение параметра. */
-      param_values[i]= hyscan_param_list_get (param_list, param_names[i]);
-
-      /* Установка значения по умолчанию. */
-      if (param_values[i] == NULL)
-        continue;
-
-      /* Ошибка в типе нового значения параметра. */
-      param_type = hyscan_data_schema_key_get_value_type (schema, param_names[i]);
-      value_type = g_variant_classify (param_values[i]);
-      if (!hyscan_db_param_file_compare_types (param_type, value_type))
-        goto exit;
-
-      /* Недопустимое значение параметра. */
-      if (!hyscan_data_schema_key_check (schema, param_names[i], param_values[i]))
-        goto exit;
+      g_clear_pointer (&value, g_variant_unref);
     }
 
   /* Изменяем параметы. */
-  for (i = 0; i < n_param_names; i++)
+  for (i = 0; names[i] != NULL; i++)
     {
+      GVariant *value = hyscan_param_list_get (list, names[i]);
+      HyScanDataSchemaKeyType type = hyscan_data_schema_key_get_value_type (schema, names[i]);
+
       /* Сбрасываем значение параметра до состояния по умолчанию. */
-      if (param_values[i] == NULL)
+      if (value == NULL)
         {
-          g_key_file_remove_key (priv->params, object_name, param_names[i], NULL);
+          g_key_file_remove_key (priv->params, object, names[i], NULL);
           continue;
         }
 
-      value_type = g_variant_classify (param_values[i]);
-      switch (value_type)
+      switch (type)
         {
-        case G_VARIANT_CLASS_BOOLEAN:
-          g_key_file_set_boolean (priv->params, object_name, param_names[i],
-                                  g_variant_get_boolean (param_values[i]));
+        case HYSCAN_DATA_SCHEMA_KEY_BOOLEAN:
+          {
+            g_key_file_set_boolean (priv->params, object, names[i],
+                                    g_variant_get_boolean (value));
+          }
           break;
 
-        case G_VARIANT_CLASS_INT64:
-          g_key_file_set_int64 (priv->params, object_name, param_names[i],
-                                g_variant_get_int64 (param_values[i]));
+        case HYSCAN_DATA_SCHEMA_KEY_INTEGER:
+          {
+            g_key_file_set_int64 (priv->params, object, names[i],
+                                  g_variant_get_int64 (value));
+          }
           break;
 
-        case G_VARIANT_CLASS_DOUBLE:
-          g_key_file_set_double (priv->params, object_name, param_names[i],
-                                 g_variant_get_double (param_values[i]));
+        case HYSCAN_DATA_SCHEMA_KEY_DOUBLE:
+          {
+            g_key_file_set_double (priv->params, object, names[i],
+                                   g_variant_get_double (value));
+          }
           break;
 
-        case G_VARIANT_CLASS_STRING:
-          g_key_file_set_string (priv->params, object_name, param_names[i],
-                                 g_variant_get_string (param_values[i], NULL));
+        case HYSCAN_DATA_SCHEMA_KEY_STRING:
+          {
+            g_key_file_set_string (priv->params, object, names[i],
+                                   g_variant_get_string (value, NULL));
+          }
+          break;
+
+        case HYSCAN_DATA_SCHEMA_KEY_ENUM:
+          {
+            const HyScanDataSchemaEnumValue *enum_value;
+            const gchar *enum_id;
+
+            enum_id = hyscan_data_schema_key_get_enum_id(schema, names[i]);
+            enum_value = hyscan_data_schema_enum_find_by_value (schema, enum_id,
+                                                                g_variant_get_int64 (value));
+
+            if (enum_value == NULL)
+              goto exit;
+
+            g_key_file_set_string (priv->params, object, names[i], enum_value->id);
+          }
           break;
 
         default:
           break;
         }
 
-      g_variant_unref (param_values[i]);
+      g_variant_unref (value);
     }
 
   status = hyscan_db_param_file_params_flush (priv->params, priv->ofd);
@@ -562,12 +522,6 @@ hyscan_db_param_file_set (HyScanDBParamFile *param,
 
 exit:
   g_mutex_unlock (&priv->lock);
-
-  if (!status && (param_values != NULL))
-    for (i = 0; i < n_param_names; i++)
-      g_clear_pointer (&param_values[i], g_variant_unref);
-
-  g_free (param_values);
   g_free (schema_id);
 
   return status;
@@ -576,8 +530,8 @@ exit:
 /* Функция считывает значение параметра. */
 gboolean
 hyscan_db_param_file_get (HyScanDBParamFile *param,
-                          const gchar       *object_name,
-                          HyScanParamList   *param_list)
+                          const gchar       *object,
+                          HyScanParamList   *list)
 {
   HyScanDBParamFilePrivate *priv;
 
@@ -585,8 +539,7 @@ hyscan_db_param_file_get (HyScanDBParamFile *param,
   HyScanDataSchema *schema = NULL;
   gboolean status = FALSE;
 
-  const gchar * const *param_names;
-  guint n_param_names;
+  const gchar * const *names;
   guint i;
 
   g_return_val_if_fail (HYSCAN_IS_DB_PARAM_FILE (param), FALSE);
@@ -599,7 +552,7 @@ hyscan_db_param_file_get (HyScanDBParamFile *param,
     goto exit;
 
   /* Используемая схема */
-  schema_id = g_key_file_get_string (priv->params, object_name, "schema-id", NULL);
+  schema_id = g_key_file_get_string (priv->params, object, "schema-id", NULL);
   if (schema_id == NULL)
     goto exit;
   schema = hyscan_db_param_file_schema_lookup (priv->schemas, priv->schema_file, schema_id);
@@ -607,71 +560,87 @@ hyscan_db_param_file_get (HyScanDBParamFile *param,
     goto exit;
 
   /* Список устанавливаемых параметров. */
-  param_names = hyscan_param_list_params (param_list);
-  if (param_names == NULL)
+  names = hyscan_param_list_params (list);
+  if (names == NULL)
     goto exit;
 
   /* Проверяем параметы. */
-  n_param_names = g_strv_length ((gchar **)param_names);
-  for (i = 0; i < n_param_names; i++)
+  for (i = 0; names[i] != NULL; i++)
     {
-      HyScanDataSchemaKeyAccess access;
-
-      /* Доступность на чтение. */
-      access = hyscan_data_schema_key_get_access (schema, param_names[i]);
-      if (!(access & HYSCAN_DATA_SCHEMA_ACCESS_READ))
-        goto exit;
-
-      if (!hyscan_data_schema_has_key (schema, param_names[i]))
+      if (!(hyscan_data_schema_key_get_access (schema, names[i]) & HYSCAN_DATA_SCHEMA_ACCESS_READ))
         goto exit;
     }
 
   /* Считываем значения параметров. */
-  for (i = 0; param_names[i] != NULL; i++)
+  for (i = 0; names[i] != NULL; i++)
     {
-      HyScanDataSchemaKeyType param_type;
-      HyScanDataSchemaKeyAccess access;
-      GVariant *param_value;
+      HyScanDataSchemaKeyType type;
+      GVariant *value;
 
-      /* Для параметров "только для чтения" или если значение не установлено
-       * возвращаем значение по умолчанию. */
-      access = hyscan_data_schema_key_get_access (schema, param_names[i]);
-      if (!((access & HYSCAN_DATA_SCHEMA_ACCESS_WRITE)) ||
-          !g_key_file_has_key (priv->params, object_name, param_names[i], NULL))
+      /* Если значение не установлено, возвращаем значение по умолчанию. */
+      if (!g_key_file_has_key (priv->params, object, names[i], NULL))
         {
-          param_value = hyscan_data_schema_key_get_default (schema, param_names[i]);
-          hyscan_param_list_set (param_list, param_names[i], param_value);
-          g_clear_pointer (&param_value, g_variant_unref);
+          value = hyscan_data_schema_key_get_default (schema, names[i]);
+          hyscan_param_list_set (list, names[i], value);
+          g_clear_pointer (&value, g_variant_unref);
+          continue;
         }
-      else
+
+      type = hyscan_data_schema_key_get_value_type (schema, names[i]);
+      switch (type)
         {
-          param_type = hyscan_data_schema_key_get_value_type (schema, param_names[i]);
-          switch (param_type)
-            {
-            case HYSCAN_DATA_SCHEMA_KEY_BOOLEAN:
-              param_value = g_variant_new_boolean (g_key_file_get_boolean (priv->params, object_name, param_names[i], NULL));
-              break;
+        case HYSCAN_DATA_SCHEMA_KEY_BOOLEAN:
+          {
+            gboolean bvalue = g_key_file_get_boolean (priv->params, object, names[i], NULL);
+            value = g_variant_new_boolean (bvalue);
+          }
+          break;
 
-            case HYSCAN_DATA_SCHEMA_KEY_INTEGER:
-            case HYSCAN_DATA_SCHEMA_KEY_ENUM:
-              param_value = g_variant_new_int64 (g_key_file_get_int64 (priv->params, object_name, param_names[i], NULL));
-              break;
+        case HYSCAN_DATA_SCHEMA_KEY_INTEGER:
+          {
+            gint64 ivalue = g_key_file_get_int64 (priv->params, object, names[i], NULL);
+            value = g_variant_new_int64 (ivalue);
+          }
+          break;
 
-            case HYSCAN_DATA_SCHEMA_KEY_DOUBLE:
-              param_value = g_variant_new_double (g_key_file_get_double (priv->params, object_name, param_names[i], NULL));
-              break;
+        case HYSCAN_DATA_SCHEMA_KEY_DOUBLE:
+          {
+            gdouble dvalue = g_key_file_get_double (priv->params, object, names[i], NULL);
+            value = g_variant_new_double (dvalue);
+          }
+          break;
 
-            case HYSCAN_DATA_SCHEMA_KEY_STRING:
-              param_value = g_variant_new_take_string (g_key_file_get_string (priv->params, object_name, param_names[i], NULL));
-              break;
+        case HYSCAN_DATA_SCHEMA_KEY_STRING:
+          {
+            gchar *svalue = g_key_file_get_string (priv->params, object, names[i], NULL);
+            value = g_variant_new_take_string (svalue);
+          }
+          break;
 
-            default:
-              param_value = NULL;
-              break;
-            }
+        case HYSCAN_DATA_SCHEMA_KEY_ENUM:
+          {
+            const HyScanDataSchemaEnumValue *enum_value;
+            const gchar *enum_id;
+            gchar *svalue;
 
-          hyscan_param_list_set (param_list, param_names[i], param_value);
+            svalue = g_key_file_get_string (priv->params, object, names[i], NULL);
+            enum_id = hyscan_data_schema_key_get_enum_id(schema, names[i]);
+            enum_value = hyscan_data_schema_enum_find_by_id (schema, enum_id, svalue);
+            g_free (svalue);
+
+            if (enum_value == NULL)
+              goto exit;
+
+            value = g_variant_new_int64 (enum_value->value);
+          }
+          break;
+
+        default:
+          value = NULL;
+          break;
         }
+
+      hyscan_param_list_set (list, names[i], value);
     }
 
   status = TRUE;

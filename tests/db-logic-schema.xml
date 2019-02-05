@@ -2,11 +2,11 @@
 <schemalist gettext-domain="db-logic-schema">
 
   <enum id="enum">
-    <value name="value1" value="1"/>
-    <value name="value2" value="2"/>
-    <value name="value3" value="3"/>
-    <value name="value4" value="4"/>
-    <value name="value5" value="5"/>
+    <value id="value1" name="value1" value="1"/>
+    <value id="value2" name="value2" value="2"/>
+    <value id="value3" name="value3" value="3"/>
+    <value id="value4" name="value4" value="4"/>
+    <value id="value5" name="value5" value="5"/>
   </enum>
 
   <schema id="complex">
