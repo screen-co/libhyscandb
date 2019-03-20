@@ -1352,6 +1352,7 @@ hyscan_db_server_rpc_proc_param_set (uRpcData *urpc_data,
   gint i;
 
   param_list = ((HyScanDBServerThreadPrivate *)thread_data)->list;
+  hyscan_param_list_clear (param_list);
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
     hyscan_db_server_get_error ("param_id");
@@ -1495,6 +1496,7 @@ hyscan_db_server_rpc_proc_param_get (uRpcData *urpc_data,
   gint i;
 
   param_list = ((HyScanDBServerThreadPrivate *)thread_data)->list;
+  hyscan_param_list_clear (param_list);
 
   if (urpc_data_get_int32 (urpc_data, HYSCAN_DB_RPC_PARAM_PARAM_ID, &param_id) != 0)
     hyscan_db_server_get_error ("param_id");
