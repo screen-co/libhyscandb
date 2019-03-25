@@ -367,7 +367,7 @@ hyscan_db_file_check_name (const gchar *name,
         match = TRUE;
       if (name[i] >= '0' && name[i] <= '9')
         match = TRUE;
-      if (name[i] == '-' || name[i] == '.')
+      if (name[i] == '-' || name[i] == '_' || name[i] == '.')
         match = TRUE;
       if (name[i] == '/' && allow_slash)
         match = TRUE;
