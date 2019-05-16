@@ -1435,7 +1435,7 @@ hyscan_db_client_channel_add_data (HyScanDB     *db,
   if (priv->rpc == NULL)
     return FALSE;
 
-  data = hyscan_buffer_get_data (buffer, &data_size);
+  data = hyscan_buffer_get (buffer, NULL, &data_size);
   if (data == NULL)
     return FALSE;
 
@@ -1486,6 +1486,9 @@ hyscan_db_client_channel_get_data (HyScanDB     *db,
   gpointer data;
   guint32 data_size;
 
+  gpointer dest;
+  guint32 dest_size;
+
   uRpcData *urpc_data;
   guint32 exec_status;
 
@@ -1516,7 +1519,11 @@ hyscan_db_client_channel_get_data (HyScanDB     *db,
   if (data == NULL)
     hyscan_db_client_get_error ("data");
 
-  hyscan_buffer_set_data (buffer, HYSCAN_DATA_BLOB, data, data_size);
+  if (!hyscan_buffer_set_data_size (buffer, data_size))
+    goto exit;
+
+  dest = hyscan_buffer_get (buffer, NULL, &dest_size);
+  memcpy (dest, data, dest_size);
 
   if (time != NULL)
     {

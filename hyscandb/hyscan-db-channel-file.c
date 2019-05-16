@@ -963,7 +963,7 @@ hyscan_db_channel_file_add_channel_data (HyScanDBChannelFile *channel,
     }
 
   /* Записываемые данные. */
-  data = hyscan_buffer_get_data (buffer, &size);
+  data = hyscan_buffer_get (buffer, NULL, &size);
 
   /* Время не может быть отрицательным. */
   if (time < 0)
@@ -1164,8 +1164,10 @@ hyscan_db_channel_file_get_channel_data (HyScanDBChannelFile *channel,
     }
 
   /* Считываем данные. */
-  hyscan_buffer_set_size (buffer, db_index->size);
-  data = hyscan_buffer_get_data (buffer, &size);
+  if (!hyscan_buffer_set_data_size (buffer, db_index->size))
+    goto exit;
+
+  data = hyscan_buffer_get (buffer, NULL, &size);
   iosize = size;
   if (g_input_stream_read (db_index->part->ifdd, data, iosize, NULL, NULL) != iosize)
     {

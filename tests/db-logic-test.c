@@ -296,6 +296,7 @@ main (int argc, char **argv)
 
   HyScanBuffer        *buffer_in;
   HyScanBuffer        *buffer_out;
+  gpointer             data_out;
 
   gint                 i, j, k, l, m, n;
 
@@ -430,12 +431,14 @@ main (int argc, char **argv)
 
   schema = hyscan_data_schema_new_from_string (g_bytes_get_data (schema_data, NULL), "complex");
 
-  /* Буфер ввода/вывода. */
+  /* Буферы ввода/вывода. */
   buffer_in = hyscan_buffer_new ();
   buffer_out = hyscan_buffer_new ();
+  data_out = g_malloc0 (strlen (DATA_PATTERN) + 1);
+  hyscan_buffer_wrap (buffer_out, HYSCAN_DATA_BLOB, data_out, strlen (DATA_PATTERN) + 1);
 
   /* Шаблон записываемых данных. */
-  hyscan_buffer_set_data (buffer_in, HYSCAN_DATA_STRING, DATA_PATTERN, strlen (DATA_PATTERN) + 1);
+  hyscan_buffer_set (buffer_in, HYSCAN_DATA_STRING, DATA_PATTERN, strlen (DATA_PATTERN) + 1);
 
   /* Создаём объект базы данных. */
   g_message ("db uri %s", db_uri);
@@ -947,17 +950,12 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gpointer data;
           guint32 size;
           gint64 time;
           if (!hyscan_db_channel_get_data (db, channel_id[i][j][k], 0, buffer_out, &time))
-            g_error ("can't read data from 'Project %d.Track %d.Channel %d'", i + 1, j + 1, k + 1);
-          data = hyscan_buffer_get_data (buffer_out, &size);
-          if ((data == NULL) || (size != (strlen (DATA_PATTERN) + 1)) ||
-              (time != (1000 * (k + 1))) || (g_strcmp0 (data, DATA_PATTERN) != 0))
-            {
-              g_error ("wrong 'Project %d.Track %d.Channel %d' data", i + 1, j + 1, k + 1);
-            }
+            g_error ("can't read data from '%s.%s.%s'", projects[i], tracks[j], channels[k]);
+          if ((time != (1000 * (k + 1))) || (g_strcmp0 (data_out, DATA_PATTERN) != 0))
+            g_error ("wrong '%s.%s.%s' data", projects[i], tracks[j], channels[k]);
           size = hyscan_db_channel_get_data_size (db, channel_id[i][j][k], 0);
           if (size != (strlen (DATA_PATTERN) + 1))
             g_error ("wrong '%s.%s.%s' data size", projects[i], tracks[j], channels[k]);
@@ -1262,17 +1260,12 @@ main (int argc, char **argv)
     for (j = 0; j < n_tracks; j++)
       for (k = 0; k < n_channels; k++)
         {
-          gpointer data;
           guint32 size;
           gint64 time;
           if (!hyscan_db_channel_get_data (db, channel_id[i][j][k], 0, buffer_out, &time))
             g_error ("can't read data from '%s.%s.%s'", projects[i], tracks[j], channels[k]);
-          data = hyscan_buffer_get_data (buffer_out, &size);
-          if ((data == NULL) || (size != (strlen (DATA_PATTERN) + 1)) ||
-              (time != (1000 * (k + 1))) || (g_strcmp0 (data, DATA_PATTERN) != 0))
-            {
-              g_error ("wrong '%s.%s.%s' data", projects[i], tracks[j], channels[k]);
-            }
+          if ((time != (1000 * (k + 1))) || (g_strcmp0 (data_out, DATA_PATTERN) != 0))
+            g_error ("wrong '%s.%s.%s' data", projects[i], tracks[j], channels[k]);
           size = hyscan_db_channel_get_data_size (db, channel_id[i][j][k], 0);
           if (size != (strlen (DATA_PATTERN) + 1))
             g_error ("wrong '%s.%s.%s' data size", projects[i], tracks[j], channels[k]);
@@ -1572,6 +1565,7 @@ main (int argc, char **argv)
 
   g_object_unref (buffer_in);
   g_object_unref (buffer_out);
+  g_free (data_out);
 
   return 0;
 }

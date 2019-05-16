@@ -115,7 +115,7 @@ int main( int argc, char **argv )
 
     times64[i] = time64;
 
-    hyscan_buffer_wrap_data( buffer, HYSCAN_DATA_BLOB, datap[i%DATA_PATTERNS], data_size );
+    hyscan_buffer_wrap( buffer, HYSCAN_DATA_BLOB, datap[i%DATA_PATTERNS], data_size );
     if( !hyscan_db_channel_file_add_channel_data( channel, time64, buffer, &index ) )
       g_warning( "hyscan_db_channel_add failed" );
 
@@ -143,7 +143,7 @@ int main( int argc, char **argv )
   cur_cnts = 0;
   all_cnts = 0;
 
-  hyscan_buffer_wrap_data( buffer, HYSCAN_DATA_BLOB, data, data_size );
+  hyscan_buffer_wrap( buffer, HYSCAN_DATA_BLOB, data, data_size );
 
   // Последовательно считываем данные и проверяем контрольную сумму.
   for( i = first_index; i <= last_index; i++ )
@@ -162,7 +162,7 @@ int main( int argc, char **argv )
       g_warning( "hyscan_db_channel_get failed" );
 
     // Проверяем размер данных.
-    if( hyscan_buffer_get_size( buffer ) != data_size )
+    if( hyscan_buffer_get_data_size( buffer ) != data_size )
       g_warning( "data size mismatch" );
 
     // Проверяем метку времени.
@@ -210,7 +210,7 @@ int main( int argc, char **argv )
       g_warning( "hyscan_db_channel_get failed" );
 
     // Проверяем размер данных.
-    if( hyscan_buffer_get_size( buffer ) != data_size )
+    if( hyscan_buffer_get_data_size( buffer ) != data_size )
       g_warning( "data size mismatch" );
 
     // Проверяем метку времени.

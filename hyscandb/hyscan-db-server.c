@@ -1032,7 +1032,7 @@ hyscan_db_server_rpc_proc_channel_add_data (uRpcData *urpc_data,
     hyscan_db_server_get_error ("data");
 
   buffer = ((HyScanDBServerThreadPrivate *)thread_data)->buffer;
-  hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, data, size);
+  hyscan_buffer_wrap (buffer, HYSCAN_DATA_BLOB, data, size);
 
   if (hyscan_db_channel_add_data (priv->db, channel_id, time, buffer, &index))
     {
@@ -1076,11 +1076,11 @@ hyscan_db_server_rpc_proc_channel_get_data (uRpcData *urpc_data,
     hyscan_db_server_set_error ("data");
 
   buffer = ((HyScanDBServerThreadPrivate *)thread_data)->buffer;
-  hyscan_buffer_wrap_data (buffer, HYSCAN_DATA_BLOB, data, size);
+  hyscan_buffer_wrap (buffer, HYSCAN_DATA_BLOB, data, size);
 
   if (hyscan_db_channel_get_data (priv->db, channel_id, index, buffer, &time))
     {
-      if (hyscan_buffer_get_data (buffer, &size) != NULL)
+      if (hyscan_buffer_get (buffer, NULL, &size) != NULL)
         if (urpc_data_set (urpc_data, HYSCAN_DB_RPC_PARAM_DATA_DATA, NULL, size) == NULL )
           hyscan_db_server_set_error ("data-size");
 
