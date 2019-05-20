@@ -30,6 +30,11 @@ endif ()
 target_link_libraries (db-logic-test ${TEST_LIBRARIES})
 target_link_libraries (simple-db-server ${TEST_LIBRARIES})
 
+file (REMOVE_RECURSE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
+file (MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/db")
+add_test (NAME DBLogicTest COMMAND db-logic-test -p 4 -t -4 -c 4 -g 4 file://db
+          WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+
 install (TARGETS db-logic-test
                  simple-db-server
          COMPONENT test
