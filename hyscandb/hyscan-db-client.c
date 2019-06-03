@@ -2209,7 +2209,13 @@ exit:
 HyScanDBClient *
 hyscan_db_client_new (const gchar *uri)
 {
-  return g_object_new (HYSCAN_TYPE_DB_CLIENT, "uri", uri, NULL);
+  HyScanDBClient *db;
+
+  db = g_object_new (HYSCAN_TYPE_DB_CLIENT, "uri", uri, NULL);
+  if (db->priv->rpc == NULL)
+    g_clear_object (&db);
+
+  return db;
 }
 
 static void
