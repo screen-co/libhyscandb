@@ -1,10 +1,44 @@
+/* channel-file-test.c
+ *
+ * Copyright 2015-2020 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
+ *
+ * This file is part of HyScanDB.
+ *
+ * HyScanDB is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanDB is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanDB имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanDB на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
 
 #include "hyscan-db-channel-file.h"
 #include <glib/gprintf.h>
 
 #define DATA_PATTERNS 16
 
-int main( int argc, char **argv )
+int
+main (int argc, char **argv)
 {
 
   gint64 time64;
@@ -31,334 +65,364 @@ int main( int argc, char **argv )
 
   guint i, j, k;
 
-  { // Разбор командной строки.
-
-  GError          *error = NULL;
-  GOptionContext  *context;
-  GOptionEntry     entries[] =
   {
-    { "file-size", 'f', 0, G_OPTION_ARG_INT64, &max_file_size, "Maximum data file size", NULL },
-    { "data-size", 'd', 0, G_OPTION_ARG_INT, &data_size, "Data record size", NULL },
-    { "records", 'r', 0, G_OPTION_ARG_INT, &total_records, "Total records number", NULL },
-    { NULL }
-  };
+    GError *error = NULL;
+    GOptionContext *context;
+    GOptionEntry entries[] =
+      {
+        {"file-size", 'f', 0, G_OPTION_ARG_INT64, &max_file_size, "Maximum data file size", NULL},
+        {"data-size", 'd', 0, G_OPTION_ARG_INT, &data_size, "Data record size", NULL},
+        {"records", 'r', 0, G_OPTION_ARG_INT, &total_records, "Total records number", NULL},
+        {NULL }
+      };
 
-  context = g_option_context_new( "" );
-  g_option_context_set_help_enabled( context, TRUE );
-  g_option_context_add_main_entries( context, entries, NULL );
-  g_option_context_set_ignore_unknown_options( context, FALSE );
-  if( !g_option_context_parse( context, &argc, &argv, &error ) )
-    { g_print( "%s\n", error->message ); return -1; }
+    context = g_option_context_new ("<channel-name>");
+    g_option_context_set_help_enabled (context, TRUE);
+    g_option_context_add_main_entries (context, entries, NULL);
+    g_option_context_set_ignore_unknown_options (context, FALSE);
+    if (!g_option_context_parse (context, &argc, &argv, &error))
+      {
+        g_print ("%s\n", error->message);
+        return -1;
+      }
 
-  if( argc < 2 )
-    { g_print( "%s", g_option_context_get_help( context, FALSE, NULL ) ); return 0; }
+    if (argc < 2)
+      {
+        g_print ("%s", g_option_context_get_help (context, FALSE, NULL));
+        return 0;
+      }
 
-  g_option_context_free( context );
+    g_option_context_free (context);
 
   }
 
-  // Название канала с данными.
+  /* Название канала с данными. */
   channel_name = argv[1];
 
-  // Буфер для данных.
-  buffer = hyscan_buffer_new();
-  for( i = 0; i < DATA_PATTERNS; i++ ) datap[i] = g_malloc( data_size );
-  data = g_malloc( data_size );
-  times64 = g_malloc( total_records * sizeof( guint64 ) );
+  /* Буфер для данных. */
+  buffer = hyscan_buffer_new ();
+  for (i = 0; i < DATA_PATTERNS; i++)
+    datap[i] = g_malloc (data_size);
+  data = g_malloc (data_size);
+  times64 = g_malloc (total_records * sizeof (guint64));
 
-  cur_timer = g_timer_new();
-  all_timer = g_timer_new();
+  cur_timer = g_timer_new ();
+  all_timer = g_timer_new ();
 
-  // Хранение данных.
-  HyScanDBChannelFile *channel = g_object_new( HYSCAN_TYPE_DB_CHANNEL_FILE, "path", ".", "name", channel_name, NULL );
+  /* Хранение данных. */
+  HyScanDBChannelFile *channel = g_object_new (HYSCAN_TYPE_DB_CHANNEL_FILE,
+                                               "path", ".", "name",
+                                               channel_name, NULL);
 
-  // Максимальный размер файла с данными.
-  hyscan_db_channel_file_set_channel_chunk_size( channel, max_file_size );
+  /* Максимальный размер файла с данными. */
+  hyscan_db_channel_file_set_channel_chunk_size (channel, max_file_size);
 
-  time64 = g_random_int();
+  time64 = g_random_int ();
 
-  // Генерируем шаблоны для записи.
-  for( i = 0; i < DATA_PATTERNS; i++ )
+  /* Генерируем шаблоны для записи. */
+  for (i = 0; i < DATA_PATTERNS; i++)
     {
 
-    guint32 hash = 0;
+      guint32 hash = 0;
 
-    // Генерируем случайные данные и считаем их контрольную сумму.
-    for( j = 4; j < data_size; j++ )
-      {
-      datap[i][j] = g_random_int();
-      hash = 33 * hash + (guchar)datap[i][j];
-      }
+      /* Генерируем случайные данные и считаем их контрольную сумму. */
+      for (j = 4; j < data_size; j++)
+        {
+          datap[i][j] = g_random_int ();
+          hash = 33 * hash + (guchar) datap[i][j];
+        }
 
-    // Сохраняем контрольную сумму в самом начале данных.
-    *(guint32*)datap[i] = hash;
+      /* Сохраняем контрольную сумму в самом начале данных. */
+      *(guint32*) datap[i] = hash;
 
     }
 
-  g_printf( "Preloading channel '%s' with %d records with %d size\n", channel_name, total_records, data_size );
+  g_printf ("Preloading channel '%s' with %d records with %d size\n",
+            channel_name, total_records, data_size);
 
-  g_timer_start( cur_timer );
-  g_timer_start( all_timer );
+  g_timer_start (cur_timer);
+  g_timer_start (all_timer);
   cur_cnts = 0;
   all_cnts = 0;
 
-  // Записываем данные.
-  for( i = 0; i < total_records; i++ )
+  /* Записываем данные. */
+  for (i = 0; i < total_records; i++)
     {
+      if (g_timer_elapsed (cur_timer, NULL) >= 1.0)
+        {
+          g_message ("Current speed: %.3lf mb/s, average speed: %.3lf mb/s",
+                     (data_size * (cur_cnts / g_timer_elapsed (cur_timer, NULL))) / (1024 * 1024),
+                     (data_size * (all_cnts / g_timer_elapsed (all_timer, NULL))) / (1024 * 1024));
+          g_timer_start (cur_timer);
+          cur_cnts = 0;
+        }
 
-    if( g_timer_elapsed( cur_timer, NULL ) >= 1.0 )
-      {
-      g_message( "Current speed: %.3lf mb/s, average speed: %.3lf mb/s", ( data_size * ( cur_cnts / g_timer_elapsed( cur_timer, NULL ) ) ) / ( 1024 * 1024 ), ( data_size * ( all_cnts / g_timer_elapsed( all_timer, NULL ) ) ) / ( 1024 * 1024 ) );
-      g_timer_start( cur_timer );
-      cur_cnts = 0;
-      }
+      times64[i] = time64;
 
-    times64[i] = time64;
+      hyscan_buffer_wrap (buffer, HYSCAN_DATA_BLOB, datap[i % DATA_PATTERNS], data_size);
+      if (!hyscan_db_channel_file_add_channel_data (channel, time64, buffer, &index))
+        g_warning ("hyscan_db_channel_add failed");
 
-    hyscan_buffer_wrap( buffer, HYSCAN_DATA_BLOB, datap[i%DATA_PATTERNS], data_size );
-    if( !hyscan_db_channel_file_add_channel_data( channel, time64, buffer, &index ) )
-      g_warning( "hyscan_db_channel_add failed" );
+      if (index != i)
+        g_warning ("index mismatch %d != %d", index, i);
 
-    if( index != i )
-      g_warning( "index mismatch %d != %d", index, i );
+      // Добавляем случайное смещение по времени от 50 до 100 мкс.
+      time64 += g_random_int_range (50, 101);
 
-    // Добавляем случайное смещение по времени от 50 до 100 мкс.
-    time64 += g_random_int_range( 50, 101 );
-
-    cur_cnts += 1;
-    all_cnts += 1;
-
+      cur_cnts += 1;
+      all_cnts += 1;
     }
 
-  g_object_unref( channel );
-  channel = g_object_new( HYSCAN_TYPE_DB_CHANNEL_FILE, "path", ".", "name", channel_name, NULL );
+  g_object_unref (channel);
+  channel = g_object_new (HYSCAN_TYPE_DB_CHANNEL_FILE,
+                          "path", ".", "name", channel_name, NULL);
 
-  if( !hyscan_db_channel_file_get_channel_data_range( channel, &first_index, &last_index ) )
-    g_error( "First index = unknown, last index = unknown" );
+  if (!hyscan_db_channel_file_get_channel_data_range (channel, &first_index, &last_index))
+    g_error ("First index = unknown, last index = unknown");
 
-  g_printf( "Reading records from %d to %d\n", first_index, last_index );
+  g_printf ("Reading records from %d to %d\n", first_index, last_index);
 
-  g_timer_start( cur_timer );
-  g_timer_start( all_timer );
+  g_timer_start (cur_timer);
+  g_timer_start (all_timer);
   cur_cnts = 0;
   all_cnts = 0;
 
-  hyscan_buffer_wrap( buffer, HYSCAN_DATA_BLOB, data, data_size );
+  hyscan_buffer_wrap (buffer, HYSCAN_DATA_BLOB, data, data_size);
 
-  // Последовательно считываем данные и проверяем контрольную сумму.
-  for( i = first_index; i <= last_index; i++ )
+  /* Последовательно считываем данные и проверяем контрольную сумму. */
+  for (i = first_index; i <= last_index; i++)
     {
+      guint32 hash = 0;
 
-    guint32 hash = 0;
+      if (g_timer_elapsed (cur_timer, NULL) >= 1.0)
+        {
+          g_message ("Current speed: %.3lf mb/s, average speed: %.3lf mb/s",
+                     (data_size * (cur_cnts / g_timer_elapsed (cur_timer, NULL))) / (1024 * 1024),
+                     (data_size * (all_cnts / g_timer_elapsed (all_timer, NULL))) / (1024 * 1024));
+          g_timer_start (cur_timer);
+          cur_cnts = 0;
+        }
 
-    if( g_timer_elapsed( cur_timer, NULL ) >= 1.0 )
-      {
-      g_message( "Current speed: %.3lf mb/s, average speed: %.3lf mb/s", ( data_size * ( cur_cnts / g_timer_elapsed( cur_timer, NULL ) ) ) / ( 1024 * 1024 ), ( data_size * ( all_cnts / g_timer_elapsed( all_timer, NULL ) ) ) / ( 1024 * 1024 ) );
-      g_timer_start( cur_timer );
-      cur_cnts = 0;
-      }
+      if (!hyscan_db_channel_file_get_channel_data (channel, i, buffer, &time64))
+        g_warning ("hyscan_db_channel_get failed");
 
-    if( !hyscan_db_channel_file_get_channel_data( channel, i, buffer, &time64 ) )
-      g_warning( "hyscan_db_channel_get failed" );
+      /* Проверяем размер данных. */
+      if (hyscan_buffer_get_data_size (buffer) != data_size)
+        g_warning ("data size mismatch");
 
-    // Проверяем размер данных.
-    if( hyscan_buffer_get_data_size( buffer ) != data_size )
-      g_warning( "data size mismatch" );
+      /* Проверяем метку времени. */
+      if (times64[i] != time64)
+        g_warning ("time mismatch");
 
-    // Проверяем метку времени.
-    if( times64[i] != time64 )
-      g_warning( "time mismatch" );
+      /* Считаем контрольную сумму. */
+      for (j = 4; j < data_size; j++)
+        hash = 33 * hash + (guchar) data[j];
 
-    // Считаем контрольную сумму.
-    for( j = 4; j < data_size; j++ )
-      hash = 33 * hash + (guchar)data[j];
+      /* Проверяем контрольную сумму. */
+      if (*(guint32*) data != hash)
+        g_warning("data hash mismatch");
 
-    // Проверяем контрольную сумму.
-    if( *(guint32*)data != hash )
-      g_warning( "data hash mismatch" );
-
-    cur_cnts += 1;
-    all_cnts += 1;
-
+      cur_cnts += 1;
+      all_cnts += 1;
     }
 
-  g_printf( "Random read, range from %d to %d\n", first_index, last_index );
+  g_printf ("Random read, range from %d to %d\n", first_index, last_index);
 
-  g_random_set_seed( time( NULL ) );
+  g_random_set_seed (time (NULL));
 
-  g_timer_start( cur_timer );
-  g_timer_start( all_timer );
+  g_timer_start (cur_timer);
+  g_timer_start (all_timer);
   cur_cnts = 0;
   all_cnts = 0;
 
-  // Случайным образом считываем данные и проверяем контрольную сумму.
-  for( k = 0; k < 10 * total_records; k++ )
+  /* Случайным образом считываем данные и проверяем контрольную сумму. */
+  for (k = 0; k < 10 * total_records; k++)
     {
+      guint32 hash = 0;
 
-    guint32 hash = 0;
+      if (g_timer_elapsed (cur_timer, NULL) >= 1.0)
+        {
+          g_message ("Current speed: %.3lf mb/s, average speed: %.3lf mb/s",
+                     (data_size * (cur_cnts / g_timer_elapsed (cur_timer, NULL))) / (1024 * 1024),
+                     (data_size * (all_cnts / g_timer_elapsed (all_timer, NULL))) / (1024 * 1024));
+          g_timer_start (cur_timer);
+          cur_cnts = 0;
+        }
 
-    if( g_timer_elapsed( cur_timer, NULL ) >= 1.0 )
-      {
-      g_message( "Current speed: %.3lf mb/s, average speed: %.3lf mb/s", ( data_size * ( cur_cnts / g_timer_elapsed( cur_timer, NULL ) ) ) / ( 1024 * 1024 ), ( data_size * ( all_cnts / g_timer_elapsed( all_timer, NULL ) ) ) / ( 1024 * 1024 ) );
-      g_timer_start( cur_timer );
-      cur_cnts = 0;
-      }
+      i = g_random_int_range (first_index, last_index + 1);
 
-    i = g_random_int_range( first_index, last_index + 1 );
+      if (!hyscan_db_channel_file_get_channel_data (channel, i, buffer, &time64))
+        g_warning ("hyscan_db_channel_get failed");
 
-    if( !hyscan_db_channel_file_get_channel_data ( channel, i, buffer, &time64 ) )
-      g_warning( "hyscan_db_channel_get failed" );
+      /* Проверяем размер данных. */
+      if (hyscan_buffer_get_data_size (buffer) != data_size)
+        g_warning ("data size mismatch");
 
-    // Проверяем размер данных.
-    if( hyscan_buffer_get_data_size( buffer ) != data_size )
-      g_warning( "data size mismatch" );
+      /* Проверяем метку времени. */
+      if (times64[i] != time64)
+        g_warning ("time mismatch");
 
-    // Проверяем метку времени.
-    if( times64[i] != time64 )
-      g_warning( "time mismatch" );
+      /* Считаем контрольную сумму. */
+      for (j = 4; j < data_size; j++)
+        hash = 33 * hash + (guchar) data[j];
 
-    // Считаем контрольную сумму.
-    for( j = 4; j < data_size; j++ )
-      hash = 33 * hash + (guchar)data[j];
+      /* Проверяем контрольную сумму. */
+      if (*(guint32*) data != hash)
+        g_warning("data hash mismatch");
 
-    // Проверяем контрольную сумму.
-    if( *(guint32*)data != hash )
-      g_warning( "data hash mismatch" );
-
-    cur_cnts += 1;
-    all_cnts += 1;
-
+      cur_cnts += 1;
+      all_cnts += 1;
     }
 
-  g_printf( "Finding records by time, one by one\n" );
+  g_printf ("Finding records by time, one by one\n");
 
-  // Последовательно ищем записи по времени.
-  for( i = first_index; i <= last_index; i++ )
+  /* Последовательно ищем записи по времени. */
+  for (i = first_index; i <= last_index; i++)
     {
+      HyScanDBFindStatus status;
+      guint32 lindex = 0;
+      guint32 rindex = 0;
+      gint64 ltime = 0;
+      gint64 rtime = 0;
 
-    HyScanDBFindStatus status;
-    guint32 lindex = 0;
-    guint32 rindex = 0;
-    gint64 ltime = 0;
-    gint64 rtime = 0;
+      time64 = times64[i];
 
-    time64 = times64[i];
+      status = hyscan_db_channel_file_find_channel_data (channel, time64, &lindex, &rindex, &ltime, &rtime);
+      if (status != HYSCAN_DB_FIND_OK)
+        g_warning ("hyscan_db_channel_find failed 1");
 
-    status = hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime );
-    if( status != HYSCAN_DB_FIND_OK )
-      g_warning( "hyscan_db_channel_find failed 1" );
+      if (ltime != rtime || ltime != time64)
+        {
+          g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT
+                     " mismatch (%" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT
+                     " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT ")",
+                     time64 / 1000000, time64 % 1000000,
+                     ltime / 1000000, ltime % 1000000,
+                     rtime / 1000000, rtime % 1000000);
+        }
 
-    if( ltime != rtime || ltime != time64 )
-      g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " mismatch ( %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
-
-    if( lindex != i || rindex != i )
-      g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
-
+      if (lindex != i || rindex != i)
+        g_warning ("index %d mismatch (%d : %d)", i, lindex, rindex);
     }
 
-  g_printf( "Finding records by random time\n" );
+  g_printf ("Finding records by random time\n");
 
-  // Случайно ищем записи по точно совпадающему времени.
-  for( k = 0; k < 10 * total_records; k++ )
+  /* Случайно ищем записи по точно совпадающему времени. */
+  for (k = 0; k < 10 * total_records; k++)
     {
+      HyScanDBFindStatus status;
+      guint32 lindex = 0;
+      guint32 rindex = 0;
+      gint64 ltime = 0;
+      gint64 rtime = 0;
 
-    HyScanDBFindStatus status;
-    guint32 lindex = 0;
-    guint32 rindex = 0;
-    gint64 ltime = 0;
-    gint64 rtime = 0;
+      i = g_random_int_range (first_index, last_index + 1);
+      time64 = times64[i];
 
-    i = g_random_int_range( first_index, last_index + 1 );
-    time64 = times64[i];
+      status = hyscan_db_channel_file_find_channel_data (channel, time64, &lindex, &rindex, &ltime, &rtime);
+      if (status != HYSCAN_DB_FIND_OK)
+        g_warning ("hyscan_db_channel_find failed 2");
 
-    status = hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime );
-    if( status != HYSCAN_DB_FIND_OK )
-      g_warning( "hyscan_db_channel_find failed 2" );
+      if (ltime != rtime || ltime != time64)
+        {
+          g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT
+                     " mismatch (%" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT
+                     " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT ")",
+                     time64 / 1000000, time64 % 1000000,
+                     ltime / 1000000, ltime % 1000000,
+                     rtime / 1000000, rtime % 1000000);
+        }
 
-    if( ltime != rtime || ltime != time64 )
-      g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " mismatch ( %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
-
-    if( lindex != i || rindex != i )
-      g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
-
+      if (lindex != i || rindex != i)
+        g_warning ("index %d mismatch (%d : %d)", i, lindex, rindex);
     }
 
-  g_printf( "Finding records by random time - 1\n" );
+  g_printf ("Finding records by random time - 1\n");
 
-  // Случайно ищем записи по времени - 1мкс.
-  for( k = 0; k < 10 * total_records; k++ )
+  /* Случайно ищем записи по времени - 1мкс. */
+  for (k = 0; k < 10 * total_records; k++)
     {
+      HyScanDBFindStatus status;
+      guint32 lindex = 0;
+      guint32 rindex = 0;
+      gint64 ltime = 0;
+      gint64 rtime = 0;
 
-    HyScanDBFindStatus status;
-    guint32 lindex = 0;
-    guint32 rindex = 0;
-    gint64 ltime = 0;
-    gint64 rtime = 0;
+      i = g_random_int_range (first_index, last_index + 1);
+      time64 = times64[i] - 1;
 
-    i = g_random_int_range( first_index, last_index + 1 );
-    time64 = times64[i] - 1;
+      status = hyscan_db_channel_file_find_channel_data (channel, time64, &lindex, &rindex, &ltime, &rtime);
+      if (status == HYSCAN_DB_FIND_FAIL)
+        g_warning ("hyscan_db_channel_find failed 3");
 
-    status = hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime );
-    if( status == HYSCAN_DB_FIND_FAIL )
-      g_warning( "hyscan_db_channel_find failed 3" );
+      if (i == first_index && status != HYSCAN_DB_FIND_LESS)
+        g_warning ("index %d mismatch (%d : %d)", i, lindex, rindex);
 
-    if( i == first_index && status != HYSCAN_DB_FIND_LESS )
-      g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
+      if (status == HYSCAN_DB_FIND_LESS)
+        continue;
 
-    if( status == HYSCAN_DB_FIND_LESS )
-      continue;
+      if (i != first_index && lindex != rindex - 1)
+        g_warning ("index %d mismatch (%d : %d)", i, lindex, rindex);
 
-    if( i != first_index && lindex != rindex - 1 )
-      g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
-
-    if( rtime - 1 != time64 || ltime >= rtime )
-      g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " mismatch ( %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
-
+      if (rtime - 1 != time64 || ltime >= rtime)
+        {
+          g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT
+                     " mismatch (%" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT
+                     " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT ")",
+                     time64 / 1000000, time64 % 1000000,
+                     ltime / 1000000, ltime % 1000000,
+                     rtime / 1000000, rtime % 1000000);
+        }
     }
 
-  g_printf( "Finding records by random time + 1\n" );
+  g_printf ("Finding records by random time + 1\n");
 
-  // Случайно ищем записи по времени + 1мкс.
-  for( k = 0; k < 10 * total_records; k++ )
+  /* Случайно ищем записи по времени + 1мкс. */
+  for (k = 0; k < 10 * total_records; k++)
     {
+      HyScanDBFindStatus status;
+      guint32 lindex = 0;
+      guint32 rindex = 0;
+      gint64 ltime = 0;
+      gint64 rtime = 0;
 
-    HyScanDBFindStatus status;
-    guint32 lindex = 0;
-    guint32 rindex = 0;
-    gint64 ltime = 0;
-    gint64 rtime = 0;
+      i = g_random_int_range (first_index, last_index + 1);
+      time64 = times64[i] + 1;
 
-    i = g_random_int_range( first_index, last_index + 1 );
-    time64 = times64[i] + 1;
+      status = hyscan_db_channel_file_find_channel_data (channel, time64, &lindex, &rindex, &ltime, &rtime);
+      if (status == HYSCAN_DB_FIND_FAIL)
+        g_warning ("hyscan_db_channel_find failed 4");
 
-    status = hyscan_db_channel_file_find_channel_data( channel, time64, &lindex, &rindex, &ltime, &rtime );
-    if( status == HYSCAN_DB_FIND_FAIL )
-      g_warning( "hyscan_db_channel_find failed 4" );
+      if (i == last_index && status != HYSCAN_DB_FIND_GREATER)
+        g_warning ("index %d mismatch (%d : %d)", i, lindex, rindex);
 
-    if( i == last_index && status != HYSCAN_DB_FIND_GREATER )
-      g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
+      if (status == HYSCAN_DB_FIND_GREATER)
+        continue;
 
-    if( status == HYSCAN_DB_FIND_GREATER )
-      continue;
+      if (i != last_index && lindex != rindex - 1)
+        g_warning ("index %d mismatch (%d : %d)", i, lindex, rindex);
 
-    if( i != last_index && lindex != rindex - 1 )
-      g_warning( "index %d mismatch ( %d : %d )", i, lindex, rindex );
-
-    if( ltime + 1 != time64 || ltime >= rtime )
-      g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " mismatch ( %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT " )", time64 / 1000000, time64 % 1000000, ltime / 1000000, ltime % 1000000, rtime / 1000000, rtime % 1000000 );
-
+      if (ltime + 1 != time64 || ltime >= rtime)
+        {
+          g_warning( "time %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT
+                     " mismatch (%" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT
+                     " : %" G_GINT64_FORMAT ".%06" G_GINT64_FORMAT ")",
+                     time64 / 1000000, time64 % 1000000,
+                     ltime / 1000000, ltime % 1000000,
+                     rtime / 1000000, rtime % 1000000);
+        }
     }
 
-  g_object_unref( buffer );
-  g_object_unref( channel );
+  g_object_unref (buffer);
+  g_object_unref (channel);
 
-  g_free( times64 );
-  for( i = 0; i < DATA_PATTERNS; i++ ) g_free( datap[i] );
-  g_free( data );
+  g_free (times64);
+  for (i = 0; i < DATA_PATTERNS; i++)
+    g_free (datap[i]);
+  g_free (data);
 
-  g_timer_destroy( cur_timer );
-  g_timer_destroy( all_timer );
+  g_timer_destroy (cur_timer);
+  g_timer_destroy (all_timer);
 
   return 0;
-
 }

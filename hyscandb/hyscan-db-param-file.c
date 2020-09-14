@@ -1,11 +1,40 @@
-/*
- * \file hyscan-db-param-file.c
+/* hyscan-db-param-file.c
  *
- * \brief Исходный файл класса хранения параметров в файловой системе
- * \author Andrei Fadeev (andrei@webcontrol.ru)
- * \date 2015
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2015-2020 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
  *
+ * This file is part of HyScanDB.
+ *
+ * HyScanDB is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanDB is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanDB имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanDB на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/* HyScanDBParamFile класс для работы с группой параметров в INI фалах
+ *
+ * Описание функций класса совпадает с соответствующими функциями интерфейса HyScanDB.
  */
 
 #include "hyscan-db-param-file.h"
@@ -220,7 +249,12 @@ exit:
   return status;
 }
 
-/* Функция создаёт новый объект HyScanDBParamFile. */
+/* Функция создаёт новый объект HyScanDBParamFile.
+ *
+ * Функция имеет два параметра:
+ * - param_file - путь к файлу со значениями параметров;
+ * - schema_file - путь к файлу со схемой данных.
+ */
 HyScanDBParamFile *
 hyscan_db_param_file_new (const gchar *param_file,
                           const gchar *schema_file)

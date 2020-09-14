@@ -1,59 +1,35 @@
-/*
- * \file hyscan-db-channel-file.h
+/* hyscan-db-channel-file.h
  *
- * \brief Заголовочный файл класса хранения данных канала в файловой системе
- * \author Andrei Fadeev (andrei@webcontrol.ru)
- * \date 2015
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2015-2020 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
  *
- * HyScanDBChannelFile - класс работы с данными канала в формате HyScan версии 5
+ * This file is part of HyScanDB.
  *
- * Описание функций класса совпадает с соответствующими функциями интерфейса HyScanDB.
+ * HyScanDB is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Создание объекта класса осуществляется при помощи функции g_object_new.
+ * HyScanDB is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * Конструктор класса имеет три параметра:
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
- * - path - путь к каталогу с файлами данных. (string);
- * - name - название канала данных (string);
- * - readonly - признак работы в режиме только для чтения (boolean).
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanDB имеет двойную лицензию.
  *
- * Данные хранятся в двух основыных типах фалов: данных и индексов. Максимальный размер одного
- * файла ограничен константой MAX_DATA_FILE_SIZE и по умолчанию составляет 1 Гб. Минимальный
- * размер файла ограничен константой MIN_DATA_FILE_SIZE и по умолчанию составляет 1 Мб.
+ * Во-первых, вы можете распространять HyScanDB на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
  *
- * Файлы данных и индексов имеют следующий формат имени: "<name>.XXXXXX.Y", где:
- * - name - название канала данных;
- * - XXXXXX - номер части данных от 0 до MAX_PARTS;
- * - Y - расширение имени файла, i - для файла индексов, d - для файла данных.
- *
- * Все служебные поля файла записываются в формате LITTLE ENDIAN.
- *
- * Каждый файл содержит в самом начале идентификатор типа размером 4 байта. Идентификаторы определены в константах:
- * - INDEX_FILE_MAGIC - для файлов индексов ("HSIX");
- * - DATA_FILE_MAGIC - для файлов данных ("HSDT").
- *
- * Следующие 4 байта занимает версия файла, константа FILE_VERSION ("1507").
- *
- * Константы определены как 32-х битное целое число таким образом, что бы при записи их в файл как
- * LITTLE ENDIAN 32-х битные значения и чтения их в виде строки, получались осмысленные аббревиатуры.
- *
- * Каждый файл индексов после идентификатора и версии файла содержит номер первого индекса - 32-х битное целое со знаком.
- *
- * Далее в файл индексов записываются индексы блоков данных, индекс описывается структурой HyScanDBChannelFileIndexRec.
- *
- * Для каждого индекса, в файл данных записывается информация размером соответствующим указанному в индексе. Смещение
- * до каждого записанного блока данных также указывается в индексе.
- *
- * Сами данные записываются без преобразований. Клиент должен знать формат записываемых данных.
- *
- * По достижении файлом данных определённого размера, создаётся новая часть данных, состоящая из пары файлов: индексов и данных.
- *
- * При включении ограничений по времени хранения данных или максимальному объёму, новая часть данных будет также создаваться
- * если запись в текущую часть длится дольше чем ( время хранения / 5 ) или размер текущей части превысил 1/5 часть от
- * сохраняемого объёма. Старые части данных (по времени или по объёму) будут периодически удаляться, а оставшиеся файлы
- * переименовываться, чтобы номер части данных всегда начинался с нуля.
- *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
 #ifndef __HYSCAN_DB_CHANNEL_FILE_H__
@@ -86,67 +62,54 @@ struct _HyScanDBChannelFileClass
   GObjectClass parent_class;
 };
 
-GType hyscan_db_channel_file_get_type (void);
+GType      hyscan_db_channel_file_get_type                  (void);
 
-/* Функция создаёт новый объект HyScanDBChannelFile. */
-HyScanDBChannelFile *hyscan_db_channel_file_new            (const gchar         *path,
-                                                            const gchar         *name,
-                                                            gboolean             readonly);
+HyScanDBChannelFile *hyscan_db_channel_file_new             (const gchar         *path,
+                                                             const gchar         *name,
+                                                             gboolean             readonly);
 
-/* Функция возвращает дату и время создания канала данных. */
-gint64     hyscan_db_channel_file_get_ctime                (HyScanDBChannelFile *channel);
+gint64     hyscan_db_channel_file_get_ctime                 (HyScanDBChannelFile *channel);
 
-/* Функция возвращает диапазон текущих значений индексов данных. */
-gboolean   hyscan_db_channel_file_get_channel_data_range   (HyScanDBChannelFile *channel,
-                                                            guint32             *first_index,
-                                                            guint32             *last_index);
+gboolean   hyscan_db_channel_file_get_channel_data_range    (HyScanDBChannelFile *channel,
+                                                             guint32             *first_index,
+                                                             guint32             *last_index);
 
-/* Функция записывает новые данные. */
-gboolean   hyscan_db_channel_file_add_channel_data         (HyScanDBChannelFile *channel,
-                                                            gint64               time,
-                                                            HyScanBuffer        *buffer,
-                                                            guint32             *index);
+gboolean   hyscan_db_channel_file_add_channel_data          (HyScanDBChannelFile *channel,
+                                                             gint64               time,
+                                                             HyScanBuffer        *buffer,
+                                                             guint32             *index);
 
-/* Функция считывает данные. */
-gboolean   hyscan_db_channel_file_get_channel_data         (HyScanDBChannelFile *channel,
-                                                            guint32              index,
-                                                            HyScanBuffer        *buffer,
-                                                            gint64              *time);
+gboolean   hyscan_db_channel_file_get_channel_data          (HyScanDBChannelFile *channel,
+                                                             guint32              index,
+                                                             HyScanBuffer        *buffer,
+                                                             gint64              *time);
 
-/* Функция считывает размер данных. */
-guint32    hyscan_db_channel_file_get_channel_data_size    (HyScanDBChannelFile *channel,
-                                                            guint32              index);
+guint32    hyscan_db_channel_file_get_channel_data_size     (HyScanDBChannelFile *channel,
+                                                             guint32              index);
 
-/* Функция считывает метку времени данных. */
-gint64     hyscan_db_channel_file_get_channel_data_time    (HyScanDBChannelFile *channel,
-                                                            guint32              index);
+gint64     hyscan_db_channel_file_get_channel_data_time     (HyScanDBChannelFile *channel,
+                                                             guint32              index);
 
-/* Функция ищет данные по метке времени. */
 HyScanDBFindStatus hyscan_db_channel_file_find_channel_data (HyScanDBChannelFile *channel,
-                                                            gint64               time,
-                                                            guint32             *lindex,
-                                                            guint32             *rindex,
-                                                            gint64              *ltime,
-                                                            gint64              *rtime);
+                                                             gint64               time,
+                                                             guint32             *lindex,
+                                                             guint32             *rindex,
+                                                             gint64              *ltime,
+                                                             gint64              *rtime);
 
-/* Функция устанавливает максимальный размер файла данных. */
-gboolean   hyscan_db_channel_file_set_channel_chunk_size   (HyScanDBChannelFile *channel,
-                                                            guint64              chunk_size);
+gboolean   hyscan_db_channel_file_set_channel_chunk_size    (HyScanDBChannelFile *channel,
+                                                             guint64              chunk_size);
 
-/* Функция устанавливает интервал времени в микросекундах для которого хранятся записываемые данные. */
-gboolean   hyscan_db_channel_file_set_channel_save_time    (HyScanDBChannelFile *channel,
-                                                            gint64               save_time);
+gboolean   hyscan_db_channel_file_set_channel_save_time     (HyScanDBChannelFile *channel,
+                                                             gint64               save_time);
 
-/* Функция устанавливает максимальный объём сохраняемых данных. */
-gboolean   hyscan_db_channel_file_set_channel_save_size    (HyScanDBChannelFile *channel,
-                                                            guint64              save_size);
+gboolean   hyscan_db_channel_file_set_channel_save_size     (HyScanDBChannelFile *channel,
+                                                             guint64              save_size);
 
-/* Функция завершает запись данных. */
-void       hyscan_db_channel_file_finalize_channel         (HyScanDBChannelFile *channel);
+void       hyscan_db_channel_file_finalize_channel          (HyScanDBChannelFile *channel);
 
-/* Функция удаляет все файлы в каталоге path относящиеся к каналу name. */
-gboolean   hyscan_db_channel_remove_channel_files          (const gchar         *path,
-                                                            const gchar         *name);
+gboolean   hyscan_db_channel_remove_channel_files           (const gchar         *path,
+                                                             const gchar         *name);
 
 G_END_DECLS
 

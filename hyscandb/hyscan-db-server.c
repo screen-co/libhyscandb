@@ -1,11 +1,51 @@
-/*
- * \file hyscan-db-server.c
+/* hyscan-db-server.c
  *
- * \brief Исходный файл RPC сервера базы данных HyScan
- * \author Andrei Fadeev (andrei@webcontrol.ru)
- * \date 2015
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2015-2020 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
  *
+ * This file is part of HyScanDB.
+ *
+ * HyScanDB is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HyScanDB is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanDB имеет двойную лицензию.
+ *
+ * Во-первых, вы можете распространять HyScanDB на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
+ */
+
+/**
+ * SECTION: hyscan-db-server
+ * @Short_description: сервер базы данных HyScan
+ * @Title: HyScanDBServer
+ *
+ * Класс реализует сервер базы данных HyScan. Для подключения клиентов к серверу
+ * необходимо использовать функцию #hyscan_db_new, которая автоматически выбирает
+ * реализацию системы хранения данных HyScan в зависимости от указанного адреса.
+ *
+ * Сервер базы данных транслирует все вызовы интерфейса #HyScanDB в объект,
+ * указанный при создании сервера. После создания сервера его необходимо запустить
+ * функцией #hyscan_db_server_start.
+ *
+ * При удалении объекта, сервер автоматически завершает свою работу.
  */
 
 #include "hyscan-db-server.h"
@@ -1638,18 +1678,40 @@ exit:
   return 0;
 }
 
+/**
+ * hyscan_db_server_new:
+ * @uri: адрес сервера
+ * @db: объект в который транслируются запросы клиентов
+ * @n_threads: число потоков сервера
+ * @n_clients: максимальное число одновременно подключенных клиентов
+ *
+ * Функция создаёт сервер базы данных. Формат адреса сервера подробно
+ * разъясняется в описании функции #hyscan_db_new.
+ *
+ * Returns: #HyScanDBServer. Для удаления #g_object_unref.
+ */
 HyScanDBServer *
-hyscan_db_server_new (const gchar          *uri,
-                      HyScanDB             *db,
-                      guint                 n_threads,
-                      guint                 n_clients)
+hyscan_db_server_new (const gchar *uri,
+                      HyScanDB    *db,
+                      guint        n_threads,
+                      guint        n_clients)
 {
-  return g_object_new (HYSCAN_TYPE_DB_SERVER, "uri", uri, "db", db,
-                                              "n-threads", n_threads,
-                                              "n-clients", n_clients,
-                                              NULL);
+  return g_object_new (HYSCAN_TYPE_DB_SERVER,
+                       "uri", uri,
+                       "db", db,
+                       "n-threads", n_threads,
+                       "n-clients", n_clients,
+                       NULL);
 }
 
+/**
+ * hyscan_db_server_start:
+ * @server: указатель на #HyScanDBServer
+ *
+ * Функция запускает сервер базы данных в работу.
+ *
+ * Returns: %TRUE - если сервер успешно запущен, иначе %FALSE.
+ */
 gboolean
 hyscan_db_server_start (HyScanDBServer *server)
 {

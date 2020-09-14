@@ -18,7 +18,6 @@ test: release-test
 release:
 	@-${MAKE_DIR} bin
 	@-${MAKE_DIR} build
-	@-${MAKE_DIR} doc/documentation
 	@cd build && cmake -G $(CMAKE_GENERATOR) \
                        -D CMAKE_BUILD_TYPE=Release \
                        -D CMAKE_INSTALL_PREFIX=$(PREFIX) \
@@ -32,7 +31,6 @@ release-test: release
 debug:
 	@-${MAKE_DIR} bin
 	@-${MAKE_DIR} build
-	@-${MAKE_DIR} doc/documentation
 	@cd build && cmake -G $(CMAKE_GENERATOR) \
                        -D CMAKE_BUILD_TYPE=Debug \
                        -D CMAKE_INSTALL_PREFIX=$(PREFIX) \
@@ -67,9 +65,6 @@ install-test: install-runtime
                        -D CMAKE_INSTALL_DO_STRIP=YES \
                        -P cmake_install.cmake
 
-doc:
-	@cd doc && doxygen
-
 clean:
 	@echo "Cleaning build directory"
 	-@$(MAKE) -C build clean
@@ -78,6 +73,3 @@ distclean: clean
 	@echo "Removing build directory"
 	-@${REMOVE_DIR} bin
 	-@${REMOVE_DIR} build
-	-@${REMOVE_DIR} doc/documentation
-
-.PHONY: doc

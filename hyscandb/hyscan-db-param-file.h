@@ -1,22 +1,35 @@
-/*
- * \file hyscan-db-param-file.h
+/* hyscan-db-param-file.h
  *
- * \brief Заголовочный файл класса хранения параметров в файловой системе
- * \author Andrei Fadeev (andrei@webcontrol.ru)
- * \date 2015
- * \license Проприетарная лицензия ООО "Экран"
+ * Copyright 2015-2020 Screen LLC, Andrei Fadeev <andrei@webcontrol.ru>
  *
- * HyScanDBParamFile класс для работы с группой параметров в INI фалах
+ * This file is part of HyScanDB.
  *
- * Описание функций класса совпадает с соответствующими функциями интерфейса HyScanDB.
+ * HyScanDB is dual-licensed: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Создание объекта класса осуществляется при помощи функции hyscan_db_param_file_new.
+ * HyScanDB is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * Конструктор класса имеет два параметра:
+ * You should have received a copy of the GNU General Public License
+ * along with this library. If not, see <http://www.gnu.org/licenses/>.
  *
- * - param_file - путь к файлу со значениями параметров;
- * - schema_file - путь к файлу со схемой данных.
+ * Alternatively, you can license this code under a commercial license.
+ * Contact the Screen LLC in this case - <info@screen-co.ru>.
+ */
+
+/* HyScanDB имеет двойную лицензию.
  *
+ * Во-первых, вы можете распространять HyScanDB на условиях Стандартной
+ * Общественной Лицензии GNU версии 3, либо по любой более поздней версии
+ * лицензии (по вашему выбору). Полные положения лицензии GNU приведены в
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Во-вторых, этот программный код можно использовать по коммерческой
+ * лицензии. Для этого свяжитесь с ООО Экран - <info@screen-co.ru>.
  */
 
 #ifndef __HYSCAN_DB_PARAM_FILE_H__
@@ -52,37 +65,28 @@ struct _HyScanDBParamFileClass
 
 GType hyscan_db_param_file_get_type (void);
 
-/* Функция создаёт новый объект HyScanDBParamFile. */
 HyScanDBParamFile     *hyscan_db_param_file_new                (const gchar           *param_file,
                                                                 const gchar           *schema_file);
 
-/* Функция проверяет была создан новый файл параметров или использовался существующий. */
 gboolean               hyscan_db_param_file_is_new             (HyScanDBParamFile     *param);
 
-/* Функция возвращает список объектов. */
 gchar                **hyscan_db_param_file_object_list        (HyScanDBParamFile     *param);
 
-/* Функция возвращает указатель на объект HyScanDataSchema для объекта.
- * Объект принадлежит HyScanDBParamFile. */
 HyScanDataSchema      *hyscan_db_param_file_object_get_schema  (HyScanDBParamFile     *param,
                                                                 const gchar           *object_name);
 
-/* Функция создаёт объект с указанным идентификатором схемы. */
 gboolean               hyscan_db_param_file_object_create      (HyScanDBParamFile     *param,
                                                                 const gchar           *object_name,
                                                                 const gchar           *schema_id);
 
-/* Функция удаляет объект. */
 gboolean               hyscan_db_param_file_object_remove      (HyScanDBParamFile     *param,
                                                                 const gchar           *object_name);
 
 
-/* Функция устанавливает значение параметра. */
 gboolean               hyscan_db_param_file_set                (HyScanDBParamFile     *param,
                                                                 const gchar           *object_name,
                                                                 HyScanParamList       *param_list);
 
-/* Функция считывает значение параметра. */
 gboolean               hyscan_db_param_file_get                (HyScanDBParamFile     *param,
                                                                 const gchar           *object_name,
                                                                 HyScanParamList       *param_list);
