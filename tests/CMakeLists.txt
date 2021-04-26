@@ -38,7 +38,5 @@ add_test (NAME DBLogicTest COMMAND db-logic-test -p 4 -t -4 -c 4 -g 4 file://db
 install (TARGETS db-logic-test
                  simple-db-server
          COMPONENT test
-         RUNTIME DESTINATION bin
-         LIBRARY DESTINATION lib
-         ARCHIVE DESTINATION lib
-         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)

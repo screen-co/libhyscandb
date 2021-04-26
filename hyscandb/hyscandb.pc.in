@@ -1,6 +1,6 @@
 prefix=@CMAKE_INSTALL_PREFIX@
-libdir=${prefix}/lib
-includedir=${prefix}/include/hyscan-@HYSCAN_MAJOR_VERSION@/hyscandb
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@/hyscan-@HYSCAN_MAJOR_VERSION@/hyscandb
 
 Name: HyScanDB
 Version: @HYSCAN_MAJOR_VERSION@.@HYSCAN_DB_VERSION@
